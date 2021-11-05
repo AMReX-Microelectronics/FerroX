@@ -1,5 +1,7 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_ParmParse.H>
+#include <AMReX_MLABecLaplacian.H>
+#include <AMReX_MLMG.H> 
 
 #include "myfunc.H"
 
@@ -28,7 +30,7 @@ void main_main ()
     int max_grid_size;
 
     // TDGL right hand side parameters
-    Real alpha, beta, gamma, BigGamma, g11, g44;
+    Real epsilon, alpha, beta, gamma, BigGamma, g11, g44;
 
     // total steps in simulation
     int nsteps;
@@ -57,6 +59,7 @@ void main_main ()
         pp.get("max_grid_size",max_grid_size);
 
         // TDGL right hand side parameters
+        pp.get("epsilon",epsilon);// epsilon_0*epsilon_r
         pp.get("alpha",alpha);
         pp.get("beta",gamma);
         pp.get("gamma",gamma);
@@ -137,6 +140,50 @@ void main_main ()
     // we allocate two P multifabs; one will store the old state, the other the new.
     MultiFab P_old(ba, dm, Ncomp, Nghost);
     MultiFab P_new(ba, dm, Ncomp, Nghost);
+    MultiFab PoissonRHS(ba, dm, 1, 0);
+    MultiFab PoissonPhi(ba, dm, 1, 1);
+
+    //Solver for Poisson equation
+    LPInfo info;
+    MLABecLaplacian mlabec({geom}, {ba}, {dm}, info);
+
+    // order of stencil
+    int linop_maxorder = 2;
+    mlabec.setMaxOrder(linop_maxorder);  
+
+    // build array of boundary conditions needed by MLABecLaplacian
+    std::array<LinOpBCType, AMREX_SPACEDIM> lo_mlmg_bc;
+    std::array<LinOpBCType, AMREX_SPACEDIM> hi_mlmg_bc; 
+
+    //Periodic 
+    for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+    lo_mlmg_bc[idim] = hi_mlmg_bc[idim] = LinOpBCType::Periodic;
+    } 
+
+    mlabec.setDomainBC(lo_mlmg_bc,hi_mlmg_bc);
+
+    // coefficients for solver
+    MultiFab alpha_cc(ba, dm, 1, 0);
+    std::array< MultiFab, AMREX_SPACEDIM > beta_face;
+    AMREX_D_TERM(beta_face[0].define(convert(ba,IntVect(1,0,0)), dm, 1, 0);,
+                 beta_face[1].define(convert(ba,IntVect(0,1,0)), dm, 1, 0);,
+                 beta_face[2].define(convert(ba,IntVect(0,0,1)), dm, 1, 0););
+    
+    // set cell-centered alpha coefficient to zero
+    alpha_cc.setVal(0.);
+    
+    // set face-centered beta coefficient to epsilon
+    AMREX_D_TERM(beta_face[0].setVal(epsilon);,
+                 beta_face[1].setVal(epsilon);,
+                 beta_face[2].setVal(epsilon););
+    
+    // set any Dirichlet or Neumann bc's by reading in the ghost cell values
+    mlabec.setLevelBC(0, &PoissonPhi);
+    
+    // (A*alpha_cc - B * div beta grad) phi = rhs
+    mlabec.setScalars(0.0, 1.0);
+    mlabec.setACoeffs(0, alpha_cc); //First argument 0 is lev
+    mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));  
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -175,7 +222,31 @@ void main_main ()
         // fill periodic ghost cells
         P_old.FillBoundary(geom.periodicity());
 
-        // new_phi = old_phi + dt * Laplacian(old_phi)
+        // Initialize right hand side 
+
+        for ( MFIter mfi(P_old); mfi.isValid(); ++mfi )
+        {
+            const Box& bx = mfi.validbox();
+
+            const Array4<Real>& pOld = P_old.array(mfi);
+            const Array4<Real>& RHS = PoissonRHS.array(mfi);
+
+            // advance the data by dt
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                RHS(i,j,k) = (pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
+            });
+        }
+
+        
+ 
+        //Initial guess for phi
+        PoissonPhi.setVal(0.);
+
+        MLMG mlmg(mlabec);
+        mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore) 
+        //mlmg.solve({&PoissonPhi}, {&PoissonRHS}, mg_rel_tol, mg_abs_tol); //1e-10 for rel_tol and -1 (to ignore) 
+
         // loop over boxes
         for ( MFIter mfi(P_old); mfi.isValid(); ++mfi )
         {
@@ -183,6 +254,8 @@ void main_main ()
 
             const Array4<Real>& pOld = P_old.array(mfi);
             const Array4<Real>& pNew = P_new.array(mfi);
+            const Array4<Real>& phi = PoissonPhi.array(mfi);
+
 
             // advance the data by dt
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
@@ -192,6 +265,7 @@ void main_main ()
                      - g44 * (pOld(i+1,j,k) - 2.*pOld(i,j,k) + pOld(i-1,j,k)) / (dx[0]*dx[0])
                      - g44 * (pOld(i,j+1,k) - 2.*pOld(i,j,k) + pOld(i,j-1,k)) / (dx[1]*dx[1])
                      - g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2])
+                     + (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2])
                         );
             });
         }
