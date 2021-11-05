@@ -27,6 +27,9 @@ void main_main ()
     // size of each box (or grid)
     int max_grid_size;
 
+    // TDGL right hand side parameters
+    Real alpha, beta, gamma, BigGamma, g11, g44;
+
     // total steps in simulation
     int nsteps;
 
@@ -35,6 +38,9 @@ void main_main ()
 
     // time step
     Real dt;
+    
+    amrex::GpuArray<amrex::Real, 3> prob_lo; // physical lo coordinate
+    amrex::GpuArray<amrex::Real, 3> prob_hi; // physical hi coordinate
 
     // inputs parameters
     {
@@ -50,6 +56,14 @@ void main_main ()
         // The domain is broken into boxes of size max_grid_size
         pp.get("max_grid_size",max_grid_size);
 
+        // TDGL right hand side parameters
+        pp.get("alpha",alpha);
+        pp.get("beta",gamma);
+        pp.get("gamma",gamma);
+        pp.get("BigGamma",BigGamma);
+        pp.get("g11",g11);
+        pp.get("g44",g44);
+
         // Default nsteps to 10, allow us to set it to something else in the inputs file
         nsteps = 10;
         pp.query("nsteps",nsteps);
@@ -61,6 +75,18 @@ void main_main ()
 
         // time step
         pp.get("dt",dt);
+
+        amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
+        if (pp.queryarr("prob_lo",temp)) {
+            for (int i=0; i<AMREX_SPACEDIM; ++i) {
+                prob_lo[i] = temp[i];
+            }
+        }
+        if (pp.queryarr("prob_hi",temp)) {
+            for (int i=0; i<AMREX_SPACEDIM; ++i) {
+                prob_hi[i] = temp[i];
+            }
+        }
     }
 
     // **********************************
@@ -87,8 +113,8 @@ void main_main ()
     ba.maxSize(max_grid_size);
 
     // This defines the physical box, [0,1] in each direction.
-    RealBox real_box({AMREX_D_DECL( 0., 0., 0.)},
-                     {AMREX_D_DECL( 1., 1., 1.)});
+    RealBox real_box({AMREX_D_DECL( prob_lo[0], prob_lo[1], prob_lo[2])},
+                     {AMREX_D_DECL( prob_hi[0], prob_hi[1], prob_hi[2])});
 
     // periodic in all direction
     Array<int,AMREX_SPACEDIM> is_periodic{AMREX_D_DECL(1,1,1)};
@@ -108,9 +134,9 @@ void main_main ()
     // How Boxes are distrubuted among MPI processes
     DistributionMapping dm(ba);
 
-    // we allocate two phi multifabs; one will store the old state, the other the new.
-    MultiFab phi_old(ba, dm, Ncomp, Nghost);
-    MultiFab phi_new(ba, dm, Ncomp, Nghost);
+    // we allocate two P multifabs; one will store the old state, the other the new.
+    MultiFab P_old(ba, dm, Ncomp, Nghost);
+    MultiFab P_new(ba, dm, Ncomp, Nghost);
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -119,24 +145,20 @@ void main_main ()
     // INITIALIZE DATA
 
     // loop over boxes
-    for (MFIter mfi(phi_old); mfi.isValid(); ++mfi)
+    for (MFIter mfi(P_old); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.validbox();
 
-        const Array4<Real>& phiOld = phi_old.array(mfi);
+        const Array4<Real>& pOld = P_old.array(mfi);
 
         // set phi = 1 + e^(-(r-0.5)^2)
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
             Real x = (i+0.5) * dx[0];
             Real y = (j+0.5) * dx[1];
-#if (AMREX_SPACEDIM == 2)
-            Real rsquared = ((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5))/0.01;
-#elif (AMREX_SPACEDIM == 3)
             Real z= (k+0.5) * dx[2];
             Real rsquared = ((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)+(z-0.5)*(z-0.5))/0.01;
-#endif
-            phiOld(i,j,k) = 1. + std::exp(-rsquared);
+            pOld(i,j,k) = 1. + std::exp(-rsquared);
         });
     }
 
@@ -145,32 +167,31 @@ void main_main ()
     {
         int step = 0;
         const std::string& pltfile = amrex::Concatenate("plt",step,5);
-        WriteSingleLevelPlotfile(pltfile, phi_old, {"phi"}, geom, time, 0);
+        WriteSingleLevelPlotfile(pltfile, P_old, {"phi"}, geom, time, 0);
     }
 
     for (int step = 1; step <= nsteps; ++step)
     {
         // fill periodic ghost cells
-        phi_old.FillBoundary(geom.periodicity());
+        P_old.FillBoundary(geom.periodicity());
 
         // new_phi = old_phi + dt * Laplacian(old_phi)
         // loop over boxes
-        for ( MFIter mfi(phi_old); mfi.isValid(); ++mfi )
+        for ( MFIter mfi(P_old); mfi.isValid(); ++mfi )
         {
             const Box& bx = mfi.validbox();
 
-            const Array4<Real>& phiOld = phi_old.array(mfi);
-            const Array4<Real>& phiNew = phi_new.array(mfi);
+            const Array4<Real>& pOld = P_old.array(mfi);
+            const Array4<Real>& pNew = P_new.array(mfi);
 
             // advance the data by dt
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                phiNew(i,j,k) = phiOld(i,j,k) + dt *
-                    ( (phiOld(i+1,j,k) - 2.*phiOld(i,j,k) + phiOld(i-1,j,k)) / (dx[0]*dx[0])
-                     +(phiOld(i,j+1,k) - 2.*phiOld(i,j,k) + phiOld(i,j-1,k)) / (dx[1]*dx[1])
-#if (AMREX_SPACEDIM == 3)
-                     +(phiOld(i,j,k+1) - 2.*phiOld(i,j,k) + phiOld(i,j,k-1)) / (dx[2]*dx[2])
-#endif
+                pNew(i,j,k) = pOld(i,j,k) - dt * BigGamma *
+                    (  alpha*pOld(i,j,k) + beta*std::pow(pOld(i,j,k),3.) + gamma*std::pow(pOld(i,j,k),5.)
+                     - g44 * (pOld(i+1,j,k) - 2.*pOld(i,j,k) + pOld(i-1,j,k)) / (dx[0]*dx[0])
+                     - g44 * (pOld(i,j+1,k) - 2.*pOld(i,j,k) + pOld(i,j-1,k)) / (dx[1]*dx[1])
+                     - g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2])
                         );
             });
         }
@@ -179,7 +200,7 @@ void main_main ()
         time = time + dt;
 
         // copy new solution into old solution
-        MultiFab::Copy(phi_old, phi_new, 0, 0, 1, 0);
+        MultiFab::Copy(P_old, P_new, 0, 0, 1, 0);
 
         // Tell the I/O Processor to write out which step we're doing
         amrex::Print() << "Advanced step " << step << "\n";
@@ -188,7 +209,7 @@ void main_main ()
         if (plot_int > 0 && step%plot_int == 0)
         {
             const std::string& pltfile = amrex::Concatenate("plt",step,5);
-            WriteSingleLevelPlotfile(pltfile, phi_new, {"phi"}, geom, time, step);
+            WriteSingleLevelPlotfile(pltfile, P_new, {"phi"}, geom, time, step);
         }
     }
 }
