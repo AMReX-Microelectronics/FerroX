@@ -120,7 +120,7 @@ void main_main ()
                      {AMREX_D_DECL( prob_hi[0], prob_hi[1], prob_hi[2])});
 
     // periodic in all direction
-    Array<int,AMREX_SPACEDIM> is_periodic{AMREX_D_DECL(1,1,1)};
+    Array<int,AMREX_SPACEDIM> is_periodic{AMREX_D_DECL(1,1,0)};
 
     // This defines a Geometry object
     geom.define(domain, real_box, CoordSys::cartesian, is_periodic);
@@ -157,7 +157,11 @@ void main_main ()
 
     //Periodic 
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-    lo_mlmg_bc[idim] = hi_mlmg_bc[idim] = LinOpBCType::Periodic;
+        if(is_periodic[idim]){
+          lo_mlmg_bc[idim] = hi_mlmg_bc[idim] = LinOpBCType::Periodic;
+        } else {
+          lo_mlmg_bc[idim] = hi_mlmg_bc[idim] = LinOpBCType::Dirichlet;
+        }
     } 
 
     mlabec.setDomainBC(lo_mlmg_bc,hi_mlmg_bc);
@@ -176,6 +180,24 @@ void main_main ()
     AMREX_D_TERM(beta_face[0].setVal(epsilon);,
                  beta_face[1].setVal(epsilon);,
                  beta_face[2].setVal(epsilon););
+
+     
+    // loop over boxes
+    for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.growntilebox(1);
+
+        const Array4<Real>& Phi = PoissonPhi.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+          if(k < 0) {
+            Phi(i,j,k) = 1; //voltage at low z ; read from input file
+          } else if(k >= n_cell){
+            Phi(i,j,k) = 0; //voltage at high z ; read from input file
+          }
+        });
+    }
     
     // set any Dirichlet or Neumann bc's by reading in the ghost cell values
     mlabec.setLevelBC(0, &PoissonPhi);
@@ -234,7 +256,13 @@ void main_main ()
             // advance the data by dt
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                RHS(i,j,k) = (pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
+                 if(k == 0) {
+                   RHS(i,j,k) = (pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
+                 } else if (k == n_cell -1){
+                   RHS(i,j,k) = (pOld(i,j,k) - pOld(i,j,k-1))/dx[2];
+                 }else{
+                   RHS(i,j,k) = (pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
+                 }
             });
         }
 
@@ -260,13 +288,24 @@ void main_main ()
             // advance the data by dt
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
+                Real gline, phi_line;
+                if(k == 0) {
+                  gline = g11 * (2.*pOld(i,j,k) -5.*pOld(i,j,k+1)+ 4.*pOld(i,j,k+2) - pOld(i,j,k+3)) / (dx[2]*dx[2]);
+                  phi_line = (phi(i,j,k+1) - phi(i,j,k)) / (dx[2]);
+                } else if (k == n_cell -1){
+                  gline = g11 * (2.*pOld(i,j,k) -5.*pOld(i,j,k-1)+ 4.*pOld(i,j,k-2) - pOld(i,j,k-3)) / (dx[2]*dx[2]);
+                  phi_line = (phi(i,j,k) - phi(i,j,k-1)) / (dx[2]);
+                } else{
+                  gline = g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2]);
+                  phi_line = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
+                }
                 pNew(i,j,k) = pOld(i,j,k) - dt * BigGamma *
                     (  alpha*pOld(i,j,k) + beta*std::pow(pOld(i,j,k),3.) + gamma*std::pow(pOld(i,j,k),5.)
                      - g44 * (pOld(i+1,j,k) - 2.*pOld(i,j,k) + pOld(i-1,j,k)) / (dx[0]*dx[0])
                      - g44 * (pOld(i,j+1,k) - 2.*pOld(i,j,k) + pOld(i,j-1,k)) / (dx[1]*dx[1])
-                     - g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2])
-                     + (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2])
-                        );
+                     - gline
+                     + phi_line
+                    );
             });
         }
 
