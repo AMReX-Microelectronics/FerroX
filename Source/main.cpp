@@ -149,10 +149,14 @@ void main_main ()
     MultiFab P_new(ba, dm, Ncomp, Nghost);
     MultiFab PoissonRHS(ba, dm, 1, 0);
     MultiFab PoissonPhi(ba, dm, 1, 1);
+    MultiFab Plt(ba, dm, 2, 0);
 
     //Solver for Poisson equation
     LPInfo info;
     MLABecLaplacian mlabec({geom}, {ba}, {dm}, info);
+
+    //Force singular system to be solvable
+    mlabec.setEnforceSingularSolvable(false); 
 
     // order of stencil
     int linop_maxorder = 2;
@@ -228,7 +232,7 @@ void main_main ()
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-          Real z = (k+0.5) * dx[2];
+          Real z = k * dx[2];
           if(z <= Thickness_DE) {
             beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else {
@@ -282,7 +286,7 @@ void main_main ()
         const Array4<Real>& pOld = P_old.array(mfi);
 
         // set P
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept 
         {
             Real x = (i+0.5) * dx[0];
             Real y = (j+0.5) * dx[1];
@@ -290,7 +294,7 @@ void main_main ()
             if (z <= Thickness_DE) {
                pOld(i,j,k) = 0.0;
             } else {
-                pOld(i,j,k) = ((double)std::rand())/(RAND_MAX)*0.2;//20 \mu C/cm^2
+               pOld(i,j,k) = Random()*0.2;//20 \mu C/cm^2
                 //pOld(i,j,k) = 0.2*(x*x + y*y + (z-3.5e-9)*(z-3.5e-9));//20 \mu C/cm^2
             }
         });
@@ -301,7 +305,9 @@ void main_main ()
     {
         int step = 0;
         const std::string& pltfile = amrex::Concatenate("plt",step,5);
-        WriteSingleLevelPlotfile(pltfile, P_old, {"P"}, geom, time, 0);
+        MultiFab::Copy(Plt, P_old, 0, 0, 1, 0);  
+        MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
+        WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi"}, geom, time, 0);
     }
 
     for (int step = 1; step <= nsteps; ++step)
@@ -331,8 +337,6 @@ void main_main ()
             });
         }
 
-        
- 
         //Initial guess for phi
         PoissonPhi.setVal(0.);
 
@@ -387,7 +391,9 @@ void main_main ()
         if (plot_int > 0 && step%plot_int == 0)
         {
             const std::string& pltfile = amrex::Concatenate("plt",step,5);
-            WriteSingleLevelPlotfile(pltfile, P_new, {"P"}, geom, time, step);
+            MultiFab::Copy(Plt, P_old, 0, 0, 1, 0);  
+            MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
+            WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi"}, geom, time, step);
         }
     }
 }
