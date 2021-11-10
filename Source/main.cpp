@@ -23,14 +23,10 @@ void main_main ()
     // **********************************
     // SIMULATION PARAMETERS
 
-    // number of cells on each side of the domain
-    int n_cell;
+    amrex::GpuArray<int, 3> n_cell; // Number of cells in each dimension
 
     // size of each box (or grid)
     int max_grid_size;
-
-    // TDGL right hand side parameters
-    Real epsilon, alpha, beta, gamma, BigGamma, g11, g44;
 
     // total steps in simulation
     int nsteps;
@@ -44,6 +40,10 @@ void main_main ()
     amrex::GpuArray<amrex::Real, 3> prob_lo; // physical lo coordinate
     amrex::GpuArray<amrex::Real, 3> prob_hi; // physical hi coordinate
 
+    // TDGL right hand side parameters
+    Real epsilon_0, epsilon_fe, epsilon_de, alpha, beta, gamma, BigGamma, g11, g44;
+    Real Thickness_DE;
+
     // inputs parameters
     {
         // ParmParse is way of reading inputs from the inputs file
@@ -52,20 +52,27 @@ void main_main ()
         ParmParse pp;
 
         // We need to get n_cell from the inputs file - this is the number of cells on each side of
-        //   a square (or cubic) domain.
-        pp.get("n_cell",n_cell);
+        amrex::Vector<int> temp_int(AMREX_SPACEDIM);
+        if (pp.queryarr("n_cell",temp_int)) {
+            for (int i=0; i<AMREX_SPACEDIM; ++i) {
+                n_cell[i] = temp_int[i];
+            }
+        }
 
         // The domain is broken into boxes of size max_grid_size
         pp.get("max_grid_size",max_grid_size);
 
         // TDGL right hand side parameters
-        pp.get("epsilon",epsilon);// epsilon_0*epsilon_r
+        pp.get("epsilon_0",epsilon_0); // epsilon_0
+        pp.get("epsilon_fe",epsilon_fe);// epsilon_r for FE
+        pp.get("epsilon_de",epsilon_de);// epsilon_r for DE
         pp.get("alpha",alpha);
         pp.get("beta",gamma);
         pp.get("gamma",gamma);
         pp.get("BigGamma",BigGamma);
         pp.get("g11",g11);
         pp.get("g44",g44);
+        pp.get("Thickness_DE",Thickness_DE);
 
         // Default nsteps to 10, allow us to set it to something else in the inputs file
         nsteps = 10;
@@ -104,7 +111,7 @@ void main_main ()
 
     // AMREX_D_DECL means "do the first X of these, where X is the dimensionality of the simulation"
     IntVect dom_lo(AMREX_D_DECL(       0,        0,        0));
-    IntVect dom_hi(AMREX_D_DECL(n_cell-1, n_cell-1, n_cell-1));
+    IntVect dom_hi(AMREX_D_DECL(n_cell[0]-1, n_cell[1]-1, n_cell[2]-1));
 
     // Make a single box that is the entire domain
     Box domain(dom_lo, dom_hi);
@@ -115,11 +122,11 @@ void main_main ()
     // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
     ba.maxSize(max_grid_size);
 
-    // This defines the physical box, [0,1] in each direction.
+    // This defines the physical box in each direction.
     RealBox real_box({AMREX_D_DECL( prob_lo[0], prob_lo[1], prob_lo[2])},
                      {AMREX_D_DECL( prob_hi[0], prob_hi[1], prob_hi[2])});
 
-    // periodic in all direction
+    // periodic in x and y directions
     Array<int,AMREX_SPACEDIM> is_periodic{AMREX_D_DECL(1,1,0)};
 
     // This defines a Geometry object
@@ -169,19 +176,73 @@ void main_main ()
     // coefficients for solver
     MultiFab alpha_cc(ba, dm, 1, 0);
     std::array< MultiFab, AMREX_SPACEDIM > beta_face;
-    AMREX_D_TERM(beta_face[0].define(convert(ba,IntVect(1,0,0)), dm, 1, 0);,
-                 beta_face[1].define(convert(ba,IntVect(0,1,0)), dm, 1, 0);,
-                 beta_face[2].define(convert(ba,IntVect(0,0,1)), dm, 1, 0););
+    AMREX_D_TERM(beta_face[0].define(convert(ba,IntVect(AMREX_D_DECL(1,0,0))), dm, 1, 0);,
+                 beta_face[1].define(convert(ba,IntVect(AMREX_D_DECL(0,1,0))), dm, 1, 0);,
+                 beta_face[2].define(convert(ba,IntVect(AMREX_D_DECL(0,0,1))), dm, 1, 0););
     
     // set cell-centered alpha coefficient to zero
     alpha_cc.setVal(0.);
-    
-    // set face-centered beta coefficient to epsilon
-    AMREX_D_TERM(beta_face[0].setVal(epsilon);,
-                 beta_face[1].setVal(epsilon);,
-                 beta_face[2].setVal(epsilon););
 
-     
+    // set face-centered beta coefficient to 
+    // epsilon values in FE and DE layers
+    // loop over boxes
+    for (MFIter mfi(beta_face[0]); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real>& beta_f0 = beta_face[0].array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+          Real z = (k+0.5) * dx[2];
+          if(z <= Thickness_DE) {
+            beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE layer
+          } else {
+            beta_f0(i,j,k) = epsilon_fe * epsilon_0; //FE layer
+          }
+        });
+    }
+    
+    for (MFIter mfi(beta_face[1]); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real>& beta_f1 = beta_face[1].array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+          Real z = (k+0.5) * dx[2];
+          if(z <= Thickness_DE) {
+            beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE layer
+          } else {
+            beta_f1(i,j,k) = epsilon_fe * epsilon_0; //FE layer
+          }
+        });
+    }
+    
+    for (MFIter mfi(beta_face[2]); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real>& beta_f2 = beta_face[2].array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+          Real z = (k+0.5) * dx[2];
+          if(z <= Thickness_DE) {
+            beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
+          } else {
+            beta_f2(i,j,k) = epsilon_fe * epsilon_0; //FE layer
+          }
+        });
+    }
+    
+//    // set face-centered beta coefficient to epsilon
+//    AMREX_D_TERM(beta_face[0].setVal(epsilon_0 * epsilon_fe);,
+//                 beta_face[1].setVal(epsilon_0 * epsilon_fe);,
+//                 beta_face[2].setVal(epsilon_0 * epsilon_fe););
+//
+    // Set Dirichlet BC for Phi in z 
     // loop over boxes
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
     {
@@ -192,9 +253,9 @@ void main_main ()
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
           if(k < 0) {
-            Phi(i,j,k) = 1; //voltage at low z ; read from input file
-          } else if(k >= n_cell){
-            Phi(i,j,k) = 0; //voltage at high z ; read from input file
+            Phi(i,j,k) = 0.0; //voltage at low z ; read from input file
+          } else if(k >= n_cell[2]){
+            Phi(i,j,k) = 0.; //voltage at high z ; read from input file
           }
         });
     }
@@ -203,7 +264,7 @@ void main_main ()
     mlabec.setLevelBC(0, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
-    mlabec.setScalars(0.0, 1.0);
+    mlabec.setScalars(0.0, 1.0); // A = 0.0, B = 1.0
     mlabec.setACoeffs(0, alpha_cc); //First argument 0 is lev
     mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));  
 
@@ -220,14 +281,18 @@ void main_main ()
 
         const Array4<Real>& pOld = P_old.array(mfi);
 
-        // set phi = 1 + e^(-(r-0.5)^2)
+        // set P
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
             Real x = (i+0.5) * dx[0];
             Real y = (j+0.5) * dx[1];
-            Real z= (k+0.5) * dx[2];
-            Real rsquared = ((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)+(z-0.5)*(z-0.5))/0.01;
-            pOld(i,j,k) = 1. + std::exp(-rsquared);
+            Real z = (k+0.5) * dx[2];
+            if (z <= Thickness_DE) {
+               pOld(i,j,k) = 0.0;
+            } else {
+                pOld(i,j,k) = ((double)std::rand())/(RAND_MAX)*0.2;//20 \mu C/cm^2
+                //pOld(i,j,k) = 0.2*(x*x + y*y + (z-3.5e-9)*(z-3.5e-9));//20 \mu C/cm^2
+            }
         });
     }
 
@@ -236,7 +301,7 @@ void main_main ()
     {
         int step = 0;
         const std::string& pltfile = amrex::Concatenate("plt",step,5);
-        WriteSingleLevelPlotfile(pltfile, P_old, {"phi"}, geom, time, 0);
+        WriteSingleLevelPlotfile(pltfile, P_old, {"P"}, geom, time, 0);
     }
 
     for (int step = 1; step <= nsteps; ++step)
@@ -258,7 +323,7 @@ void main_main ()
             {
                  if(k == 0) {
                    RHS(i,j,k) = (pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
-                 } else if (k == n_cell -1){
+                 } else if (k == n_cell[2] -1){
                    RHS(i,j,k) = (pOld(i,j,k) - pOld(i,j,k-1))/dx[2];
                  }else{
                    RHS(i,j,k) = (pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
@@ -288,23 +353,23 @@ void main_main ()
             // advance the data by dt
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                Real gline, phi_line;
+                Real grad_term, phi_term;
                 if(k == 0) {
-                  gline = g11 * (2.*pOld(i,j,k) -5.*pOld(i,j,k+1)+ 4.*pOld(i,j,k+2) - pOld(i,j,k+3)) / (dx[2]*dx[2]);
-                  phi_line = (phi(i,j,k+1) - phi(i,j,k)) / (dx[2]);
-                } else if (k == n_cell -1){
-                  gline = g11 * (2.*pOld(i,j,k) -5.*pOld(i,j,k-1)+ 4.*pOld(i,j,k-2) - pOld(i,j,k-3)) / (dx[2]*dx[2]);
-                  phi_line = (phi(i,j,k) - phi(i,j,k-1)) / (dx[2]);
+                  grad_term = g11 * (2.*pOld(i,j,k) -5.*pOld(i,j,k+1)+ 4.*pOld(i,j,k+2) - pOld(i,j,k+3)) / (dx[2]*dx[2]);
+                  phi_term = (phi(i,j,k+1) - phi(i,j,k)) / (dx[2]);
+                } else if (k == n_cell[2] -1){
+                  grad_term = g11 * (2.*pOld(i,j,k) -5.*pOld(i,j,k-1)+ 4.*pOld(i,j,k-2) - pOld(i,j,k-3)) / (dx[2]*dx[2]);
+                  phi_term = (phi(i,j,k) - phi(i,j,k-1)) / (dx[2]);
                 } else{
-                  gline = g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2]);
-                  phi_line = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
+                  grad_term = g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2]);
+                  phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
                 }
                 pNew(i,j,k) = pOld(i,j,k) - dt * BigGamma *
                     (  alpha*pOld(i,j,k) + beta*std::pow(pOld(i,j,k),3.) + gamma*std::pow(pOld(i,j,k),5.)
                      - g44 * (pOld(i+1,j,k) - 2.*pOld(i,j,k) + pOld(i-1,j,k)) / (dx[0]*dx[0])
                      - g44 * (pOld(i,j+1,k) - 2.*pOld(i,j,k) + pOld(i,j-1,k)) / (dx[1]*dx[1])
-                     - gline
-                     + phi_line
+                     - grad_term
+                     + phi_term
                     );
             });
         }
@@ -322,7 +387,7 @@ void main_main ()
         if (plot_int > 0 && step%plot_int == 0)
         {
             const std::string& pltfile = amrex::Concatenate("plt",step,5);
-            WriteSingleLevelPlotfile(pltfile, P_new, {"phi"}, geom, time, step);
+            WriteSingleLevelPlotfile(pltfile, P_new, {"P"}, geom, time, step);
         }
     }
 }
