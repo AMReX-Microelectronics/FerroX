@@ -147,6 +147,7 @@ void main_main ()
     // we allocate two P multifabs; one will store the old state, the other the new.
     MultiFab P_old(ba, dm, Ncomp, Nghost);
     MultiFab P_new(ba, dm, Ncomp, Nghost);
+    MultiFab Gamma(ba, dm, Ncomp, Nghost);
     MultiFab PoissonRHS(ba, dm, 1, 0);
     MultiFab PoissonPhi(ba, dm, 1, 1);
     MultiFab Plt(ba, dm, 2, 0);
@@ -276,7 +277,7 @@ void main_main ()
     Real time = 0.0;
 
     // **********************************
-    // INITIALIZE DATA
+    // INITIALIZE P
 
     // loop over boxes
     for (MFIter mfi(P_old); mfi.isValid(); ++mfi)
@@ -294,7 +295,31 @@ void main_main ()
             if (z <= Thickness_DE) {
                pOld(i,j,k) = 0.0;
             } else {
-               pOld(i,j,k) = Random()*0.2;//20 \mu C/cm^2
+               pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
+                //pOld(i,j,k) = 0.2*(x*x + y*y + (z-3.5e-9)*(z-3.5e-9));//20 \mu C/cm^2
+            }
+        });
+    }
+
+    // INITIALIZE Capital Gamma such that it's nonzero only in FE
+
+    // loop over boxes
+    for (MFIter mfi(Gamma); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real>& Gam = Gamma.array(mfi);
+
+        // set P
+        amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept 
+        {
+            Real x = (i+0.5) * dx[0];
+            Real y = (j+0.5) * dx[1];
+            Real z = (k+0.5) * dx[2];
+            if (z <= Thickness_DE) {
+               Gam(i,j,k) = 0.0;
+            } else {
+               Gam(i,j,k) = BigGamma;
                 //pOld(i,j,k) = 0.2*(x*x + y*y + (z-3.5e-9)*(z-3.5e-9));//20 \mu C/cm^2
             }
         });
@@ -327,13 +352,22 @@ void main_main ()
             // advance the data by dt
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                 if(k == 0) {
-                   RHS(i,j,k) = (pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
-                 } else if (k == n_cell[2] -1){
-                   RHS(i,j,k) = (pOld(i,j,k) - pOld(i,j,k-1))/dx[2];
-                 }else{
+                 Real z = (k+0.5) * dx[2];
+                 Real z_hi = (k+1.5) * dx[2];
+                 Real z_lo = (k-0.5) * dx[2];
+
+		 //Assuming dp/dz = 0.0 at FE-DE interface and at metal top and bottom
+		 if(z < Thickness_DE){ //Below FE-DE interface
+		   RHS(i,j,k) = 0.;
+		 } else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
+                   RHS(i,j,k) = 0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
+	           if(i == 10 && j == 10) std::cout<< "RHS(10,10," << k << ") = " << RHS(10,10,k) << ", z_lo = " << z_lo << ", z_hi = " << z_hi << ", z = "<< z << std::endl;
+                 } else if (z_hi > prob_hi[2]){ //Top metal
+                   RHS(i,j,k) = 0.0;
+                 }else{ //inside FE
                    RHS(i,j,k) = (pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
                  }
+
             });
         }
 
@@ -352,23 +386,38 @@ void main_main ()
             const Array4<Real>& pOld = P_old.array(mfi);
             const Array4<Real>& pNew = P_new.array(mfi);
             const Array4<Real>& phi = PoissonPhi.array(mfi);
+            const Array4<Real>& Gam = Gamma.array(mfi);
 
 
             // advance the data by dt
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                Real grad_term, phi_term;
-                if(k == 0) {
-                  grad_term = g11 * (2.*pOld(i,j,k) -5.*pOld(i,j,k+1)+ 4.*pOld(i,j,k+2) - pOld(i,j,k+3)) / (dx[2]*dx[2]);
+                Real grad_term, phi_term, upwardDz, downwardDz;
+                Real z = (k+0.5) * dx[2];
+                Real z_hi = (k+1.5) * dx[2];
+                Real z_lo = (k-0.5) * dx[2];
+
+		//Assuming dp/dz = 0.0 at FE-DE interface and at metal top and bottom
+		if(z_lo < prob_lo[2]){ //Bottom metal
+                  grad_term = 0.0;
                   phi_term = (phi(i,j,k+1) - phi(i,j,k)) / (dx[2]);
-                } else if (k == n_cell[2] -1){
-                  grad_term = g11 * (2.*pOld(i,j,k) -5.*pOld(i,j,k-1)+ 4.*pOld(i,j,k-2) - pOld(i,j,k-3)) / (dx[2]*dx[2]);
+		} else if(z < Thickness_DE){ //Below FE-DE interface
+                  grad_term = 0.0;
+                  phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
+		} else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
+                  upwardDz = 0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
+                  downwardDz = 0.0;
+		  grad_term = (upwardDz - downwardDz)/dx[2];
+                  phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
+                } else if (z_hi > prob_hi[2]){ //Top metal
+                  grad_term = 0.0;
                   phi_term = (phi(i,j,k) - phi(i,j,k-1)) / (dx[2]);
-                } else{
+                }else{ //inside FE
                   grad_term = g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2]);
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
                 }
-                pNew(i,j,k) = pOld(i,j,k) - dt * BigGamma *
+
+                pNew(i,j,k) = pOld(i,j,k) - dt * Gam(i,j,k) *
                     (  alpha*pOld(i,j,k) + beta*std::pow(pOld(i,j,k),3.) + gamma*std::pow(pOld(i,j,k),5.)
                      - g44 * (pOld(i+1,j,k) - 2.*pOld(i,j,k) + pOld(i-1,j,k)) / (dx[0]*dx[0])
                      - g44 * (pOld(i,j+1,k) - 2.*pOld(i,j,k) + pOld(i,j-1,k)) / (dx[1]*dx[1])
