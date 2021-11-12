@@ -340,7 +340,7 @@ void main_main ()
 		   RHS(i,j,k) = 0.;
 		 } else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
                    RHS(i,j,k) = 0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
-	           if(i == 10 && j == 10) std::cout<< "RHS(10,10," << k << ") = " << RHS(10,10,k) << ", z_lo = " << z_lo << ", z_hi = " << z_hi << ", z = "<< z << std::endl;
+	           //if(i == 10 && j == 10) std::cout<< "RHS(10,10," << k << ") = " << RHS(10,10,k) << ", z_lo = " << z_lo << ", z_hi = " << z_hi << ", z = "<< z << std::endl;
                  } else if (z_hi > prob_hi[2]){ //Top metal
                    RHS(i,j,k) = 0.0;
                  }else{ //inside FE
@@ -386,7 +386,7 @@ void main_main ()
 		} else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
                   upwardDz = 0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
                   downwardDz = 0.0;
-		  grad_term = (upwardDz - downwardDz)/dx[2];
+		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
                 } else if (z_hi > prob_hi[2]){ //Top metal
                   grad_term = 0.0;
@@ -403,6 +403,7 @@ void main_main ()
                      - grad_term
                      + phi_term
                     );
+	        //if(i == 10 && j == 10) std::cout<< "grad term = " << grad_term << ", and phi term = " << phi_term << std::endl;
             });
         }
 
