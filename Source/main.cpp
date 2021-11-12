@@ -277,7 +277,7 @@ void main_main ()
     Real time = 0.0;
 
     // **********************************
-    // INITIALIZE P
+    // INITIALIZE P and Gamma such that it is zero in DE region
 
     // loop over boxes
     for (MFIter mfi(P_old); mfi.isValid(); ++mfi)
@@ -285,29 +285,6 @@ void main_main ()
         const Box& bx = mfi.validbox();
 
         const Array4<Real>& pOld = P_old.array(mfi);
-
-        // set P
-        amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept 
-        {
-            Real x = (i+0.5) * dx[0];
-            Real y = (j+0.5) * dx[1];
-            Real z = (k+0.5) * dx[2];
-            if (z <= Thickness_DE) {
-               pOld(i,j,k) = 0.0;
-            } else {
-               pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
-                //pOld(i,j,k) = 0.2*(x*x + y*y + (z-3.5e-9)*(z-3.5e-9));//20 \mu C/cm^2
-            }
-        });
-    }
-
-    // INITIALIZE Capital Gamma such that it's nonzero only in FE
-
-    // loop over boxes
-    for (MFIter mfi(Gamma); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.validbox();
-
         const Array4<Real>& Gam = Gamma.array(mfi);
 
         // set P
@@ -317,8 +294,10 @@ void main_main ()
             Real y = (j+0.5) * dx[1];
             Real z = (k+0.5) * dx[2];
             if (z <= Thickness_DE) {
+               pOld(i,j,k) = 0.0;
                Gam(i,j,k) = 0.0;
             } else {
+               pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
                Gam(i,j,k) = BigGamma;
                 //pOld(i,j,k) = 0.2*(x*x + y*y + (z-3.5e-9)*(z-3.5e-9));//20 \mu C/cm^2
             }
