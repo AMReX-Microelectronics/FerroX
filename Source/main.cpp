@@ -41,7 +41,7 @@ void main_main ()
     amrex::GpuArray<amrex::Real, 3> prob_hi; // physical hi coordinate
 
     // TDGL right hand side parameters
-    Real epsilon_0, epsilon_fe, epsilon_de, alpha, beta, gamma, BigGamma, g11, g44;
+    Real epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, alpha, beta, gamma, BigGamma, g11, g44;
     Real Thickness_DE;
 
     // inputs parameters
@@ -64,7 +64,8 @@ void main_main ()
 
         // TDGL right hand side parameters
         pp.get("epsilon_0",epsilon_0); // epsilon_0
-        pp.get("epsilon_fe",epsilon_fe);// epsilon_r for FE
+        pp.get("epsilonX_fe",epsilonX_fe);// epsilon_r for FE
+        pp.get("epsilonZ_fe",epsilonZ_fe);// epsilon_r for FE
         pp.get("epsilon_de",epsilon_de);// epsilon_r for DE
         pp.get("alpha",alpha);
         pp.get("beta",gamma);
@@ -150,7 +151,10 @@ void main_main ()
     MultiFab Gamma(ba, dm, Ncomp, Nghost);
     MultiFab PoissonRHS(ba, dm, 1, 0);
     MultiFab PoissonPhi(ba, dm, 1, 1);
-    MultiFab Plt(ba, dm, 2, 0);
+    MultiFab Ex(ba, dm, 1, 0);
+    MultiFab Ey(ba, dm, 1, 0);
+    MultiFab Ez(ba, dm, 1, 0);
+    MultiFab Plt(ba, dm, 5, 0);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -203,7 +207,7 @@ void main_main ()
           if(z <= Thickness_DE) {
             beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else {
-            beta_f0(i,j,k) = epsilon_fe * epsilon_0; //FE layer
+            beta_f0(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
           }
         });
     }
@@ -220,7 +224,7 @@ void main_main ()
           if(z <= Thickness_DE) {
             beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else {
-            beta_f1(i,j,k) = epsilon_fe * epsilon_0; //FE layer
+            beta_f1(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
           }
         });
     }
@@ -237,16 +241,11 @@ void main_main ()
           if(z <= Thickness_DE) {
             beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else {
-            beta_f2(i,j,k) = epsilon_fe * epsilon_0; //FE layer
+            beta_f2(i,j,k) = epsilonZ_fe * epsilon_0; //FE layer
           }
         });
     }
     
-//    // set face-centered beta coefficient to epsilon
-//    AMREX_D_TERM(beta_face[0].setVal(epsilon_0 * epsilon_fe);,
-//                 beta_face[1].setVal(epsilon_0 * epsilon_fe);,
-//                 beta_face[2].setVal(epsilon_0 * epsilon_fe););
-//
     // Set Dirichlet BC for Phi in z 
     // loop over boxes
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
@@ -311,7 +310,10 @@ void main_main ()
         const std::string& pltfile = amrex::Concatenate("plt",step,5);
         MultiFab::Copy(Plt, P_old, 0, 0, 1, 0);  
         MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
-        WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi"}, geom, time, 0);
+        MultiFab::Copy(Plt, Ex, 0, 2, 1, 0);
+        MultiFab::Copy(Plt, Ey, 0, 3, 1, 0);
+        MultiFab::Copy(Plt, Ez, 0, 4, 1, 0);
+        WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","Ex","Ey","Ez"}, geom, time, 0);
     }
 
     for (int step = 1; step <= nsteps; ++step)
@@ -339,12 +341,13 @@ void main_main ()
 		 if(z < Thickness_DE){ //Below FE-DE interface
 		   RHS(i,j,k) = 0.;
 		 } else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
-                   RHS(i,j,k) = 0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
+                   RHS(i,j,k) = -1./3.0e-9*pOld(i,j,k);
+                   //RHS(i,j,k) = -0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
 	           //if(i == 10 && j == 10) std::cout<< "RHS(10,10," << k << ") = " << RHS(10,10,k) << ", z_lo = " << z_lo << ", z_hi = " << z_hi << ", z = "<< z << std::endl;
                  } else if (z_hi > prob_hi[2]){ //Top metal
                    RHS(i,j,k) = 0.0;
                  }else{ //inside FE
-                   RHS(i,j,k) = (pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
+                   RHS(i,j,k) = -(pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
                  }
 
             });
@@ -357,6 +360,37 @@ void main_main ()
         mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore) 
         //mlmg.solve({&PoissonPhi}, {&PoissonRHS}, mg_rel_tol, mg_abs_tol); //1e-10 for rel_tol and -1 (to ignore) 
 
+        // Calculate E from Phi
+
+        for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
+        {
+            const Box& bx = mfi.validbox();
+
+            const Array4<Real>& Ex_arr = Ex.array(mfi);
+            const Array4<Real>& Ey_arr = Ey.array(mfi);
+            const Array4<Real>& Ez_arr = Ez.array(mfi);
+            const Array4<Real>& phi = PoissonPhi.array(mfi);
+
+            amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                     Ex_arr(i,j,k) = -(phi(i+1,j,k) - phi(i-1,j,k))/(2.*dx[0]);
+                     Ey_arr(i,j,k) = -(phi(i,j+1,k) - phi(i,j-1,k))/(2.*dx[1]);
+          
+                     Real z = (k+0.5) * dx[2];
+                     Real z_hi = (k+1.5) * dx[2];
+                     Real z_lo = (k-0.5) * dx[2];
+
+	             if(z_lo < prob_lo[2]){ //Bottom Boundary
+                       Ez_arr(i,j,k) = -(phi(i,j,k+1) - phi(i,j,k))/(dx[2]);
+                     } else if (z_hi > prob_hi[2]){ //Top Boundary
+                       Ez_arr(i,j,k) = -(phi(i,j,k) - phi(i,j,k-1))/(dx[2]);
+                     }else{ //inside
+                       Ez_arr(i,j,k) = -(phi(i,j,k+1) - phi(i,j,k-1))/(2.*dx[2]);
+                     }
+             });
+        }
+
+        // Evolve P
         // loop over boxes
         for ( MFIter mfi(P_old); mfi.isValid(); ++mfi )
         {
@@ -384,7 +418,8 @@ void main_main ()
                   grad_term = 0.0;
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
 		} else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
-                  upwardDz = 0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
+                  //upwardDz = 0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
+                  upwardDz = 1./3.0e-9*pOld(i,j,k);
                   downwardDz = 0.0;
 		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
@@ -422,7 +457,10 @@ void main_main ()
             const std::string& pltfile = amrex::Concatenate("plt",step,5);
             MultiFab::Copy(Plt, P_old, 0, 0, 1, 0);  
             MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
-            WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi"}, geom, time, step);
+            MultiFab::Copy(Plt, Ex, 0, 2, 1, 0);
+            MultiFab::Copy(Plt, Ey, 0, 3, 1, 0);
+            MultiFab::Copy(Plt, Ez, 0, 4, 1, 0);
+            WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","Ex","Ey","Ez"}, geom, time, step);
         }
     }
 }
