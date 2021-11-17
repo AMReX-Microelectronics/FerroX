@@ -420,7 +420,7 @@ void main_main ()
                   grad_term = 0.0;
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
 		} else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
-                  upwardDz = 0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
+                  upwardDz = (pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
                   downwardDz = pOld(i,j,k)/lambda;
 		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
