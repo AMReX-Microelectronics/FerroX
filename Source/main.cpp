@@ -41,7 +41,7 @@ void main_main ()
     amrex::GpuArray<amrex::Real, 3> prob_hi; // physical hi coordinate
 
     // TDGL right hand side parameters
-    Real epsilon_0, epsilon_fe, epsilon_de, alpha, beta, gamma, BigGamma, g11, g44;
+    Real epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, alpha, beta, gamma, BigGamma, g11, g44;
     Real Thickness_DE;
     Real lambda;
 
@@ -65,7 +65,8 @@ void main_main ()
 
         // TDGL right hand side parameters
         pp.get("epsilon_0",epsilon_0); // epsilon_0
-        pp.get("epsilon_fe",epsilon_fe);// epsilon_r for FE
+        pp.get("epsilonX_fe",epsilonX_fe);// epsilon_r for FE
+        pp.get("epsilonZ_fe",epsilonZ_fe);// epsilon_r for FE
         pp.get("epsilon_de",epsilon_de);// epsilon_r for DE
         pp.get("alpha",alpha);
         pp.get("beta",gamma);
@@ -208,7 +209,7 @@ void main_main ()
           if(z <= Thickness_DE) {
             beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else {
-            beta_f0(i,j,k) = epsilon_fe * epsilon_0; //FE layer
+            beta_f0(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
           }
         });
     }
@@ -225,7 +226,7 @@ void main_main ()
           if(z <= Thickness_DE) {
             beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else {
-            beta_f1(i,j,k) = epsilon_fe * epsilon_0; //FE layer
+            beta_f1(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
           }
         });
     }
@@ -242,7 +243,7 @@ void main_main ()
           if(z <= Thickness_DE) {
             beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else {
-            beta_f2(i,j,k) = epsilon_fe * epsilon_0; //FE layer
+            beta_f2(i,j,k) = epsilonZ_fe * epsilon_0; //FE layer
           }
         });
     }
