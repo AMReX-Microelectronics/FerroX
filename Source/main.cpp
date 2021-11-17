@@ -347,7 +347,7 @@ void main_main ()
                    //RHS(i,j,k) = -0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
 	           //if(i == 10 && j == 10) std::cout<< "RHS(10,10," << k << ") = " << RHS(10,10,k) << ", z_lo = " << z_lo << ", z_hi = " << z_hi << ", z = "<< z << std::endl;
                  } else if (z_hi > prob_hi[2]){ //Top metal
-                   RHS(i,j,k) = 0.0;
+                   RHS(i,j,k) = -0.5*( (pOld(i,j,k)-pOld(i,j,k-1))/dx[2] + pOld(i,j,k)/lambda);
                  }else{ //inside FE
                    RHS(i,j,k) = -(pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
                  }
@@ -425,7 +425,7 @@ void main_main ()
 		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
                 } else if (z_hi > prob_hi[2]){ //Top metal
-                  upwardDz = 0.;
+                  upwardDz = pOld(i,j,k)/lambda;
                   downwardDz = (pOld(i,j,k)-pOld(i,j,k-1))/dx[2];
 		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k) - phi(i,j,k-1)) / (dx[2]);
