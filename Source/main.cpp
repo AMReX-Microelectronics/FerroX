@@ -427,7 +427,7 @@ void main_main ()
                 } else if (z_hi > prob_hi[2]){ //Top metal
                   upwardDz = pOld(i,j,k)/lambda;
                   downwardDz = (pOld(i,j,k)-pOld(i,j,k-1))/dx[2];
-		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
+                  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k) - phi(i,j,k-1)) / (dx[2]);
                 }else{ //inside FE
                   grad_term = g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2]);
