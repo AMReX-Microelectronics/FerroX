@@ -23,13 +23,14 @@ Thickness_DE = 2.e-9
 
 lambda = 3.0e9
 
-# smaller problem
-n_cell = 100 100 14
-prob_lo = -25.e-9 -25.e-9 0.e-9
-prob_hi = 25.e-9 25.e-9 7.e-9
-
 # Girish's numbers
-dt = 2.0e-13
+
+n_cell = 100 100 20
+max_grid_size = 50
+
+prob_lo = -12.5e-9 -12.5e-9 0.e-9
+prob_hi =  12.5e-9  12.5e-9 5.e-9
+
 epsilonX_fe = 25
 epsilonZ_fe = 25
 epsilon_de = 7.8
@@ -39,3 +40,4 @@ gamma = 0.
 BigGamma = 555.56
 g11 = 1.0e-10
 g44 = 1.0e-10
+Thickness_DE = 1.25e-9
