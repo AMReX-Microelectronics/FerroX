@@ -1,7 +1,7 @@
 n_cell = 200 200 14
 max_grid_size = 20
 
-nsteps = 1000
+nsteps = 3000
 plot_int = 50
 
 dt = 2.0e-13
@@ -19,3 +19,5 @@ BigGamma = 1.e2
 g11 = 1.0e-9
 g44 = 1.0e-9
 Thickness_DE = 2.e-9
+
+lambda = 3.0e9

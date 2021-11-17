@@ -41,8 +41,9 @@ void main_main ()
     amrex::GpuArray<amrex::Real, 3> prob_hi; // physical hi coordinate
 
     // TDGL right hand side parameters
-    Real epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, alpha, beta, gamma, BigGamma, g11, g44;
+    Real epsilon_0, epsilon_fe, epsilon_de, alpha, beta, gamma, BigGamma, g11, g44;
     Real Thickness_DE;
+    Real lambda;
 
     // inputs parameters
     {
@@ -64,8 +65,7 @@ void main_main ()
 
         // TDGL right hand side parameters
         pp.get("epsilon_0",epsilon_0); // epsilon_0
-        pp.get("epsilonX_fe",epsilonX_fe);// epsilon_r for FE
-        pp.get("epsilonZ_fe",epsilonZ_fe);// epsilon_r for FE
+        pp.get("epsilon_fe",epsilon_fe);// epsilon_r for FE
         pp.get("epsilon_de",epsilon_de);// epsilon_r for DE
         pp.get("alpha",alpha);
         pp.get("beta",gamma);
@@ -74,6 +74,7 @@ void main_main ()
         pp.get("g11",g11);
         pp.get("g44",g44);
         pp.get("Thickness_DE",Thickness_DE);
+        pp.get("lambda",lambda);
 
         // Default nsteps to 10, allow us to set it to something else in the inputs file
         nsteps = 10;
@@ -207,7 +208,7 @@ void main_main ()
           if(z <= Thickness_DE) {
             beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else {
-            beta_f0(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
+            beta_f0(i,j,k) = epsilon_fe * epsilon_0; //FE layer
           }
         });
     }
@@ -224,7 +225,7 @@ void main_main ()
           if(z <= Thickness_DE) {
             beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else {
-            beta_f1(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
+            beta_f1(i,j,k) = epsilon_fe * epsilon_0; //FE layer
           }
         });
     }
@@ -241,7 +242,7 @@ void main_main ()
           if(z <= Thickness_DE) {
             beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else {
-            beta_f2(i,j,k) = epsilonZ_fe * epsilon_0; //FE layer
+            beta_f2(i,j,k) = epsilon_fe * epsilon_0; //FE layer
           }
         });
     }
@@ -341,7 +342,7 @@ void main_main ()
 		 if(z < Thickness_DE){ //Below FE-DE interface
 		   RHS(i,j,k) = 0.;
 		 } else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
-                   RHS(i,j,k) = -1./3.0e-9*pOld(i,j,k);
+                   RHS(i,j,k) = -0.5*( (pOld(i,j,k+1)-pOld(i,j,k))/dx[2] + pOld(i,j,k)/lambda);
                    //RHS(i,j,k) = -0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
 	           //if(i == 10 && j == 10) std::cout<< "RHS(10,10," << k << ") = " << RHS(10,10,k) << ", z_lo = " << z_lo << ", z_hi = " << z_hi << ", z = "<< z << std::endl;
                  } else if (z_hi > prob_hi[2]){ //Top metal
@@ -418,13 +419,14 @@ void main_main ()
                   grad_term = 0.0;
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
 		} else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
-                  //upwardDz = 0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
-                  upwardDz = 1./3.0e-9*pOld(i,j,k);
-                  downwardDz = 0.0;
+                  upwardDz = 0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
+                  downwardDz = pOld(i,j,k)/lambda;
 		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
                 } else if (z_hi > prob_hi[2]){ //Top metal
-                  grad_term = 0.0;
+                  upwardDz = 0.;
+                  downwardDz = (pOld(i,j,k)-pOld(i,j,k-1))/dx[2];
+		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k) - phi(i,j,k-1)) / (dx[2]);
                 }else{ //inside FE
                   grad_term = g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2]);
