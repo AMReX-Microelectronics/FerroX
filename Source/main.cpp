@@ -69,7 +69,7 @@ void main_main ()
         pp.get("epsilonZ_fe",epsilonZ_fe);// epsilon_r for FE
         pp.get("epsilon_de",epsilon_de);// epsilon_r for DE
         pp.get("alpha",alpha);
-        pp.get("beta",gamma);
+        pp.get("beta",beta);
         pp.get("gamma",gamma);
         pp.get("BigGamma",BigGamma);
         pp.get("g11",g11);
@@ -426,7 +426,7 @@ void main_main ()
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
                 } else if (z_hi > prob_hi[2]){ //Top metal
                   upwardDz = pOld(i,j,k)/lambda;
-                  downwardDz = (pOld(i,j,k)-pOld(i,j,k-1))/dx[2];
+                  downwardDz = (pOld(i,j,k) - pOld(i,j,k-1))/dx[2];
                   grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k) - phi(i,j,k-1)) / (dx[2]);
                 }else{ //inside FE
