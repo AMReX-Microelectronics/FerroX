@@ -40,6 +40,8 @@ void main_main ()
     amrex::GpuArray<amrex::Real, 3> prob_lo; // physical lo coordinate
     amrex::GpuArray<amrex::Real, 3> prob_hi; // physical hi coordinate
 
+    int P_BC_flag_hi;
+    int P_BC_flag_lo;
     // TDGL right hand side parameters
     Real epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, alpha, beta, gamma, BigGamma, g11, g44;
     Real Thickness_DE;
@@ -64,6 +66,8 @@ void main_main ()
         pp.get("max_grid_size",max_grid_size);
 
         // TDGL right hand side parameters
+        pp.get("P_BC_flag_hi",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
+        pp.get("P_BC_flag_lo",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
         pp.get("epsilon_0",epsilon_0); // epsilon_0
         pp.get("epsilonX_fe",epsilonX_fe);// epsilon_r for FE
         pp.get("epsilonZ_fe",epsilonZ_fe);// epsilon_r for FE
@@ -300,7 +304,6 @@ void main_main ()
             } else {
                pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
                Gam(i,j,k) = BigGamma;
-                //pOld(i,j,k) = 0.2*(x*x + y*y + (z-3.5e-9)*(z-3.5e-9));//20 \mu C/cm^2
             }
         });
     }
@@ -343,13 +346,27 @@ void main_main ()
 		 if(z < Thickness_DE){ //Below FE-DE interface
 		   RHS(i,j,k) = 0.;
 		 } else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
-                   pOld(i,j,k) = 0.0;
-                   RHS(i,j,k) = -0.5*((pOld(i,j,k+1) - pOld(i,j,k))/(dx[2]) + pOld(i,j,k)/lambda);
-                   //RHS(i,j,k) = -1./3.0e-9*pOld(i,j,k);
-                   //RHS(i,j,k) = -0.5*(pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
-	           //if(i == 10 && j == 10) std::cout<< "RHS(10,10," << k << ") = " << RHS(10,10,k) << ", z_lo = " << z_lo << ", z_hi = " << z_hi << ", z = "<< z << std::endl;
+                   if(P_BC_flag_lo == 0){
+                     Real P_int = 0.0; 
+                     RHS(i,j,k) = -0.5*((pOld(i,j,k+1) - pOld(i,j,k))/(dx[2]) + (pOld(i,j,k) - P_int)/(0.5*dx[2])); //1st Order
+                     //RHS(i,j,k) = Implement 2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k+1)
+                   } else if (P_BC_flag_lo == 1){
+                     Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda); 
+                     RHS(i,j,k) = -0.5*((pOld(i,j,k+1) - pOld(i,j,k))/(dx[2]) + P_int/lambda);
+                   } else if (P_BC_flag_lo == 2){
+                     RHS(i,j,k) = -0.5*((pOld(i,j,k+1) - pOld(i,j,k))/(dx[2]) + 0.);
+                   }
                  } else if (z_hi > prob_hi[2]){ //Top metal
-                   RHS(i,j,k) = -0.5*((pOld(i,j,k) - pOld(i,j,k-1))/(dx[2]) + pOld(i,j,k)/lambda);
+                   if(P_BC_flag_hi == 0){
+                     Real P_int = 0.0; 
+                     RHS(i,j,k) = -0.5*((pOld(i,j,k) - pOld(i,j,k-1))/(dx[2]) + (P_int - pOld(i,j,k))/(0.5*dx[2])); //1st Order
+                     //RHS(i,j,k) = Implement 2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
+                     } else if (P_BC_flag_hi == 1){
+                     Real P_int = pOld(i,j,k)/(1 - dx[2]/2/lambda); 
+                     RHS(i,j,k) = -0.5*((pOld(i,j,k) - pOld(i,j,k-1))/(dx[2]) + P_int/lambda);
+                     } else if (P_BC_flag_hi == 2){
+                     RHS(i,j,k) = -0.5*((pOld(i,j,k) - pOld(i,j,k-1))/(dx[2]) + 0.);
+                   }
                  }else{ //inside FE
                    RHS(i,j,k) = -(pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
                  }
@@ -422,15 +439,36 @@ void main_main ()
                   grad_term = 0.0;
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
 		} else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
-                  pOld(i,j,k) = 0.0;
-                  upwardDz = (pOld(i,j,k+1) - pOld(i,j,k))/dx[2];
-                  downwardDz = pOld(i,j,k)/lambda;
+
+                  upwardDz = (pOld(i,j,k+1) - pOld(i,j,k))/(2.*dx[2]);
+
+                  if(P_BC_flag_lo == 0){
+                    Real P_int = 0.0; 
+                    downwardDz = (pOld(i,j,k) - P_int)/(0.5*dx[2]); //1st Order
+                    //downwardDz = Implement 2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k+1)
+                  } else if (P_BC_flag_lo == 1){
+                    Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda); 
+                    downwardDz = P_int/lambda;
+                  } else if (P_BC_flag_lo == 2){
+                    downwardDz = 0.0;
+                  }
+
 		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
                 } else if (z_hi > prob_hi[2]){ //Top metal
-                  //grad_term = 0.0;
+
+                  if(P_BC_flag_hi == 0){
+                    Real P_int = 0.0; 
+                    upwardDz = (P_int - pOld(i,j,k))/(0.5*dx[2]); //1st Order
+                    //downwardDz = Implement 2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
+                  } else if (P_BC_flag_hi == 1){
+                    Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda); 
+                    upwardDz = P_int/lambda;
+                  } else if (P_BC_flag_hi == 2){
+                    upwardDz = 0.0;
+                  }
+
                   downwardDz = (pOld(i,j,k) - pOld(i,j,k-1))/dx[2];
-                  upwardDz = pOld(i,j,k)/lambda;
 		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
                   phi_term = (phi(i,j,k) - phi(i,j,k-1)) / (dx[2]);
                 }else{ //inside FE
