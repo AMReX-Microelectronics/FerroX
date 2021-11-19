@@ -440,7 +440,7 @@ void main_main ()
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
 		} else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
 
-                  upwardDz = (pOld(i,j,k+1) - pOld(i,j,k))/(2.*dx[2]);
+                  upwardDz = (pOld(i,j,k+1) - pOld(i,j,k))/(dx[2]);
 
                   if(P_BC_flag_lo == 0){
                     Real P_int = 0.0; 
@@ -462,7 +462,7 @@ void main_main ()
                     upwardDz = (P_int - pOld(i,j,k))/(0.5*dx[2]); //1st Order
                     //downwardDz = Implement 2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
                   } else if (P_BC_flag_hi == 1){
-                    Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda); 
+                    Real P_int = pOld(i,j,k)/(1 - dx[2]/2/lambda); 
                     upwardDz = P_int/lambda;
                   } else if (P_BC_flag_hi == 2){
                     upwardDz = 0.0;
