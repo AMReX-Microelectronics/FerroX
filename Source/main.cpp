@@ -342,33 +342,42 @@ void main_main ()
                  Real z_hi = (k+1.5) * dx[2];
                  Real z_lo = (k-0.5) * dx[2];
 
-		 //Assuming dp/dz = 0.0 at FE-DE interface and at metal top and bottom
 		 if(z < Thickness_DE){ //Below FE-DE interface
+
 		   RHS(i,j,k) = 0.;
+
 		 } else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
+
                    if(P_BC_flag_lo == 0){
                      Real P_int = 0.0; 
-                     RHS(i,j,k) = -0.5*((pOld(i,j,k+1) - pOld(i,j,k))/(dx[2]) + (pOld(i,j,k) - P_int)/(0.5*dx[2])); //1st Order
-                     //RHS(i,j,k) = Implement 2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k+1)
+                     RHS(i,j,k) = -(-4.*P_int + 9.*pOld(i,j,k) - pOld(i,j,k+1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k+1)
                    } else if (P_BC_flag_lo == 1){
-                     Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda); 
-                     RHS(i,j,k) = -0.5*((pOld(i,j,k+1) - pOld(i,j,k))/(dx[2]) + P_int/lambda);
+                     Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda);
+		     Real dPdz = P_int/lambda; 
+                     RHS(i,j,k) = -(dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/(2.*dx[2]);
                    } else if (P_BC_flag_lo == 2){
-                     RHS(i,j,k) = -0.5*((pOld(i,j,k+1) - pOld(i,j,k))/(dx[2]) + 0.);
+		     Real dPdz = 0.; 
+                     RHS(i,j,k) = -(dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/(2.*dx[2]);
                    }
+
                  } else if (z_hi > prob_hi[2]){ //Top metal
+
                    if(P_BC_flag_hi == 0){
                      Real P_int = 0.0; 
-                     RHS(i,j,k) = -0.5*((pOld(i,j,k) - pOld(i,j,k-1))/(dx[2]) + (P_int - pOld(i,j,k))/(0.5*dx[2])); //1st Order
-                     //RHS(i,j,k) = Implement 2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
+                     RHS(i,j,k) = -(4.*P_int - 9.*pOld(i,j,k) + pOld(i,j,k-1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
                      } else if (P_BC_flag_hi == 1){
                      Real P_int = pOld(i,j,k)/(1 - dx[2]/2/lambda); 
-                     RHS(i,j,k) = -0.5*((pOld(i,j,k) - pOld(i,j,k-1))/(dx[2]) + P_int/lambda);
+		     Real dPdz = P_int/lambda; 
+                     RHS(i,j,k) = -(dx[2]*dPdz + pOld(i,j,k) - pOld(i,j,k-1))/(2.*dx[2]);
                      } else if (P_BC_flag_hi == 2){
-                     RHS(i,j,k) = -0.5*((pOld(i,j,k) - pOld(i,j,k-1))/(dx[2]) + 0.);
+		     Real dPdz = 0.; 
+                     RHS(i,j,k) = -(dx[2]*dPdz + pOld(i,j,k) - pOld(i,j,k-1))/(2.*dx[2]);
                    }
+
                  }else{ //inside FE
+
                    RHS(i,j,k) = -(pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
+
                  }
 
             });
@@ -426,54 +435,60 @@ void main_main ()
             // advance the data by dt
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                Real grad_term, phi_term, upwardDz, downwardDz;
+                Real grad_term, phi_term, d2P_z;
                 Real z = (k+0.5) * dx[2];
                 Real z_hi = (k+1.5) * dx[2];
                 Real z_lo = (k-0.5) * dx[2];
 
-		//Assuming dp/dz = 0.0 at FE-DE interface and at metal top and bottom
 		if(z_lo < prob_lo[2]){ //Bottom metal
+
                   grad_term = 0.0;
                   phi_term = (phi(i,j,k+1) - phi(i,j,k)) / (dx[2]);
+
 		} else if(z < Thickness_DE){ //Below FE-DE interface
+
                   grad_term = 0.0;
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
+
 		} else if (Thickness_DE > z_lo && Thickness_DE <= z) { //FE side of FE-DE interface
 
-                  upwardDz = (pOld(i,j,k+1) - pOld(i,j,k))/(dx[2]);
-
                   if(P_BC_flag_lo == 0){
-                    Real P_int = 0.0; 
-                    downwardDz = (pOld(i,j,k) - P_int)/(0.5*dx[2]); //1st Order
-                    //downwardDz = Implement 2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k+1)
+                    Real P_int = 0.0;
+		    d2P_z = 4.*(2.*P_int - 3.*pOld(i,j,k) + pOld(i,j,k+1))/3./dx[2]/dx[2];//2nd Order 
                   } else if (P_BC_flag_lo == 1){
-                    Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda); 
-                    downwardDz = P_int/lambda;
+                    Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda);
+		    Real dPdz = P_int/lambda; 
+		    d2P_z = (-dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/dx[2]/dx[2];//2nd Order 
                   } else if (P_BC_flag_lo == 2){
-                    downwardDz = 0.0;
+		    Real dPdz = 0.; 
+		    d2P_z = (-dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/dx[2]/dx[2];//2nd Order 
                   }
 
-		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
+		  grad_term = g11 * d2P_z;
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
+
                 } else if (z_hi > prob_hi[2]){ //Top metal
 
                   if(P_BC_flag_hi == 0){
                     Real P_int = 0.0; 
-                    upwardDz = (P_int - pOld(i,j,k))/(0.5*dx[2]); //1st Order
-                    //downwardDz = Implement 2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
+		    d2P_z = 4.*(2.*P_int - 3.*pOld(i,j,k) + pOld(i,j,k-1))/3./dx[2]/dx[2];//2nd Order 
                   } else if (P_BC_flag_hi == 1){
                     Real P_int = pOld(i,j,k)/(1 - dx[2]/2/lambda); 
-                    upwardDz = P_int/lambda;
+                    Real dPdz = P_int/lambda;
+		    d2P_z = (dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k-1))/dx[2]/dx[2];//2nd Order 
                   } else if (P_BC_flag_hi == 2){
-                    upwardDz = 0.0;
+		    Real dPdz = 0.; 
+		    d2P_z = (dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k-1))/dx[2]/dx[2];//2nd Order 
                   }
 
-                  downwardDz = (pOld(i,j,k) - pOld(i,j,k-1))/dx[2];
-		  grad_term = g11 * (upwardDz - downwardDz)/dx[2];
+		  grad_term = g11 * d2P_z;
                   phi_term = (phi(i,j,k) - phi(i,j,k-1)) / (dx[2]);
+
                 }else{ //inside FE
+
                   grad_term = g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2]);
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
+
                 }
 
                 pNew(i,j,k) = pOld(i,j,k) - dt * Gam(i,j,k) *
@@ -483,7 +498,6 @@ void main_main ()
                      - grad_term
                      + phi_term
                     );
-	        //if(i == 10 && j == 10) std::cout<< "grad term = " << grad_term << ", and phi term = " << phi_term << std::endl;
             });
         }
 
