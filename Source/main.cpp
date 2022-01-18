@@ -131,8 +131,8 @@ void main_main ()
 
     Real Nc = 2.8e25;
     Real Nv = 1.04e25;
-    Real Ec = 1.14*1.602e-19;
-    Real Ev = 0.02*1.602e-19;
+    Real Ec = 1.12*1.602e-19;
+    Real Ev = 0.00*1.602e-19;
     Real q = 1.602e-19; 
     Real kb = 1.38e-23; // Boltzmann constant
     Real T = 300; // Room Temp
@@ -375,10 +375,10 @@ void main_main ()
 
 	     if(z <= SC_hi){ //SC region
 
-                //hole_den_arr(i,j,k) = Nv*exp(0.5398*1.602e-19/(kb*T));
-                //e_den_arr(i,j,k) = Nc*exp(-0.5656*1.602e-19/(kb*T));
-	        //charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k)); // Testing phi = 0 initialization
-                charge_den_arr(i,j,k) = 0.0; // Testing rho = 0 initialization
+                hole_den_arr(i,j,k) = Nv*exp(-0.00*1.602e-19/(kb*T)); // Testing phi = 0 initialization
+                e_den_arr(i,j,k) = Nc*exp(-1.12*1.602e-19/(kb*T)); // Testing phi = 0 initialization
+	        charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k)); // Testing phi = 0 initialization
+                //charge_den_arr(i,j,k) = 0.0; // Testing rho = 0 initialization
              } else {
 
                 charge_den_arr(i,j,k) = 0.0;
@@ -391,7 +391,7 @@ void main_main ()
     Real tol = 1.e-2;
     Real err = 1.0;
     int iter = 0;
-    while(iter < 5){
+    while(iter < 10){
     //while(err > tol){
     
         for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
@@ -462,7 +462,8 @@ void main_main ()
 
 	//VisMF::Write(PoissonPhi,"Phi_init");
 	//VisMF::Write(PoissonRHS,"RHS_init");
-        //amrex::Abort("Abort here.");	
+        //amrex::Abort("Abort here.");
+`	
         // Calculate rho from Phi in SC region
 
         for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
