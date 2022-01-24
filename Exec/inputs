@@ -1,0 +1,37 @@
+n_cell = 100 100 32
+
+max_grid_size = 100
+
+P_BC_flag_lo = 1
+P_BC_flag_hi = 1
+Phi_Bc_lo = 0.56
+Phi_Bc_hi = 0.56
+
+nsteps = 1000
+plot_int = 50
+
+dt = 2.0e-13
+
+prob_lo = -25.e-9 -25.e-9 0.e-9
+prob_hi = 25.e-9 25.e-9 16.e-9
+
+epsilon_0 = 8.85e-12
+epsilonX_fe = 24
+epsilonZ_fe = 24
+epsilon_de = 10
+epsilon_si = 11.7
+alpha = -2.5e9
+beta = 6.0e10
+gamma = 1.5e11
+BigGamma = 100
+g11 = 1.0e-9
+g44 = 1.0e-9
+
+SC_lo = 0.0
+SC_hi = 10.0e-9
+DE_lo = 10.0e-9
+DE_hi = 11.0e-9
+FE_lo = 11.0e-9
+FE_hi = 16.0e-9
+
+lambda = 3.0e-9
