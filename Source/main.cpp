@@ -131,8 +131,8 @@ void main_main ()
 
     Real Nc = 2.8e25;
     Real Nv = 1.04e25;
-    Real Ec = 1.12*1.602e-19;
-    Real Ev = 0.00*1.602e-19;
+    Real Ec = 1.12;//*1.602e-19;
+    Real Ev = 0.0;//*1.602e-19;
     Real q = 1.602e-19; 
     Real kb = 1.38e-23; // Boltzmann constant
     Real T = 300; // Room Temp
@@ -199,7 +199,7 @@ void main_main ()
     MultiFab charge_den(ba, dm, 1, 0);
 
     MultiFab Plt(ba, dm, 8, 0);
-    MultiFab Plt_debug(ba, dm, 3, 0);
+    MultiFab Plt_debug(ba, dm, 4, 0);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -347,9 +347,9 @@ void main_main ()
                pOld(i,j,k) = 0.0;
                Gam(i,j,k) = 0.0;
             } else {
-	       //double tmp = (i%3 + j%2 + k%4)/6.;
-	       //pOld(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
-	       pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
+	       double tmp = (i%3 + j%2 + k%4)/6.;
+	       pOld(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
+	       //pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
                Gam(i,j,k) = BigGamma;
             }
         });
@@ -375,8 +375,9 @@ void main_main ()
 
 	     if(z <= SC_hi){ //SC region
 
-                hole_den_arr(i,j,k) = Nv*exp(-0.00*1.602e-19/(kb*T)); // Testing phi = 0 initialization
-                e_den_arr(i,j,k) = Nc*exp(-1.12*1.602e-19/(kb*T)); // Testing phi = 0 initialization
+                Real qPhi = 0.5*(Ec + Ev); //eV
+                hole_den_arr(i,j,k) = Nv*exp(-(qPhi - Ev)*1.602e-19/(kb*T)); // Testing phi = 0 initialization
+                e_den_arr(i,j,k) = Nc*exp(-(Ec - qPhi)*1.602e-19/(kb*T)); // Testing phi = 0 initialization
 	        charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k)); // Testing phi = 0 initialization
                 //charge_den_arr(i,j,k) = 0.0; // Testing rho = 0 initialization
              } else {
@@ -388,11 +389,11 @@ void main_main ()
     }
     
     //Obtain self consisten Phi and rho
-    Real tol = 1.e-2;
+    Real tol = 1.e-5;
     Real err = 1.0;
     int iter = 0;
-    while(iter < 10){
-    //while(err > tol){
+    //while(iter < 10){
+    while(err > tol){
     
         for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
         {
@@ -463,7 +464,7 @@ void main_main ()
 	//VisMF::Write(PoissonPhi,"Phi_init");
 	//VisMF::Write(PoissonRHS,"RHS_init");
         //amrex::Abort("Abort here.");
-`	
+	
         // Calculate rho from Phi in SC region
 
         for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
@@ -483,10 +484,10 @@ void main_main ()
 
 		 if(z <= SC_hi){ //SC region
 
-                    hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev)/(kb*T));
-                    e_den_arr(i,j,k) = Nc*exp(-(Ec - q*phi(i,j,k))/(kb*T));
+                    hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));
+                    e_den_arr(i,j,k) = Nc*exp(-(Ec*1.602e-19 - q*phi(i,j,k))/(kb*T));
 		    charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
-	            if(i == 5 && j == 5)std::cout <<" Ec - q*phi = " << (Ec - (q*phi(i,j,k)))*6.242e+18 << " qphi - Ev = " << (q*phi(i,j,k) - Ev)*6.242e+18 << " hole = " << hole_den_arr(i,j,k) << ", e_den = " << e_den_arr(i,j,k) << ", charge_den = " << charge_den_arr(i,j,k) << std::endl;
+	            //if(i == 5 && j == 5)std::cout <<" Ec - q*phi = " << (Ec - (q*phi(i,j,k)))*6.242e+18 << " qphi - Ev = " << (q*phi(i,j,k) - Ev)*6.242e+18 << " hole = " << hole_den_arr(i,j,k) << ", e_den = " << e_den_arr(i,j,k) << ", charge_den = " << charge_den_arr(i,j,k) << std::endl;
 	            //if(i == 5 && j == 5 && k == 5)std::cout << "hole = " << hole_den_arr(i,j,k) << ", e_den = " << e_den_arr(i,j,k) << ", charge_den = " << charge_den_arr(i,j,k) << std::endl;
                  } else {
 
@@ -508,7 +509,8 @@ void main_main ()
         MultiFab::Copy(Plt_debug, hole_den, 0, 0, 1, 0);
         MultiFab::Copy(Plt_debug, e_den, 0, 1, 1, 0);
         MultiFab::Copy(Plt_debug, charge_den, 0, 2, 1, 0);
-        WriteSingleLevelPlotfile(pltfile, Plt_debug, {"holes","electrons","charge"}, geom, time, iter);
+        MultiFab::Copy(Plt_debug, PoissonPhi, 0, 3, 1, 0);
+        WriteSingleLevelPlotfile(pltfile, Plt_debug, {"holes","electrons","charge","phi"}, geom, time, iter);
 	//Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
 	
         MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
@@ -657,8 +659,8 @@ void main_main ()
 
 		 if(z <= SC_hi){ //SC region
 
-                    hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev)/(kb*T));
-                    e_den_arr(i,j,k) = Nc*exp(-(Ec - q*phi(i,j,k))/(kb*T));
+                    hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));
+                    e_den_arr(i,j,k) = Nc*exp(-(Ec*1.602e-19 - q*phi(i,j,k))/(kb*T));
 		    charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
 	            //if(i == 5 && j == 5 && k == 5)std::cout << "hole = " << hole_den_arr(i,j,k) << ", e_den = " << e_den_arr(i,j,k) << ", charge_den = " << charge_den_arr(i,j,k) << std::endl;
                  } else {
