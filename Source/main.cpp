@@ -326,6 +326,9 @@ void main_main ()
     mlabec.setACoeffs(0, alpha_cc); //First argument 0 is lev
     mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));  
 
+    //Declare MLMG object
+    MLMG mlmg(mlabec);
+
     // time = starting time in the simulation
     Real time = 0.0;
 
@@ -352,8 +355,7 @@ void main_main ()
 			geom);
         //Initial guess for phi
         PoissonPhi.setVal(0.);
-
-        MLMG mlmg(mlabec);
+        //Poisson Solve
         mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore)
 
 	//VisMF::Write(PoissonPhi,"Phi_init");
@@ -450,8 +452,6 @@ void main_main ()
 
         //Initial guess for phi
         PoissonPhi.setVal(0.);
-
-        MLMG mlmg(mlabec);
         mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore) 
         //mlmg.solve({&PoissonPhi}, {&PoissonRHS}, mg_rel_tol, mg_abs_tol); //1e-10 for rel_tol and -1 (to ignore) 
 
