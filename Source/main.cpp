@@ -2,6 +2,7 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_MLABecLaplacian.H>
 #include <AMReX_MLMG.H> 
+#include <AMReX_MultiFab.H> 
 #include <AMReX_VisMF.H>
 #include "myfunc.H"
 #include "TDGL.H"
@@ -328,38 +329,12 @@ void main_main ()
     // time = starting time in the simulation
     Real time = 0.0;
 
-    // **********************************
-    // INITIALIZE P and Gamma such that it is zero in DE region
+    // INITIALIZE P in FE and rho in SC regions
 
-    // loop over boxes
-    for (MFIter mfi(P_old); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.validbox();
-
-        const Array4<Real>& pOld = P_old.array(mfi);
-        const Array4<Real>& Gam = Gamma.array(mfi);
-
-        // set P
-        amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept 
-        {
-            Real x = (i+0.5) * dx[0];
-            Real y = (j+0.5) * dx[1];
-            Real z = (k+0.5) * dx[2];
-            if (z <= DE_hi) {
-               pOld(i,j,k) = 0.0;
-               Gam(i,j,k) = 0.0;
-            } else {
-	       double tmp = (i%3 + j%2 + k%4)/6.;
-	       pOld(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
-	       //pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
-               Gam(i,j,k) = BigGamma;
-            }
-        });
-    }
-
-    // INITIALIZE rho in SC region
-
-    InitializeRho(charge_den, e_den, hole_den, SC_lo, SC_hi, q, Ec, Ev, kb, T, Nc, Nv, geom);
+    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, 
+		    SC_lo, SC_hi, DE_lo, DE_hi, 
+		    BigGamma, q, Ec, Ev, kb, T, Nc, Nv, 
+		    geom);
 
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
@@ -369,7 +344,12 @@ void main_main ()
     while(err > tol){
    
 	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, charge_den, FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, P_BC_flag_lo, P_BC_flag_hi, lambda, prob_lo, prob_hi, geom);
+	ComputePoissonRHS(PoissonRHS, P_old, charge_den, 
+			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+			P_BC_flag_lo, P_BC_flag_hi, 
+			lambda, 
+			prob_lo, prob_hi, 
+			geom);
         //Initial guess for phi
         PoissonPhi.setVal(0.);
 
@@ -382,7 +362,10 @@ void main_main ()
 	
         // Calculate rho from Phi in SC region
 
-        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, SC_lo, SC_hi, q, Ec, Ev, kb, T, Nc, Nv, geom);
+        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
+			SC_lo, SC_hi, 
+			q, Ec, Ev, kb, T, Nc, Nv, 
+			geom);
 	// Calculate Error
 
 	if (iter > 0){
@@ -428,23 +411,29 @@ void main_main ()
     {
         // Evolve P
 	
-	CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, alpha, beta, gamma, g11, g44, lambda, prob_lo, prob_hi, geom);
-
-        for ( MFIter mfi(P_old); mfi.isValid(); ++mfi )
-        {
-            const Box& bx = mfi.validbox();
-
-            const Array4<Real>& pOld = P_old.array(mfi);
-            const Array4<Real>& pNew = P_new.array(mfi);
-            const Array4<Real>& GL_RHS = GL_rhs.array(mfi);
+	CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, 
+			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+			P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, 
+			alpha, beta, gamma, g11, g44, lambda, 
+			prob_lo, prob_hi, 
+			geom);
 
 
-            // advance the data by dt
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                pNew(i,j,k) = pOld(i,j,k) + dt * GL_RHS(i,j,k);
-	    });
-	}
+	/**
+    * \brief dst = a*x + b*y
+    */
+//    static void LinComb (MultiFab&       dst,
+//                         Real            a,
+//                         const MultiFab& x,
+//                         int             xcomp,
+//                         Real            b,
+//                         const MultiFab& y,
+//                         int             ycomp,
+//                         int             dstcomp,
+//                         int             numcomp,
+//                         int             nghost);
+	
+	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
 
         // copy new solution into old solution
         MultiFab::Copy(P_old, P_new, 0, 0, 1, 0);
@@ -453,7 +442,11 @@ void main_main ()
         P_old.FillBoundary(geom.periodicity());
 
 	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, charge_den, FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, P_BC_flag_lo, P_BC_flag_hi, lambda, prob_lo, prob_hi, geom);
+	ComputePoissonRHS(PoissonRHS, P_old, charge_den, 
+			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+			P_BC_flag_lo, P_BC_flag_hi, lambda, 
+			prob_lo, prob_hi, 
+			geom);
 
         //Initial guess for phi
         PoissonPhi.setVal(0.);
@@ -464,7 +457,10 @@ void main_main ()
 
         // Calculate rho from Phi in SC region
 
-        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, SC_lo, SC_hi, q, Ec, Ev, kb, T, Nc, Nv, geom);
+        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
+			SC_lo, SC_hi, 
+			q, Ec, Ev, kb, T, Nc, Nv, 
+			geom);
 
 
         // Calculate E from Phi

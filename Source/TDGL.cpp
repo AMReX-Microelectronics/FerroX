@@ -1,15 +1,54 @@
 #include "TDGL.H"
 
 // INITIALIZE rho in SC region
-void InitializeRho(MultiFab& rho, MultiFab& e_den, MultiFab& p_den, Real SC_lo, Real SC_hi, Real q, Real Ec, Real Ev, Real kb, Real T, Real Nc, Real Nv, const Geometry& geom)
+void InitializePandRho(MultiFab&   P_old,
+                   MultiFab&   Gamma,
+                   MultiFab&   rho,
+                   MultiFab&   e_den,
+                   MultiFab&   p_den,
+                   Real        SC_lo,
+                   Real        SC_hi,
+                   Real        DE_lo,
+                   Real        DE_hi,
+		   Real        BigGamma,
+                   Real        q,
+                   Real        Ec,
+                   Real        Ev,
+                   Real        kb,
+                   Real        T,
+                   Real        Nc,
+                   Real        Nv,
+                   const       Geometry& geom)
 {
+
+
     // loop over boxes
     for (MFIter mfi(rho); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.validbox();
 
-       // extract dx from the geometry object
-       GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+        // extract dx from the geometry object
+        GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+        
+	const Array4<Real>& pOld = P_old.array(mfi);
+        const Array4<Real>& Gam = Gamma.array(mfi);
+
+        // set P
+        amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
+        {
+            Real x = (i+0.5) * dx[0];
+            Real y = (j+0.5) * dx[1];
+            Real z = (k+0.5) * dx[2];
+            if (z <= DE_hi) {
+               pOld(i,j,k) = 0.0;
+               Gam(i,j,k) = 0.0;
+            } else {
+               double tmp = (i%3 + j%2 + k%4)/6.;
+               pOld(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
+               //pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
+               Gam(i,j,k) = BigGamma;
+            }
+        });
 
         // Calculate charge density from Phi, Nc, Nv, Ec, and Ev 
 
@@ -39,7 +78,19 @@ void InitializeRho(MultiFab& rho, MultiFab& e_den, MultiFab& p_den, Real SC_lo, 
 
 
 // Compute rho in SC region for given phi
-void ComputeRho(MultiFab& PoissonPhi, MultiFab& rho, MultiFab& e_den, MultiFab& p_den, Real SC_lo, Real SC_hi, Real q, Real Ec, Real Ev, Real kb, Real T, Real Nc, Real Nv, const Geometry& geom)
+void ComputeRho(MultiFab&      PoissonPhi,
+                MultiFab&      rho,
+                MultiFab&      e_den,
+                MultiFab&      p_den,
+                Real           Sc_lo,
+                Real           SC_hi,
+                Real           q, Real Ec,
+                Real           Ev,
+                Real           kb,
+                Real           T,
+                Real           Nc,
+                Real           Nv,
+                const          Geometry& geom)
 {
     // loop over boxes
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
@@ -75,7 +126,21 @@ void ComputeRho(MultiFab& PoissonPhi, MultiFab& rho, MultiFab& e_den, MultiFab& 
     }
  }
 
-void ComputePoissonRHS(MultiFab& PoissonRHS, MultiFab& P_old, MultiFab& rho, Real FE_lo, Real FE_hi, Real DE_lo, Real DE_hi, Real SC_lo, Real SC_hi, int P_BC_flag_lo, int P_BC_flag_hi, Real lambda, amrex::GpuArray<amrex::Real, 3> prob_lo, amrex::GpuArray<amrex::Real, 3> prob_hi, const Geometry& geom)
+void ComputePoissonRHS(MultiFab&               PoissonRHS,
+                MultiFab&                      P_old,
+                MultiFab&                      rho,
+                Real                           FE_lo,
+                Real                           FE_hi,
+                Real                           DE_lo,
+                Real                           DE_hi,
+                Real                           SC_lo,
+                Real                           SC_hi,
+                int                            P_BC_flag_lo,
+                int                            P_BC_flag_hi,
+                Real                           lambda,
+                amrex::GpuArray<amrex::Real, 3> prob_lo,
+                amrex::GpuArray<amrex::Real, 3> prob_hi,
+                const Geometry&                 geom)
 {
     for ( MFIter mfi(PoissonRHS); mfi.isValid(); ++mfi )
         {
@@ -140,7 +205,29 @@ void ComputePoissonRHS(MultiFab& PoissonRHS, MultiFab& P_old, MultiFab& rho, Rea
    
 }
 
-void CalculateTDGL_RHS(MultiFab& GL_rhs, MultiFab& P_old, MultiFab& PoissonPhi, MultiFab& Gamma, Real FE_lo, Real FE_hi, Real DE_lo, Real DE_hi, Real SC_lo, Real SC_hi, int P_BC_flag_lo, int P_BC_flag_hi, int Phi_Bc_lo, int Phi_Bc_hi, Real alpha, Real beta, Real gamma, Real g11, Real g44, Real lambda, amrex::GpuArray<amrex::Real, 3> prob_lo, amrex::GpuArray<amrex::Real, 3> prob_hi, const Geometry& geom)
+void CalculateTDGL_RHS(MultiFab&                GL_rhs,
+                MultiFab&                       P_old,
+                MultiFab&                       PoissonPhi,
+                MultiFab&                       Gamma,
+                Real                            FE_lo,
+                Real                            FE_hi,
+                Real                            DE_lo,
+                Real                            DE_hi,
+                Real                            SC_lo,
+                Real                            SC_hi,
+                int                             P_BC_flag_lo,
+                int                             P_BC_flag_hi,
+                int                             Phi_Bc_lo,
+                int                             Phi_Bc_hi,
+                Real                            alpha,
+                Real                            beta,
+                Real                            gamma,
+                Real                            g11,
+                Real                            g44,
+                Real                            lambda,
+                amrex::GpuArray<amrex::Real, 3> prob_lo,
+                amrex::GpuArray<amrex::Real, 3> prob_hi,
+                const Geometry& geom)
 {
 	// loop over boxes
         for ( MFIter mfi(P_old); mfi.isValid(); ++mfi )
