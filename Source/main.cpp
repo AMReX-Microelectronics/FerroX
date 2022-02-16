@@ -4,6 +4,7 @@
 #include <AMReX_MLMG.H> 
 #include <AMReX_VisMF.H>
 #include "myfunc.H"
+#include "TDGL.H"
 
 using namespace amrex;
 
@@ -131,8 +132,8 @@ void main_main ()
 
     Real Nc = 2.8e25;
     Real Nv = 1.04e25;
-    Real Ec = 1.12;//*1.602e-19;
-    Real Ev = 0.0;//*1.602e-19;
+    Real Ec = 0.56;//*1.602e-19;
+    Real Ev = -0.56;//*1.602e-19;
     Real q = 1.602e-19; 
     Real kb = 1.38e-23; // Boltzmann constant
     Real T = 300; // Room Temp
@@ -186,6 +187,7 @@ void main_main ()
     MultiFab P_old(ba, dm, Ncomp, Nghost);
     MultiFab P_new(ba, dm, Ncomp, Nghost);
     MultiFab Gamma(ba, dm, Ncomp, Nghost);
+    MultiFab GL_rhs(ba, dm, Ncomp, Nghost);
     MultiFab PoissonRHS(ba, dm, 1, 0);
     MultiFab PoissonPhi(ba, dm, 1, 1);
     MultiFab PoissonPhi_Prev(ba, dm, 1, 1);
@@ -357,104 +359,17 @@ void main_main ()
 
     // INITIALIZE rho in SC region
 
-    // loop over boxes
-    for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.validbox();
+    InitializeRho(charge_den, e_den, hole_den, SC_lo, SC_hi, q, Ec, Ev, kb, T, Nc, Nv, geom);
 
-        // Calculate charge density from Phi, Nc, Nv, Ec, and Ev 
-
-        const Array4<Real>& hole_den_arr = hole_den.array(mfi);
-        const Array4<Real>& e_den_arr = e_den.array(mfi);
-        const Array4<Real>& charge_den_arr = charge_den.array(mfi);
-        const Array4<Real>& phi = PoissonPhi.array(mfi);
-
-        amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-        {
-             Real z = (k+0.5) * dx[2];
-
-	     if(z <= SC_hi){ //SC region
-
-                Real qPhi = 0.5*(Ec + Ev); //eV
-                hole_den_arr(i,j,k) = Nv*exp(-(qPhi - Ev)*1.602e-19/(kb*T)); // Testing phi = 0 initialization
-                e_den_arr(i,j,k) = Nc*exp(-(Ec - qPhi)*1.602e-19/(kb*T)); // Testing phi = 0 initialization
-	        charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k)); // Testing phi = 0 initialization
-                //charge_den_arr(i,j,k) = 0.0; // Testing rho = 0 initialization
-             } else {
-
-                charge_den_arr(i,j,k) = 0.0;
-
-             }
-        });
-    }
-    
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
     Real err = 1.0;
     int iter = 0;
     //while(iter < 10){
     while(err > tol){
-    
-        for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
-        {
-            const Box& bx = mfi.validbox();
-
-            const Array4<Real>& pOld = P_old.array(mfi);
-            const Array4<Real>& RHS = PoissonRHS.array(mfi);
-            const Array4<Real>& charge_den_arr = charge_den.array(mfi);
-            const Array4<Real>& phi = PoissonPhi.array(mfi);
-
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                 Real z = (k+0.5) * dx[2];
-                 Real z_hi = (k+1.5) * dx[2];
-                 Real z_lo = (k-0.5) * dx[2];
-
-		 if(z <= SC_hi){ //SC region
-
-		   RHS(i,j,k) = charge_den_arr(i,j,k);
-
-		 } else if(z < DE_hi){ //DE region
-
-		   RHS(i,j,k) = 0.;
-
-		 } else if (DE_hi > z_lo && DE_hi <= z) { //FE side of FE-DE interface
-
-                   if(P_BC_flag_lo == 0){
-                     Real P_int = 0.0; 
-                     RHS(i,j,k) = -(-4.*P_int + 3.*pOld(i,j,k) + pOld(i,j,k+1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k+1)
-                   } else if (P_BC_flag_lo == 1){
-                     Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda);
-		     Real dPdz = P_int/lambda; 
-                     RHS(i,j,k) = -(dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/(2.*dx[2]);
-                   } else if (P_BC_flag_lo == 2){
-		     Real dPdz = 0.; 
-                     RHS(i,j,k) = -(dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/(2.*dx[2]);
-                   }
-
-                 } else if (z_hi > prob_hi[2]){ //Top metal
-
-                   if(P_BC_flag_hi == 0){
-                     Real P_int = 0.0; 
-                     RHS(i,j,k) = -(4.*P_int - 3.*pOld(i,j,k) - pOld(i,j,k-1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
-                     } else if (P_BC_flag_hi == 1){
-                     Real P_int = pOld(i,j,k)/(1 - dx[2]/2/lambda); 
-		     Real dPdz = P_int/lambda; 
-                     RHS(i,j,k) = -(dx[2]*dPdz + pOld(i,j,k) - pOld(i,j,k-1))/(2.*dx[2]);
-                     } else if (P_BC_flag_hi == 2){
-		     Real dPdz = 0.; 
-                     RHS(i,j,k) = -(dx[2]*dPdz + pOld(i,j,k) - pOld(i,j,k-1))/(2.*dx[2]);
-                   }
-
-                 }else{ //inside FE
-
-                   RHS(i,j,k) = -(pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
-
-                 }
-
-            });
-        }
-
+   
+	//Compute RHS of Poisson equation
+	ComputePoissonRHS(PoissonRHS, P_old, charge_den, FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, P_BC_flag_lo, P_BC_flag_hi, lambda, prob_lo, prob_hi, geom);
         //Initial guess for phi
         PoissonPhi.setVal(0.);
 
@@ -467,36 +382,7 @@ void main_main ()
 	
         // Calculate rho from Phi in SC region
 
-        for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
-        {
-            const Box& bx = mfi.validbox();
-
-            // Calculate charge density from Phi, Nc, Nv, Ec, and Ev 
-
-            const Array4<Real>& hole_den_arr = hole_den.array(mfi);
-            const Array4<Real>& e_den_arr = e_den.array(mfi);
-            const Array4<Real>& charge_den_arr = charge_den.array(mfi);
-            const Array4<Real>& phi = PoissonPhi.array(mfi);
-
-            amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                 Real z = (k+0.5) * dx[2];
-
-		 if(z <= SC_hi){ //SC region
-
-                    hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));
-                    e_den_arr(i,j,k) = Nc*exp(-(Ec*1.602e-19 - q*phi(i,j,k))/(kb*T));
-		    charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
-	            //if(i == 5 && j == 5)std::cout <<" Ec - q*phi = " << (Ec - (q*phi(i,j,k)))*6.242e+18 << " qphi - Ev = " << (q*phi(i,j,k) - Ev)*6.242e+18 << " hole = " << hole_den_arr(i,j,k) << ", e_den = " << e_den_arr(i,j,k) << ", charge_den = " << charge_den_arr(i,j,k) << std::endl;
-	            //if(i == 5 && j == 5 && k == 5)std::cout << "hole = " << hole_den_arr(i,j,k) << ", e_den = " << e_den_arr(i,j,k) << ", charge_den = " << charge_den_arr(i,j,k) << std::endl;
-                 } else {
-
-                    charge_den_arr(i,j,k) = 0.0;
-
-                 }
-             });
-        }
-
+        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, SC_lo, SC_hi, q, Ec, Ev, kb, T, Nc, Nv, geom);
 	// Calculate Error
 
 	if (iter > 0){
@@ -505,12 +391,13 @@ void main_main ()
 	   err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
         }
 
-        const std::string& pltfile = amrex::Concatenate("plt_debug",iter,0);
-        MultiFab::Copy(Plt_debug, hole_den, 0, 0, 1, 0);
-        MultiFab::Copy(Plt_debug, e_den, 0, 1, 1, 0);
-        MultiFab::Copy(Plt_debug, charge_den, 0, 2, 1, 0);
-        MultiFab::Copy(Plt_debug, PoissonPhi, 0, 3, 1, 0);
-        WriteSingleLevelPlotfile(pltfile, Plt_debug, {"holes","electrons","charge","phi"}, geom, time, iter);
+//        const std::string& pltfile = amrex::Concatenate("plt_debug",iter,0);
+//        MultiFab::Copy(Plt_debug, hole_den, 0, 0, 1, 0);
+//        MultiFab::Copy(Plt_debug, e_den, 0, 1, 1, 0);
+//        MultiFab::Copy(Plt_debug, charge_den, 0, 2, 1, 0);
+//        MultiFab::Copy(Plt_debug, PoissonPhi, 0, 3, 1, 0);
+//        WriteSingleLevelPlotfile(pltfile, Plt_debug, {"holes","electrons","charge","phi"}, geom, time, iter);
+
 	//Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
 	
         MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
@@ -539,69 +426,34 @@ void main_main ()
 
     for (int step = 1; step <= nsteps; ++step)
     {
-        // fill periodic ghost cells
-        P_old.FillBoundary(geom.periodicity());
-
-        // Calculate right hand side 
+        // Evolve P
+	
+	CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, alpha, beta, gamma, g11, g44, lambda, prob_lo, prob_hi, geom);
 
         for ( MFIter mfi(P_old); mfi.isValid(); ++mfi )
         {
             const Box& bx = mfi.validbox();
 
             const Array4<Real>& pOld = P_old.array(mfi);
-            const Array4<Real>& RHS = PoissonRHS.array(mfi);
-            const Array4<Real>& charge_den_arr = charge_den.array(mfi);
+            const Array4<Real>& pNew = P_new.array(mfi);
+            const Array4<Real>& GL_RHS = GL_rhs.array(mfi);
+
 
             // advance the data by dt
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                 Real z = (k+0.5) * dx[2];
-                 Real z_hi = (k+1.5) * dx[2];
-                 Real z_lo = (k-0.5) * dx[2];
+                pNew(i,j,k) = pOld(i,j,k) + dt * GL_RHS(i,j,k);
+	    });
+	}
 
-		 if(z <= SC_hi){ //SC region
+        // copy new solution into old solution
+        MultiFab::Copy(P_old, P_new, 0, 0, 1, 0);
 
-		   RHS(i,j,k) = charge_den_arr(i,j,k);
+        // fill periodic ghost cells
+        P_old.FillBoundary(geom.periodicity());
 
-		 } else if(z < DE_hi){ //DE region
-
-		   RHS(i,j,k) = 0.;
-		 } else if (DE_hi > z_lo && DE_hi <= z) { //FE side of FE-DE interface
-
-                   if(P_BC_flag_lo == 0){
-                     Real P_int = 0.0; 
-                     RHS(i,j,k) = -(-4.*P_int + 3.*pOld(i,j,k) + pOld(i,j,k+1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k+1)
-                   } else if (P_BC_flag_lo == 1){
-                     Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda);
-		     Real dPdz = P_int/lambda; 
-                     RHS(i,j,k) = -(dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/(2.*dx[2]);
-                   } else if (P_BC_flag_lo == 2){
-		     Real dPdz = 0.; 
-                     RHS(i,j,k) = -(dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/(2.*dx[2]);
-                   }
-
-                 } else if (z_hi > prob_hi[2]){ //Top metal
-
-                   if(P_BC_flag_hi == 0){
-                     Real P_int = 0.0; 
-                     RHS(i,j,k) = -(4.*P_int - 3.*pOld(i,j,k) - pOld(i,j,k-1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
-                     } else if (P_BC_flag_hi == 1){
-                     Real P_int = pOld(i,j,k)/(1 - dx[2]/2/lambda); 
-		     Real dPdz = P_int/lambda; 
-                     RHS(i,j,k) = -(dx[2]*dPdz + pOld(i,j,k) - pOld(i,j,k-1))/(2.*dx[2]);
-                     } else if (P_BC_flag_hi == 2){
-		     Real dPdz = 0.; 
-                     RHS(i,j,k) = -(dx[2]*dPdz + pOld(i,j,k) - pOld(i,j,k-1))/(2.*dx[2]);
-                   }
-
-                 }else{ //inside FE
-
-                   RHS(i,j,k) = -(pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
-
-                 }
-
-            });
-        }
+	//Compute RHS of Poisson equation
+	ComputePoissonRHS(PoissonRHS, P_old, charge_den, FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, P_BC_flag_lo, P_BC_flag_hi, lambda, prob_lo, prob_hi, geom);
 
         //Initial guess for phi
         PoissonPhi.setVal(0.);
@@ -609,6 +461,11 @@ void main_main ()
         MLMG mlmg(mlabec);
         mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore) 
         //mlmg.solve({&PoissonPhi}, {&PoissonRHS}, mg_rel_tol, mg_abs_tol); //1e-10 for rel_tol and -1 (to ignore) 
+
+        // Calculate rho from Phi in SC region
+
+        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, SC_lo, SC_hi, q, Ec, Ev, kb, T, Nc, Nv, geom);
+
 
         // Calculate E from Phi
 
@@ -640,125 +497,8 @@ void main_main ()
              });
         }
 
-        // Calculate rho from Phi in SC region
-
-        for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
-        {
-            const Box& bx = mfi.validbox();
-
-            // Calculate charge density from Phi, Nc, Nv, Ec, and Ev 
-
-            const Array4<Real>& hole_den_arr = hole_den.array(mfi);
-            const Array4<Real>& e_den_arr = e_den.array(mfi);
-            const Array4<Real>& charge_den_arr = charge_den.array(mfi);
-            const Array4<Real>& phi = PoissonPhi.array(mfi);
-
-            amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                 Real z = (k+0.5) * dx[2];
-
-		 if(z <= SC_hi){ //SC region
-
-                    hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));
-                    e_den_arr(i,j,k) = Nc*exp(-(Ec*1.602e-19 - q*phi(i,j,k))/(kb*T));
-		    charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
-	            //if(i == 5 && j == 5 && k == 5)std::cout << "hole = " << hole_den_arr(i,j,k) << ", e_den = " << e_den_arr(i,j,k) << ", charge_den = " << charge_den_arr(i,j,k) << std::endl;
-                 } else {
-
-                    charge_den_arr(i,j,k) = 0.0;
-
-                 }
-             });
-        }
-
-
-        // Evolve P
-        // loop over boxes
-        for ( MFIter mfi(P_old); mfi.isValid(); ++mfi )
-        {
-            const Box& bx = mfi.validbox();
-
-            const Array4<Real>& pOld = P_old.array(mfi);
-            const Array4<Real>& pNew = P_new.array(mfi);
-            const Array4<Real>& phi = PoissonPhi.array(mfi);
-            const Array4<Real>& Gam = Gamma.array(mfi);
-
-
-            // advance the data by dt
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                Real grad_term, phi_term, d2P_z;
-                Real z = (k+0.5) * dx[2];
-                Real z_hi = (k+1.5) * dx[2];
-                Real z_lo = (k-0.5) * dx[2];
-
-		if(z_lo < prob_lo[2]){ //Bottom metal
-
-                  grad_term = 0.0;
-                  phi_term = (-4.*Phi_Bc_lo + 3.*phi(i,j,k) + phi(i,j,k+1))/(3.*dx[2]);
-                  //phi_term = (phi(i,j,k+1) - phi(i,j,k)) / (dx[2]);
-
-		} else if(z < DE_hi){ //Below FE-DE interface
-
-                  grad_term = 0.0;
-                  phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
-
-		} else if (DE_hi > z_lo && DE_hi <= z) { //FE side of FE-DE interface
-
-                  if(P_BC_flag_lo == 0){
-                    Real P_int = 0.0;
-		    d2P_z = 4.*(2.*P_int - 3.*pOld(i,j,k) + pOld(i,j,k+1))/3./dx[2]/dx[2];//2nd Order 
-                  } else if (P_BC_flag_lo == 1){
-                    Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda);
-		    Real dPdz = P_int/lambda; 
-		    d2P_z = (-dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/dx[2]/dx[2];//2nd Order 
-                  } else if (P_BC_flag_lo == 2){
-		    Real dPdz = 0.; 
-		    d2P_z = (-dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/dx[2]/dx[2];//2nd Order 
-                  }
-
-		  grad_term = g11 * d2P_z;
-                  phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
-
-                } else if (z_hi > prob_hi[2]){ //Top metal
-
-                  if(P_BC_flag_hi == 0){
-                    Real P_int = 0.0; 
-		    d2P_z = 4.*(2.*P_int - 3.*pOld(i,j,k) + pOld(i,j,k-1))/3./dx[2]/dx[2];//2nd Order 
-                  } else if (P_BC_flag_hi == 1){
-                    Real P_int = pOld(i,j,k)/(1 - dx[2]/2/lambda); 
-                    Real dPdz = P_int/lambda;
-		    d2P_z = (dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k-1))/dx[2]/dx[2];//2nd Order 
-                  } else if (P_BC_flag_hi == 2){
-		    Real dPdz = 0.; 
-		    d2P_z = (dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k-1))/dx[2]/dx[2];//2nd Order 
-                  }
-
-		  grad_term = g11 * d2P_z;
-                  phi_term = (4.*Phi_Bc_hi - 3.*phi(i,j,k) - phi(i,j,k-1))/(3.*dx[2]);
-
-                }else{ //inside FE
-
-                  grad_term = g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2]);
-                  phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
-
-                }
-
-                pNew(i,j,k) = pOld(i,j,k) - dt * Gam(i,j,k) *
-                    (  alpha*pOld(i,j,k) + beta*std::pow(pOld(i,j,k),3.) + gamma*std::pow(pOld(i,j,k),5.)
-                     - g44 * (pOld(i+1,j,k) - 2.*pOld(i,j,k) + pOld(i-1,j,k)) / (dx[0]*dx[0])
-                     - g44 * (pOld(i,j+1,k) - 2.*pOld(i,j,k) + pOld(i,j-1,k)) / (dx[1]*dx[1])
-                     - grad_term
-                     + phi_term
-                    );
-            });
-        }
-
         // update time
         time = time + dt;
-
-        // copy new solution into old solution
-        MultiFab::Copy(P_old, P_new, 0, 0, 1, 0);
 
         // Tell the I/O Processor to write out which step we're doing
         amrex::Print() << "Advanced step " << step << "\n";

@@ -1,24 +1,24 @@
-n_cell = 100 100 32
+n_cell = 64 64 32
 
-max_grid_size = 100
+max_grid_size = 64
 
 P_BC_flag_lo = 1
 P_BC_flag_hi = 1
-Phi_Bc_lo = 0.56
-Phi_Bc_hi = 0.56
+Phi_Bc_lo = 0.0
+Phi_Bc_hi = 0.0
 
-nsteps = 1000
-plot_int = 50
+nsteps = 400
+plot_int = 40
 
-dt = 2.0e-13
+dt = 4.0e-13
 
-prob_lo = -25.e-9 -25.e-9 0.e-9
-prob_hi = 25.e-9 25.e-9 16.e-9
+prob_lo = -16.e-9 -16.e-9 0.e-9
+prob_hi = 16.e-9 16.e-9 16.e-9
 
 epsilon_0 = 8.85e-12
-epsilonX_fe = 24
-epsilonZ_fe = 24
-epsilon_de = 10
+epsilonX_fe = 24.0
+epsilonZ_fe = 24.0
+epsilon_de = 3.9
 epsilon_si = 11.7
 alpha = -2.5e9
 beta = 6.0e10
