@@ -187,8 +187,11 @@ void main_main ()
     // we allocate two P multifabs; one will store the old state, the other the new.
     MultiFab P_old(ba, dm, Ncomp, Nghost);
     MultiFab P_new(ba, dm, Ncomp, Nghost);
+    MultiFab P_new_pre(ba, dm, Ncomp, Nghost);
     MultiFab Gamma(ba, dm, Ncomp, Nghost);
     MultiFab GL_rhs(ba, dm, Ncomp, Nghost);
+    MultiFab GL_rhs_pre(ba, dm, Ncomp, Nghost);
+    MultiFab GL_rhs_avg(ba, dm, Ncomp, Nghost);
     MultiFab PoissonRHS(ba, dm, 1, 0);
     MultiFab PoissonPhi(ba, dm, 1, 1);
     MultiFab PoissonPhi_Prev(ba, dm, 1, 1);
@@ -336,7 +339,8 @@ void main_main ()
 
     InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, 
 		    SC_lo, SC_hi, DE_lo, DE_hi, 
-		    BigGamma, q, Ec, Ev, kb, T, Nc, Nv, 
+		    BigGamma, q, Ec, Ev, kb, T, Nc, Nv,
+		    prob_lo, prob_hi, 
 		    geom);
 
     //Obtain self consisten Phi and rho
@@ -420,6 +424,8 @@ void main_main ()
 			prob_lo, prob_hi, 
 			geom);
 
+/* 1st Order Forward Euler
+ */
 
 	/**
     * \brief dst = a*x + b*y
@@ -435,8 +441,36 @@ void main_main ()
 //                         int             numcomp,
 //                         int             nghost);
 	
-	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
+//	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
 
+/* 2nd Order Predictor-Corrector
+ */
+
+	//Predictor
+	MultiFab::LinComb(P_new_pre, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
+	
+	//New RHS	
+	ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, 
+			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+			P_BC_flag_lo, P_BC_flag_hi, lambda, 
+			prob_lo, prob_hi, 
+			geom);
+
+        PoissonPhi.setVal(0.);
+        mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore) 
+        //mlmg.solve({&PoissonPhi}, {&PoissonRHS}, mg_rel_tol, mg_abs_tol); //1e-10 for rel_tol and -1 (to ignore) 
+
+	CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, 
+			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+			P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, 
+			alpha, beta, gamma, g11, g44, lambda, 
+			prob_lo, prob_hi, 
+			geom);
+	//Corrector
+	MultiFab::LinComb(GL_rhs_avg, 0.5, GL_rhs, 0, 0.5, GL_rhs_pre, 0, 0, 1, Nghost);    
+	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs_avg, 0, 0, 1, Nghost);
+
+/**/
         // copy new solution into old solution
         MultiFab::Copy(P_old, P_new, 0, 0, 1, 0);
 

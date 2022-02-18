@@ -18,6 +18,8 @@ void InitializePandRho(MultiFab&   P_old,
                    Real        T,
                    Real        Nc,
                    Real        Nv,
+                   amrex::GpuArray<amrex::Real, 3> prob_lo,
+                   amrex::GpuArray<amrex::Real, 3> prob_hi,
                    const       Geometry& geom)
 {
 
@@ -33,6 +35,7 @@ void InitializePandRho(MultiFab&   P_old,
 	const Array4<Real>& pOld = P_old.array(mfi);
         const Array4<Real>& Gam = Gamma.array(mfi);
 
+	Real pi = 3.141592653589793238;
         // set P
         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
@@ -46,6 +49,7 @@ void InitializePandRho(MultiFab&   P_old,
                double tmp = (i%3 + j%2 + k%4)/6.;
                pOld(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
                //pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
+	       //pOld(i,j,k) = 0.002*cos(2*pi*x/(prob_hi[0] - prob_lo[0]))*cos(2*pi*y/(prob_hi[1] - prob_lo[1]))*sin(2*pi*(z-DE_hi)/(prob_hi[2] - DE_hi));
                Gam(i,j,k) = BigGamma;
             }
         });
