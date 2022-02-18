@@ -245,81 +245,14 @@ void main_main ()
 
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
-    // loop over boxes
-    for (MFIter mfi(beta_face[0]); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.validbox();
+    InitializePermittivity(beta_face,
+		        FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                        epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, epsilon_si,
+                        prob_lo, prob_hi,
+                        geom);
 
-        const Array4<Real>& beta_f0 = beta_face[0].array(mfi);
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
-        {
-          Real z = (k+0.5) * dx[2];
-          if(z <= SC_hi) {
-             beta_f0(i,j,k) = epsilon_si * epsilon_0; //SC layer
-	  } else if(z <= DE_hi) {
-             beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE layer
-          } else {
-             beta_f0(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
-          }
-        });
-    }
-    
-    for (MFIter mfi(beta_face[1]); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.validbox();
-
-        const Array4<Real>& beta_f1 = beta_face[1].array(mfi);
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
-        {
-          Real z = (k+0.5) * dx[2];
-          if(z <= SC_hi) {
-             beta_f1(i,j,k) = epsilon_si * epsilon_0; //SC layer
-	  } else if(z <= DE_hi) {
-            beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE layer
-          } else {
-            beta_f1(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
-          }
-        });
-    }
-    
-    for (MFIter mfi(beta_face[2]); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.validbox();
-
-        const Array4<Real>& beta_f2 = beta_face[2].array(mfi);
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
-        {
-          Real z = k * dx[2];
-          if(z <= SC_hi) {
-             beta_f2(i,j,k) = epsilon_si * epsilon_0; //SC layer
-	  } else if(z <= DE_hi) {
-            beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
-          } else {
-            beta_f2(i,j,k) = epsilonZ_fe * epsilon_0; //FE layer
-          }
-        });
-    }
-    
-    // Set Dirichlet BC for Phi in z 
-    // loop over boxes
-    for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.growntilebox(1);
-
-        const Array4<Real>& Phi = PoissonPhi.array(mfi);
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
-        {
-          if(k < 0) {
-            Phi(i,j,k) = Phi_Bc_lo;
-          } else if(k >= n_cell[2]){
-            Phi(i,j,k) = Phi_Bc_hi;
-          }
-        });
-    }
+    // Set Dirichlet BC for Phi in z
+    SetPhiBC_z(PoissonPhi, n_cell, Phi_Bc_lo, Phi_Bc_hi); 
     
     // set Dirichlet BC by reading in the ghost cell values
     mlabec.setLevelBC(0, &PoissonPhi);
@@ -379,13 +312,6 @@ void main_main ()
 	   MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
 	   err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
         }
-
-//        const std::string& pltfile = amrex::Concatenate("plt_debug",iter,0);
-//        MultiFab::Copy(Plt_debug, hole_den, 0, 0, 1, 0);
-//        MultiFab::Copy(Plt_debug, e_den, 0, 1, 1, 0);
-//        MultiFab::Copy(Plt_debug, charge_den, 0, 2, 1, 0);
-//        MultiFab::Copy(Plt_debug, PoissonPhi, 0, 3, 1, 0);
-//        WriteSingleLevelPlotfile(pltfile, Plt_debug, {"holes","electrons","charge","phi"}, geom, time, iter);
 
 	//Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
 	
@@ -466,8 +392,10 @@ void main_main ()
 			alpha, beta, gamma, g11, g44, lambda, 
 			prob_lo, prob_hi, 
 			geom);
-	//Corrector
+
+	//Get average of GL_rhs and GL_rhs_pre
 	MultiFab::LinComb(GL_rhs_avg, 0.5, GL_rhs, 0, 0.5, GL_rhs_pre, 0, 0, 1, Nghost);    
+	//Corrector
 	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs_avg, 0, 0, 1, Nghost);
 
 /**/
@@ -499,33 +427,7 @@ void main_main ()
 
         // Calculate E from Phi
 
-        for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
-        {
-            const Box& bx = mfi.validbox();
-
-            const Array4<Real>& Ex_arr = Ex.array(mfi);
-            const Array4<Real>& Ey_arr = Ey.array(mfi);
-            const Array4<Real>& Ez_arr = Ez.array(mfi);
-            const Array4<Real>& phi = PoissonPhi.array(mfi);
-
-            amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                     Ex_arr(i,j,k) = -(phi(i+1,j,k) - phi(i-1,j,k))/(2.*dx[0]);
-                     Ey_arr(i,j,k) = -(phi(i,j+1,k) - phi(i,j-1,k))/(2.*dx[1]);
-          
-                     Real z = (k+0.5) * dx[2];
-                     Real z_hi = (k+1.5) * dx[2];
-                     Real z_lo = (k-0.5) * dx[2];
-
-	             if(z_lo < prob_lo[2]){ //Bottom Boundary
-                       Ez_arr(i,j,k) = -(phi(i,j,k+1) - phi(i,j,k))/(dx[2]);
-                     } else if (z_hi > prob_hi[2]){ //Top Boundary
-                       Ez_arr(i,j,k) = -(phi(i,j,k) - phi(i,j,k-1))/(dx[2]);
-                     }else{ //inside
-                       Ez_arr(i,j,k) = -(phi(i,j,k+1) - phi(i,j,k-1))/(2.*dx[2]);
-                     }
-             });
-        }
+	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, prob_lo, prob_hi, geom);
 
         // update time
         time = time + dt;
