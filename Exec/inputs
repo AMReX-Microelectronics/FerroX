@@ -7,6 +7,8 @@ P_BC_flag_hi = 1
 Phi_Bc_lo = 0.0
 Phi_Bc_hi = 0.0
 
+TimeIntegratorOrder = 2
+
 nsteps = 400
 plot_int = 40
 

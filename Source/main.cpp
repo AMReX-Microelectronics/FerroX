@@ -47,6 +47,8 @@ void main_main ()
     Real Phi_Bc_hi;
     Real Phi_Bc_lo;
 
+    int TimeIntegratorOrder;
+
     // TDGL right hand side parameters
     Real epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, epsilon_si, alpha, beta, gamma, BigGamma, g11, g44;
     Real DE_lo, DE_hi, FE_lo, FE_hi, SC_lo, SC_hi;
@@ -74,6 +76,8 @@ void main_main ()
         pp.get("P_BC_flag_lo",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
         pp.get("Phi_Bc_hi",Phi_Bc_hi);
         pp.get("Phi_Bc_lo",Phi_Bc_lo);
+
+	pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 
         // Material Properties
 	
@@ -350,9 +354,6 @@ void main_main ()
 			prob_lo, prob_hi, 
 			geom);
 
-/* 1st Order Forward Euler
- */
-
 	/**
     * \brief dst = a*x + b*y
     */
@@ -367,38 +368,42 @@ void main_main ()
 //                         int             numcomp,
 //                         int             nghost);
 	
-//	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
 
-/* 2nd Order Predictor-Corrector
- */
+	if(TimeIntegratorOrder = 1)
+        //1st Order Forward Euler
+	{
+        	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);   
+	} else
+	{	
+        //2nd Order Predictor-Corrector
 
-	//Predictor
-	MultiFab::LinComb(P_new_pre, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
-	
-	//New RHS	
-	ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, 
-			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-			P_BC_flag_lo, P_BC_flag_hi, lambda, 
-			prob_lo, prob_hi, 
-			geom);
+	        //Predictor
+	        MultiFab::LinComb(P_new_pre, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
+	        
+	        //New RHS	
+	        ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, 
+	        		FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+	        		P_BC_flag_lo, P_BC_flag_hi, lambda, 
+	        		prob_lo, prob_hi, 
+	        		geom);
 
-        PoissonPhi.setVal(0.);
-        mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore) 
-        //mlmg.solve({&PoissonPhi}, {&PoissonRHS}, mg_rel_tol, mg_abs_tol); //1e-10 for rel_tol and -1 (to ignore) 
+                PoissonPhi.setVal(0.);
+                mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore) 
+                //mlmg.solve({&PoissonPhi}, {&PoissonRHS}, mg_rel_tol, mg_abs_tol); //1e-10 for rel_tol and -1 (to ignore) 
 
-	CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, 
-			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-			P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, 
-			alpha, beta, gamma, g11, g44, lambda, 
-			prob_lo, prob_hi, 
-			geom);
+	        CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, 
+	        		FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+	        		P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, 
+	        		alpha, beta, gamma, g11, g44, lambda, 
+	        		prob_lo, prob_hi, 
+	        		geom);
 
-	//Get average of GL_rhs and GL_rhs_pre
-	MultiFab::LinComb(GL_rhs_avg, 0.5, GL_rhs, 0, 0.5, GL_rhs_pre, 0, 0, 1, Nghost);    
-	//Corrector
-	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs_avg, 0, 0, 1, Nghost);
+	        //Get average of GL_rhs and GL_rhs_pre
+	        MultiFab::LinComb(GL_rhs_avg, 0.5, GL_rhs, 0, 0.5, GL_rhs_pre, 0, 0, 1, Nghost);    
+	        //Corrector
+	        MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs_avg, 0, 0, 1, Nghost);
 
-/**/
+        }
         // copy new solution into old solution
         MultiFab::Copy(P_old, P_new, 0, 0, 1, 0);
 
