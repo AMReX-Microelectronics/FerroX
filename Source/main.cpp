@@ -1,3 +1,4 @@
+
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MLABecLaplacian.H>
@@ -297,11 +298,7 @@ void main_main ()
         //Initial guess for phi
         PoissonPhi.setVal(0.);
         //Poisson Solve
-        mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore)
-
-	//VisMF::Write(PoissonPhi,"Phi_init");
-	//VisMF::Write(PoissonRHS,"RHS_init");
-        //amrex::Abort("Abort here.");
+        mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	
         // Calculate rho from Phi in SC region
 
@@ -388,8 +385,7 @@ void main_main ()
 	        		geom);
 
                 PoissonPhi.setVal(0.);
-                mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore) 
-                //mlmg.solve({&PoissonPhi}, {&PoissonRHS}, mg_rel_tol, mg_abs_tol); //1e-10 for rel_tol and -1 (to ignore) 
+                mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 
 	        CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, 
 	        		FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
@@ -419,8 +415,7 @@ void main_main ()
 
         //Initial guess for phi
         PoissonPhi.setVal(0.);
-        mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1); //1e-10 for rel_tol and -1 (to ignore) 
-        //mlmg.solve({&PoissonPhi}, {&PoissonRHS}, mg_rel_tol, mg_abs_tol); //1e-10 for rel_tol and -1 (to ignore) 
+        mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 
         // Calculate rho from Phi in SC region
 
