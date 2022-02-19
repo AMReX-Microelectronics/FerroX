@@ -366,13 +366,15 @@ void main_main ()
 //                         int             nghost);
 	
 
-	if(TimeIntegratorOrder = 1)
+	if(TimeIntegratorOrder == 1)
         //1st Order Forward Euler
 	{
         	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);   
+                std::cout << "Order = 1" << std::endl;
 	} else
 	{	
         //2nd Order Predictor-Corrector
+                std::cout << "Order = 2" << std::endl;
 
 	        //Predictor
 	        MultiFab::LinComb(P_new_pre, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
