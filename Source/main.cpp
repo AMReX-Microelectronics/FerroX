@@ -209,7 +209,7 @@ void main_main ()
     MultiFab e_den(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
 
-    MultiFab Plt(ba, dm, 8, 0);
+    MultiFab Plt(ba, dm, 9, 0);
     MultiFab Plt_debug(ba, dm, 4, 0);
 
     //Solver for Poisson equation
@@ -322,7 +322,8 @@ void main_main ()
         std::cout << iter << " iterations :: err = " << err << std::endl;
     }
     
-    std::cout << iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
+    std::cout << "\n ========= Self-Consistent Initialization of P and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
+    std::cout << "\n ========= Advance Steps  ========== \n"<< std::endl;
 
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
@@ -331,13 +332,14 @@ void main_main ()
         const std::string& pltfile = amrex::Concatenate("plt",step,8);
         MultiFab::Copy(Plt, P_old, 0, 0, 1, 0);  
         MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
-        MultiFab::Copy(Plt, Ex, 0, 2, 1, 0);
-        MultiFab::Copy(Plt, Ey, 0, 3, 1, 0);
-        MultiFab::Copy(Plt, Ez, 0, 4, 1, 0);
-        MultiFab::Copy(Plt, hole_den, 0, 5, 1, 0);
-        MultiFab::Copy(Plt, e_den, 0, 6, 1, 0);
-        MultiFab::Copy(Plt, charge_den, 0, 7, 1, 0);
-        WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
+        MultiFab::Copy(Plt, PoissonRHS, 0, 2, 1, 0);
+        MultiFab::Copy(Plt, Ex, 0, 3, 1, 0);
+        MultiFab::Copy(Plt, Ey, 0, 4, 1, 0);
+        MultiFab::Copy(Plt, Ez, 0, 5, 1, 0);
+        MultiFab::Copy(Plt, hole_den, 0, 6, 1, 0);
+        MultiFab::Copy(Plt, e_den, 0, 7, 1, 0);
+        MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
+        WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
     }
 
     for (int step = 1; step <= nsteps; ++step)
@@ -370,11 +372,9 @@ void main_main ()
         //1st Order Forward Euler
 	{
         	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);   
-                std::cout << "Order = 1" << std::endl;
 	} else
 	{	
         //2nd Order Predictor-Corrector
-                std::cout << "Order = 2" << std::endl;
 
 	        //Predictor
 	        MultiFab::LinComb(P_new_pre, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
@@ -443,13 +443,14 @@ void main_main ()
             const std::string& pltfile = amrex::Concatenate("plt",step,8);
             MultiFab::Copy(Plt, P_old, 0, 0, 1, 0);  
             MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
-            MultiFab::Copy(Plt, Ex, 0, 2, 1, 0);
-            MultiFab::Copy(Plt, Ey, 0, 3, 1, 0);
-            MultiFab::Copy(Plt, Ez, 0, 4, 1, 0);
-            MultiFab::Copy(Plt, hole_den, 0, 5, 1, 0);
-            MultiFab::Copy(Plt, e_den, 0, 6, 1, 0);
-            MultiFab::Copy(Plt, charge_den, 0, 7, 1, 0);
-            WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
+            MultiFab::Copy(Plt, PoissonRHS, 0, 2, 1, 0);
+            MultiFab::Copy(Plt, Ex, 0, 3, 1, 0);
+            MultiFab::Copy(Plt, Ey, 0, 4, 1, 0);
+            MultiFab::Copy(Plt, Ez, 0, 5, 1, 0);
+            MultiFab::Copy(Plt, hole_den, 0, 6, 1, 0);
+            MultiFab::Copy(Plt, e_den, 0, 7, 1, 0);
+            MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
+            WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
         }
     }
 }

@@ -39,16 +39,17 @@ void InitializePandRho(MultiFab&   P_old,
         // set P
         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
-            Real x = (i+0.5) * dx[0];
-            Real y = (j+0.5) * dx[1];
-            Real z = (k+0.5) * dx[2];
+            Real x = prob_lo[0] + (i+0.5) * dx[0];
+            Real y = prob_lo[1] + (j+0.5) * dx[1];
+            Real z = prob_lo[2] + (k+0.5) * dx[2];
             if (z <= DE_hi) {
                pOld(i,j,k) = 0.0;
                Gam(i,j,k) = 0.0;
             } else {
                double tmp = (i%3 + j%2 + k%4)/6.;
-               pOld(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
+               //pOld(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
                //pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
+	       pOld(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-24.0e-9)*(z - 24.0e-9)/(2.0*2.0e-9*2.0e-9)));
 	       //pOld(i,j,k) = 0.002*cos(2*pi*x/(prob_hi[0] - prob_lo[0]))*cos(2*pi*y/(prob_hi[1] - prob_lo[1]))*sin(2*pi*(z-DE_hi)/(prob_hi[2] - DE_hi));
                Gam(i,j,k) = BigGamma;
             }
@@ -66,18 +67,22 @@ void InitializePandRho(MultiFab&   P_old,
 
              if(z <= SC_hi){ //SC region
 
-                Real qPhi = 0.5*(Ec + Ev); //eV
-                hole_den_arr(i,j,k) = Nv*exp(-(qPhi - Ev)*1.602e-19/(kb*T)); // Testing phi = 0 initialization
-                e_den_arr(i,j,k) = Nc*exp(-(Ec - qPhi)*1.602e-19/(kb*T)); // Testing phi = 0 initialization
-                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k)); // Testing phi = 0 initialization
-                //charge_den_arr(i,j,k) = 0.0; // Testing rho = 0 initialization
-             } else {
+                //Real qPhi = 0.5*(Ec + Ev); //eV
+                Real qPhi = 0.5*(Ec + Ev) - 0.56; //eV
+                hole_den_arr(i,j,k) = Nv*exp(-(qPhi - Ev)*1.602e-19/(kb*T));
+                e_den_arr(i,j,k) = Nc*exp(-(Ec - qPhi)*1.602e-19/(kb*T));
+                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+                //if(e_den_arr(i,j,k) > 0) std::cout << "e_den(" <<i << "," <<  j << ", " << k <<" ) = "<< e_den_arr(i,j,k) << ", coeff = " << coeff << std::endl; 
+	     } else {
 
                 charge_den_arr(i,j,k) = 0.0;
 
              }
         });
     }
+    // fill periodic ghost cells
+    P_old.FillBoundary(geom.periodicity());
+
  }
 
 
