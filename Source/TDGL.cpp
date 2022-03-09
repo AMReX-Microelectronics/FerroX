@@ -63,7 +63,7 @@ void InitializePandRho(MultiFab&   P_old,
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
-             Real z = (k+0.5) * dx[2];
+             Real z = prob_lo[2] + (k+0.5) * dx[2];
 
              if(z <= SC_hi){ //SC region
 
@@ -99,6 +99,8 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 Real           T,
                 Real           Nc,
                 Real           Nv,
+                amrex::GpuArray<amrex::Real, 3> prob_lo,
+                amrex::GpuArray<amrex::Real, 3> prob_hi,
                 const          Geometry& geom)
 {
     // loop over boxes
@@ -118,7 +120,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
-             Real z = (k+0.5) * dx[2];
+             Real z = prob_lo[2] + (k+0.5) * dx[2];
 
              if(z <= SC_hi){ //SC region
 
@@ -163,9 +165,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                 Real z = (k+0.5) * dx[2];
-                 Real z_hi = (k+1.5) * dx[2];
-                 Real z_lo = (k-0.5) * dx[2];
+                 Real z    = prob_lo[2] + (k+0.5) * dx[2];
+                 Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
+                 Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
                  if(z <= SC_hi){ //SC region
 
@@ -254,9 +256,9 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
                 Real grad_term, phi_term, d2P_z;
-                Real z = (k+0.5) * dx[2];
-                Real z_hi = (k+1.5) * dx[2];
-                Real z_lo = (k-0.5) * dx[2];
+                Real z    = prob_lo[2] + (k+0.5) * dx[2];
+                Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
+                Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
 		if(z_lo < prob_lo[2]){ //Bottom metal
 
@@ -349,9 +351,9 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                      Ex_arr(i,j,k) = -(phi(i+1,j,k) - phi(i-1,j,k))/(2.*dx[0]);
                      Ey_arr(i,j,k) = -(phi(i,j+1,k) - phi(i,j-1,k))/(2.*dx[1]);
 
-                     Real z = (k+0.5) * dx[2];
-                     Real z_hi = (k+1.5) * dx[2];
-                     Real z_lo = (k-0.5) * dx[2];
+                     Real z    = prob_lo[2] + (k+0.5) * dx[2];
+                     Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
+                     Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
                      if(z_lo < prob_lo[2]){ //Bottom Boundary
                        Ez_arr(i,j,k) = -(phi(i,j,k+1) - phi(i,j,k))/(dx[2]);
@@ -397,7 +399,7 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-          Real z = (k+0.5) * dx[2];
+          Real z = prob_lo[2] + (k+0.5) * dx[2];
           if(z <= SC_hi) {
              beta_f0(i,j,k) = epsilon_si * epsilon_0; //SC layer
           } else if(z <= DE_hi) {
@@ -419,7 +421,7 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-          Real z = (k+0.5) * dx[2];
+          Real z = prob_lo[2] + (k+0.5) * dx[2];
           if(z <= SC_hi) {
              beta_f1(i,j,k) = epsilon_si * epsilon_0; //SC layer
           } else if(z <= DE_hi) {
@@ -441,7 +443,7 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-          Real z = k * dx[2];
+          Real z = prob_lo[2] + k * dx[2];
           if(z <= SC_hi) {
              beta_f2(i,j,k) = epsilon_si * epsilon_0; //SC layer
           } else if(z <= DE_hi) {

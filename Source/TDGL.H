@@ -37,6 +37,8 @@ void ComputeRho(MultiFab&      PoissonPhi,
 		Real           T, 
 		Real           Nc, 
 		Real           Nv, 
+                amrex::GpuArray<amrex::Real, 3> prob_lo,
+                amrex::GpuArray<amrex::Real, 3> prob_hi,
 		const          Geometry& geom);
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS, 

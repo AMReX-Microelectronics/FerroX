@@ -305,9 +305,10 @@ void main_main ()
         // Calculate rho from Phi in SC region
 
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
-			SC_lo, SC_hi, 
-			q, Ec, Ev, kb, T, Nc, Nv, 
-			geom);
+                   SC_lo, SC_hi,
+                   q, Ec, Ev, kb, T, Nc, Nv,
+                   prob_lo, prob_hi, geom);
+
 	// Calculate Error
 
 	if (iter > 0){
@@ -426,9 +427,9 @@ void main_main ()
         // Calculate rho from Phi in SC region
 
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
-			SC_lo, SC_hi, 
-			q, Ec, Ev, kb, T, Nc, Nv, 
-			geom);
+                   SC_lo, SC_hi,
+                   q, Ec, Ev, kb, T, Nc, Nv,
+                   prob_lo, prob_hi, geom);
 
 
         // Calculate E from Phi
