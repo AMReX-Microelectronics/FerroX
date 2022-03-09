@@ -271,6 +271,7 @@ void main_main ()
 
     //Declare MLMG object
     MLMG mlmg(mlabec);
+    mlmg.setVerbose(2);
 
     // time = starting time in the simulation
     Real time = 0.0;
