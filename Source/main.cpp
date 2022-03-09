@@ -23,6 +23,8 @@ int main (int argc, char* argv[])
 void main_main ()
 {
 
+    Real total_step_strt_time = ParallelDescriptor::second();
+
     // **********************************
     // SIMULATION PARAMETERS
 
@@ -344,7 +346,9 @@ void main_main ()
 
     for (int step = 1; step <= nsteps; ++step)
     {
-        // Evolve P
+        Real step_strt_time = ParallelDescriptor::second();
+
+    	    // Evolve P
 	
 	CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, 
 			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
@@ -431,11 +435,13 @@ void main_main ()
 
 	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, prob_lo, prob_hi, geom);
 
+	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
+        ParallelDescriptor::ReduceRealMax(step_stop_time);
+
+        amrex::Print() << "Advanced step " << step << " in " << step_stop_time << " seconds\n";
+
         // update time
         time = time + dt;
-
-        // Tell the I/O Processor to write out which step we're doing
-        amrex::Print() << "Advanced step " << step << "\n";
 
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
         if (plot_int > 0 && step%plot_int == 0)
@@ -452,5 +458,32 @@ void main_main ()
             MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
             WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
         }
+
+        // MultiFab memory usage
+        const int IOProc = ParallelDescriptor::IOProcessorNumber();
+
+        amrex::Long min_fab_megabytes  = amrex::TotalBytesAllocatedInFabsHWM()/1048576;
+        amrex::Long max_fab_megabytes  = min_fab_megabytes;
+
+        ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
+        ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
+
+        amrex::Print() << "High-water FAB megabyte spread across MPI nodes: ["
+                       << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
+
+        min_fab_megabytes  = amrex::TotalBytesAllocatedInFabs()/1048576;
+        max_fab_megabytes  = min_fab_megabytes;
+
+        ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
+        ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
+
+        amrex::Print() << "Curent     FAB megabyte spread across MPI nodes: ["
+                       << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
+
     }
+    
+        Real total_step_stop_time = ParallelDescriptor::second() - total_step_strt_time;
+        ParallelDescriptor::ReduceRealMax(total_step_stop_time);
+
+        amrex::Print() << "Total run time " << total_step_stop_time << " seconds\n";
 }
