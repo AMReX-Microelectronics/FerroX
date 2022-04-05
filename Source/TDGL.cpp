@@ -205,7 +205,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                      RHS(i,j,k) = -(dx[2]*dPdz + pOld(i,j,k) - pOld(i,j,k-1))/(2.*dx[2]);
                    }
 
-                 }else{ //inside FE
+                 } else{ //inside FE
 
                    RHS(i,j,k) = -(pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
 
@@ -305,7 +305,7 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
                   grad_term = g11 * d2P_z;
                   phi_term = (4.*Phi_Bc_hi - 3.*phi(i,j,k) - phi(i,j,k-1))/(3.*dx[2]);
 
-                }else{ //inside FE
+                } else{ //inside FE
 
                   grad_term = g11 * (pOld(i,j,k+1) - 2.*pOld(i,j,k) + pOld(i,j,k-1)) / (dx[2]*dx[2]);
                   phi_term = (phi(i,j,k+1) - phi(i,j,k-1)) / (2.*dx[2]);
@@ -359,7 +359,7 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                        Ez_arr(i,j,k) = -(phi(i,j,k+1) - phi(i,j,k))/(dx[2]);
                      } else if (z_hi > prob_hi[2]){ //Top Boundary
                        Ez_arr(i,j,k) = -(phi(i,j,k) - phi(i,j,k-1))/(dx[2]);
-                     }else{ //inside
+                     } else{ //inside
                        Ez_arr(i,j,k) = -(phi(i,j,k+1) - phi(i,j,k-1))/(2.*dx[2]);
                      }
              });
@@ -384,29 +384,30 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
                 amrex::GpuArray<amrex::Real, 3> prob_hi,
                 const Geometry&                 geom)
 {
+    // extract dx from the geometry object
+    GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-	    // set face-centered beta coefficient to
+    Real small = dx[2]*1.e-6;
+    
+    // set face-centered beta coefficient to
     // epsilon values in SC, FE, and DE layers
     // loop over boxes
     for (MFIter mfi(beta_face[0]); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.validbox();
 
-        // extract dx from the geometry object
-        GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
-
         const Array4<Real>& beta_f0 = beta_face[0].array(mfi);
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
           Real z = prob_lo[2] + (k+0.5) * dx[2];
-          if(z < SC_hi) {
+          if(z < SC_hi-small) {
              beta_f0(i,j,k) = epsilon_si * epsilon_0; //SC layer
-	  }else if(z == SC_hi){
+	  } else if(z >= SC_hi-small && z < SC_hi+small){
              beta_f0(i,j,k) = 0.5*(epsilon_de + epsilon_si) * epsilon_0; //SC-DE interface
-          } else if(z < DE_hi) {
+          } else if(z < DE_hi-small) {
              beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE layer
-	  }else if(z == DE_hi){
+	  } else if(z >= DE_hi-small && z < DE_hi+small){
              beta_f0(i,j,k) = 0.5*(epsilon_de + epsilonZ_fe) * epsilon_0; //DE-FE interface
           } else {
              beta_f0(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
@@ -418,21 +419,18 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
     {
         const Box& bx = mfi.validbox();
 
-        // extract dx from the geometry object
-        GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
-
         const Array4<Real>& beta_f1 = beta_face[1].array(mfi);
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
           Real z = prob_lo[2] + (k+0.5) * dx[2];
-          if(z < SC_hi) {
+          if(z < SC_hi-small) {
              beta_f1(i,j,k) = epsilon_si * epsilon_0; //SC layer
-	  }else if(z == SC_hi){
+	  } else if(z >= SC_hi-small && z < SC_hi+small){
              beta_f1(i,j,k) = 0.5*(epsilon_de + epsilon_si) * epsilon_0; //SC-DE interface
-          } else if(z < DE_hi) {
+          } else if(z < DE_hi-small) {
              beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE layer
-	  }else if(z == DE_hi){
+	  } else if(z >= DE_hi-small && z < DE_hi+small){
              beta_f1(i,j,k) = 0.5*(epsilon_de + epsilonZ_fe) * epsilon_0; //DE-FE interface
           } else {
              beta_f1(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
@@ -444,21 +442,18 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
     {
         const Box& bx = mfi.validbox();
 
-        // extract dx from the geometry object
-        GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
-
         const Array4<Real>& beta_f2 = beta_face[2].array(mfi);
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
           Real z = prob_lo[2] + (k+0.5) * dx[2];
-          if(z < SC_hi) {
+          if(z < SC_hi-small) {
              beta_f2(i,j,k) = epsilon_si * epsilon_0; //SC layer
-	  }else if(z == SC_hi){
+	  } else if(z >= SC_hi-small && z < SC_hi+small){
              beta_f2(i,j,k) = 0.5*(epsilon_de + epsilon_si) * epsilon_0; //SC-DE interface
-          } else if(z < DE_hi) {
+          } else if(z < DE_hi-small) {
              beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
-	  }else if(z == DE_hi){
+	  } else if(z >= DE_hi-small && z < DE_hi+small){
              beta_f2(i,j,k) = 0.5*(epsilon_de + epsilonZ_fe) * epsilon_0; //DE-FE interface
           } else {
              beta_f2(i,j,k) = epsilonZ_fe * epsilon_0; //FE layer
