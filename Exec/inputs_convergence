@@ -2,19 +2,19 @@ n_cell = 64 64 64
 max_grid_size = 32
 dt = 1.0e-13
 nsteps = 4
-plot_int = 1
+plot_int = 4
 
-n_cell = 128 128 128
-max_grid_size = 64
-dt = 0.5e-13
-nsteps = 8
-plot_int = 1
+#n_cell = 128 128 128
+#max_grid_size = 64
+#dt = 0.5e-13
+#nsteps = 8
+#plot_int = 8
 
-n_cell = 256 256 256
-max_grid_size = 128
-dt = 0.25e-13
-nsteps = 16
-plot_int = 1
+#n_cell = 256 256 256
+#max_grid_size = 128
+#dt = 0.25e-13
+#nsteps = 16
+#plot_int = 16
 
 # 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
 #P_BC_flag_lo = 0
