@@ -400,7 +400,7 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-          Real z = prob_lo[2] + (k+0.5) * dx[2];
+          Real z = prob_lo[2] + k * dx[2];
           if(z < SC_hi-small) {
              beta_f0(i,j,k) = epsilon_si * epsilon_0; //SC layer
 	  } else if(z >= SC_hi-small && z < SC_hi+small){
@@ -423,7 +423,7 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-          Real z = prob_lo[2] + (k+0.5) * dx[2];
+          Real z = prob_lo[2] + k * dx[2];
           if(z < SC_hi-small) {
              beta_f1(i,j,k) = epsilon_si * epsilon_0; //SC layer
 	  } else if(z >= SC_hi-small && z < SC_hi+small){
@@ -446,7 +446,7 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-          Real z = prob_lo[2] + (k+0.5) * dx[2];
+          Real z = prob_lo[2] + k * dx[2];
           if(z < SC_hi-small) {
              beta_f2(i,j,k) = epsilon_si * epsilon_0; //SC layer
 	  } else if(z >= SC_hi-small && z < SC_hi+small){
