@@ -49,6 +49,8 @@ void main_main ()
     int P_BC_flag_lo;
     Real Phi_Bc_hi;
     Real Phi_Bc_lo;
+    Real Phi_Bc_inc;
+    int inc_step;
 
     int TimeIntegratorOrder;
 
@@ -79,6 +81,8 @@ void main_main ()
         pp.get("P_BC_flag_lo",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
         pp.get("Phi_Bc_hi",Phi_Bc_hi);
         pp.get("Phi_Bc_lo",Phi_Bc_lo);
+        pp.get("Phi_Bc_inc",Phi_Bc_inc);
+        pp.get("inc_step",inc_step);
 
 	pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 
@@ -131,6 +135,7 @@ void main_main ()
             }
         }
     }
+
 
     // For Silicon:
     // Nc = 2.8e25 m^-3
@@ -271,7 +276,7 @@ void main_main ()
 
     //Declare MLMG object
     MLMG mlmg(mlabec);
-    mlmg.setVerbose(2);
+//    mlmg.setVerbose(2);
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -298,6 +303,15 @@ void main_main ()
 			lambda, 
 			prob_lo, prob_hi, 
 			geom);
+        // Set Dirichlet BC for Phi in z
+        SetPhiBC_z(PoissonPhi, n_cell, Phi_Bc_lo, Phi_Bc_hi); 
+        
+        // set Dirichlet BC by reading in the ghost cell values
+        mlabec.setLevelBC(0, &PoissonPhi);
+        
+        //Declare MLMG object
+        MLMG mlmg(mlabec);
+
         //Initial guess for phi
         PoissonPhi.setVal(0.);
         //Poisson Solve
@@ -420,6 +434,17 @@ void main_main ()
 			P_BC_flag_lo, P_BC_flag_hi, lambda, 
 			prob_lo, prob_hi, 
 			geom);
+
+        if(step%inc_step == 0) Phi_Bc_hi = Phi_Bc_hi + Phi_Bc_inc;
+        std::cout<< "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
+        // Set Dirichlet BC for Phi in z
+        SetPhiBC_z(PoissonPhi, n_cell, Phi_Bc_lo, Phi_Bc_hi); 
+        
+        // set Dirichlet BC by reading in the ghost cell values
+        mlabec.setLevelBC(0, &PoissonPhi);
+        
+        //Declare MLMG object
+        MLMG mlmg(mlabec);
 
         //Initial guess for phi
         PoissonPhi.setVal(0.);
