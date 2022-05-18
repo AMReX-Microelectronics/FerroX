@@ -78,11 +78,15 @@ void main_main ()
         pp.get("max_grid_size",max_grid_size);
 
         pp.get("P_BC_flag_hi",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
-        pp.get("P_BC_flag_lo",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
+        pp.get("P_BC_flag_lo",P_BC_flag_lo); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
         pp.get("Phi_Bc_hi",Phi_Bc_hi);
         pp.get("Phi_Bc_lo",Phi_Bc_lo);
-        pp.get("Phi_Bc_inc",Phi_Bc_inc);
-        pp.get("inc_step",inc_step);
+
+        Phi_Bc_inc = 0.;
+        pp.query("Phi_Bc_inc",Phi_Bc_inc);
+
+        inc_step = -1;
+        pp.query("inc_step",inc_step);
 
 	pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 
@@ -437,8 +441,11 @@ void main_main ()
 			prob_lo, prob_hi, 
 			geom);
 
-        if(step%inc_step == 0) Phi_Bc_hi = Phi_Bc_hi + Phi_Bc_inc;
-        std::cout<< "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
+        if (inc_step > 0 && step%inc_step == 0) {
+            Phi_Bc_hi = Phi_Bc_hi + Phi_Bc_inc;
+        }
+        amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
+        
         // Set Dirichlet BC for Phi in z
         SetPhiBC_z(PoissonPhi, n_cell, Phi_Bc_lo, Phi_Bc_hi); 
         
