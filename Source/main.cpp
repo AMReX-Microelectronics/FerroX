@@ -399,6 +399,8 @@ void main_main ()
 	        //Predictor
 	        MultiFab::LinComb(P_new_pre, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
 	        
+                P_new_pre.FillBoundary(geom.periodicity());
+
 	        //New RHS	
 	        ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, 
 	        		FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
