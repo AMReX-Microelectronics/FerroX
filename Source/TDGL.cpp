@@ -453,7 +453,7 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
           Real z = prob_lo[2] + k * dx[2];
           if(z < SC_hi-small) {
              beta_f2(i,j,k) = epsilon_si * epsilon_0; //SC layer
-	  } else if(z >= SC_hi-small && z < SC_hi+small){
+	  } else if(z >= SC_hi-small && z < SC_hi+small && SC_hi > prob_lo[2]+small){
              beta_f2(i,j,k) = 0.5*(epsilon_de + epsilon_si) * epsilon_0; //SC-DE interface
           } else if(z < DE_hi-small) {
              beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
