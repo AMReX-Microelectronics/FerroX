@@ -1,0 +1,97 @@
+#######################
+# spatio-temporal convergence parameters
+#######################
+
+n_cell = 64 64 64
+max_grid_size = 32
+dt = 1.0e-13
+nsteps = 4
+plot_int = 4
+
+#n_cell = 128 128 128
+#max_grid_size = 64
+#dt = 0.5e-13
+#nsteps = 8
+#plot_int = 8
+
+#n_cell = 256 256 256
+#max_grid_size = 64
+#dt = 0.25e-13
+#nsteps = 16
+#plot_int = 16
+
+#######################
+# temporal-only convergence parameters
+#######################
+
+#n_cell = 128 128 128
+#max_grid_size = 64
+#dt = 0.5e-13
+#nsteps = 8
+#plot_int = 8
+
+#n_cell = 128 128 128
+#max_grid_size = 64
+#dt = 0.25e-13
+#nsteps = 16
+#plot_int = 16
+
+#n_cell = 128 128 128
+#max_grid_size = 64
+#dt = 0.125e-13
+#nsteps = 32
+#plot_int = 32
+
+#######################
+# spatial-only convergence parameters
+#######################
+
+#n_cell = 64 64 64
+#max_grid_size = 32
+#dt = 0.25e-13
+#nsteps = 16
+#plot_int = 16
+
+#n_cell = 128 128 128
+#max_grid_size = 64
+#dt = 0.25e-13
+#nsteps = 16
+#plot_int = 16
+
+#n_cell = 256 256 256
+#max_grid_size = 64
+#dt = 0.25e-13
+#nsteps = 16
+#plot_int = 16
+
+# 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
+P_BC_flag_lo = 2
+P_BC_flag_hi = 2
+Phi_Bc_lo = 0.0
+Phi_Bc_hi = 0.0
+
+TimeIntegratorOrder = 2
+
+prob_lo = -16.e-9 -16.e-9 0.0e-9
+prob_hi =  16.e-9  16.e-9 32.e-9
+
+epsilon_0 = 8.85e-12
+epsilonX_fe = 24.0
+epsilonZ_fe = 24.0
+epsilon_de = 1
+epsilon_si = 11.7  # not used since SC_hi=0
+alpha = -2.5e9
+beta = 6.0e10
+gamma = 1.5e11
+BigGamma = 100
+g11 = 1.0e-9
+g44 = 1.0e-9
+
+SC_lo = 0.0
+SC_hi = 0.0
+DE_lo = 0.0
+DE_hi = 16.0e-9
+FE_lo = 16.0e-9
+FE_hi = 32.0e-9
+
+lambda = 3.0e-9
