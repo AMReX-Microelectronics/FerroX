@@ -64,6 +64,8 @@ plot_int = 4
 #nsteps = 16
 #plot_int = 16
 
+prob_type = 3
+
 # 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
 P_BC_flag_lo = 2
 P_BC_flag_hi = 2

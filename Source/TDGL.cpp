@@ -81,13 +81,18 @@ void InitializePandRho(int prob_type,
 
                } else if (prob_type == 2) { // 3D : Initialize random P
 
-                 pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
+                 pOld(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
 
-               } else { // smooth P for convergence tests
+               } else if (prob_type == 3) { // smooth P for convergence tests
 
 	         pOld(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi)*(z - 1.5*DE_hi)/(2.0*2.0e-9*2.0e-9)));
 
-               }
+               } else {
+
+		 Abort("Invalid prob_type");
+
+	       }
+
                Gam(i,j,k) = BigGamma;
             }
         });
