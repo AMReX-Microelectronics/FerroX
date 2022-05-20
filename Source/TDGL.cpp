@@ -409,8 +409,8 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
           } else if(z < DE_hi-small) {
              beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE layer
 	  } else if(z >= DE_hi-small && z < DE_hi+small){
-             //beta_f0(i,j,k) = 0.5*(epsilon_de + epsilonX_fe) * epsilon_0; //DE-FE interface
-             beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE-FE interface
+             beta_f0(i,j,k) = 0.5*(epsilon_de + epsilonX_fe) * epsilon_0; //DE-FE interface
+             //beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE-FE interface
           } else {
              beta_f0(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
           }
@@ -434,8 +434,8 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
           } else if(z < DE_hi-small) {
              beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE layer
 	  } else if(z >= DE_hi-small && z < DE_hi+small){
-             beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE-FE interface
-             //beta_f1(i,j,k) = 0.5*(epsilon_de + epsilonX_fe) * epsilon_0; //DE-FE interface
+             //beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE-FE interface
+             beta_f1(i,j,k) = 0.5*(epsilon_de + epsilonX_fe) * epsilon_0; //DE-FE interface
           } else {
              beta_f1(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
           }
@@ -458,8 +458,8 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
           } else if(z < DE_hi-small) {
              beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
 	  } else if(z >= DE_hi-small && z < DE_hi+small){
-             //beta_f2(i,j,k) = 0.5*(epsilon_de + epsilonZ_fe) * epsilon_0; //DE-FE interface
-             beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE-FE interface
+             beta_f2(i,j,k) = 0.5*(epsilon_de + epsilonZ_fe) * epsilon_0; //DE-FE interface
+             //beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE-FE interface
           } else {
              beta_f2(i,j,k) = epsilonZ_fe * epsilon_0; //FE layer
           }
