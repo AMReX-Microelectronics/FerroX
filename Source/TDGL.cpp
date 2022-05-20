@@ -1,7 +1,8 @@
 #include "TDGL.H"
 
 // INITIALIZE rho in SC region
-void InitializePandRho(MultiFab&   P_old,
+void InitializePandRho(int prob_type, 
+                   MultiFab&   P_old,
                    MultiFab&   Gamma,
                    MultiFab&   rho,
                    MultiFab&   e_den,
@@ -23,6 +24,31 @@ void InitializePandRho(MultiFab&   P_old,
                    const       Geometry& geom)
 {
 
+    if (prob_type == 1) {  //2D : Initialize uniform P in y direction
+
+       amrex::Print() << "==================================""\n"
+                         "P is initialized for a 2D problem." "\n"
+                         "==================================""\n" ;
+
+    } else if (prob_type == 2) { // 3D : Initialize random P
+
+       amrex::Print() << "==================================""\n"
+                         "P is initialized for a 3D problem." "\n"
+                         "==================================""\n" ;
+
+    } else if (prob_type == 3) {
+
+       amrex::Print() << "==================================""\n"
+                         "P is initialized for convergence test." "\n"
+                         "==================================""\n" ;
+
+    } else {
+      amrex::Print() << "Undefine problem type!! Set prob_type in input script." "\n"
+                       "prob_type = 1 for 2D problems" "\n"
+                       "prob_type = 2 for 3D problems" "\n"
+                       "prob_type = 3 for convergence tests." "\n";
+      amrex::Abort();
+    }
 
     // loop over boxes
     for (MFIter mfi(rho); mfi.isValid(); ++mfi)
@@ -36,6 +62,8 @@ void InitializePandRho(MultiFab&   P_old,
         const Array4<Real>& Gam = Gamma.array(mfi);
 
 	Real pi = 3.141592653589793238;
+
+
         // set P
         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
@@ -46,11 +74,20 @@ void InitializePandRho(MultiFab&   P_old,
                pOld(i,j,k) = 0.0;
                Gam(i,j,k) = 0.0;
             } else {
-               double tmp = (i%3 + k%4)/5.;
-               pOld(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
-               //pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
-	       //pOld(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi)*(z - 1.5*DE_hi)/(2.0*2.0e-9*2.0e-9)));
-	       //pOld(i,j,k) = 0.002*cos(2*pi*x/(prob_hi[0] - prob_lo[0]))*cos(2*pi*y/(prob_hi[1] - prob_lo[1]))*sin(2*pi*(z-DE_hi)/(prob_hi[2] - DE_hi));
+               if (prob_type == 1) {  //2D : Initialize uniform P in y direction
+
+                  double tmp = (i%3 + k%4)/5.;
+                  pOld(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
+
+               } else if (prob_type == 2) { // 3D : Initialize random P
+
+                 pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
+
+               } else { // smooth P for convergence tests
+
+	         pOld(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi)*(z - 1.5*DE_hi)/(2.0*2.0e-9*2.0e-9)));
+
+               }
                Gam(i,j,k) = BigGamma;
             }
         });
