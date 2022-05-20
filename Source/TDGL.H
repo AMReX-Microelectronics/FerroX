@@ -4,7 +4,8 @@
 
 using namespace amrex;
 
-void InitializePandRho(MultiFab&   P_old,
+void InitializePandRho(int prob_type,
+                   MultiFab&   P_old,
                    MultiFab&   Gamma,
                    MultiFab&   rho,
                    MultiFab&   e_den,
