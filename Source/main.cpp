@@ -51,6 +51,7 @@ void main_main ()
     Real Phi_Bc_lo;
     Real Phi_Bc_inc;
     int inc_step;
+    int prob_type;
 
     int TimeIntegratorOrder;
 
@@ -89,6 +90,8 @@ void main_main ()
         pp.query("inc_step",inc_step);
 
 	pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
+
+        pp.get("prob_type", prob_type);
 
         // Material Properties
 	
@@ -287,7 +290,7 @@ void main_main ()
 
     // INITIALIZE P in FE and rho in SC regions
 
-    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, 
+    InitializePandRho(prob_type, P_old, Gamma, charge_den, e_den, hole_den, 
 		    SC_lo, SC_hi, DE_lo, DE_hi, 
 		    BigGamma, q, Ec, Ev, kb, T, Nc, Nv,
 		    prob_lo, prob_hi, 
