@@ -81,6 +81,12 @@ void InitializePandRho(int prob_type,
 
                } else if (prob_type == 2) { // 3D : Initialize random P
 
+                 int seed = 1;
+
+                 // initializes the seed for C++ random number calls
+                 amrex::InitRandom(seed+ParallelDescriptor::MyProc(),
+                            ParallelDescriptor::NProcs(),
+                            seed+ParallelDescriptor::MyProc());
                  pOld(i,j,k) = (-1.0 + 2.0*Random())*0.002;
 
                } else { // smooth P for convergence tests
