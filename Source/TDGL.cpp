@@ -81,12 +81,6 @@ void InitializePandRho(int prob_type,
 
                } else if (prob_type == 2) { // 3D : Initialize random P
 
-                 int seed = 1;
-
-                 // initializes the seed for C++ random number calls
-                 amrex::InitRandom(seed+ParallelDescriptor::MyProc(),
-                            ParallelDescriptor::NProcs(),
-                            seed+ParallelDescriptor::MyProc());
                  pOld(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
 
                } else if (prob_type == 3) { // smooth P for convergence tests
@@ -120,7 +114,6 @@ void InitializePandRho(int prob_type,
                 hole_den_arr(i,j,k) = Nv*exp(-(qPhi - Ev)*1.602e-19/(kb*T));
                 e_den_arr(i,j,k) = Nc*exp(-(Ec - qPhi)*1.602e-19/(kb*T));
                 charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
-                //if(e_den_arr(i,j,k) > 0) std::cout << "e_den(" <<i << "," <<  j << ", " << k <<" ) = "<< e_den_arr(i,j,k) << ", coeff = " << coeff << std::endl; 
 	     } else {
 
                 charge_den_arr(i,j,k) = 0.0;
@@ -172,10 +165,9 @@ void ComputeRho(MultiFab&      PoissonPhi,
 
              if(z <= SC_hi){ //SC region
 
-                hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T)); // Testing phi = 0 initialization
-                e_den_arr(i,j,k) = Nc*exp(-(Ec*1.602e-19 - q*phi(i,j,k))/(kb*T)); // Testing phi = 0 initialization
-                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k)); // Testing phi = 0 initialization
-                //charge_den_arr(i,j,k) = 0.0; // Testing rho = 0 initialization
+                hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));
+                e_den_arr(i,j,k) = Nc*exp(-(Ec*1.602e-19 - q*phi(i,j,k))/(kb*T));
+                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
              } else {
 
                 charge_den_arr(i,j,k) = 0.0;
