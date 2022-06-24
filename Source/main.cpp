@@ -279,7 +279,7 @@ void main_main ()
     // (A*alpha_cc - B * div beta grad) phi = rhs
     mlabec.setScalars(0.0, 1.0); // A = 0.0, B = 1.0
     mlabec.setACoeffs(0, alpha_cc); //First argument 0 is lev
-    mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));  
+    mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));
 
     //Declare MLMG object
     MLMG mlmg(mlabec);
@@ -310,45 +310,41 @@ void main_main ()
 			lambda, 
 			prob_lo, prob_hi, 
 			geom);
-        // Set Dirichlet BC for Phi in z
-        SetPhiBC_z(PoissonPhi, n_cell, Phi_Bc_lo, Phi_Bc_hi); 
-        
-        // set Dirichlet BC by reading in the ghost cell values
-        mlabec.setLevelBC(0, &PoissonPhi);
-        
-        //Declare MLMG object
-        MLMG mlmg(mlabec);
 
         //Initial guess for phi
         PoissonPhi.setVal(0.);
+
         //Poisson Solve
         mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	
         // Calculate rho from Phi in SC region
-
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
                    SC_lo, SC_hi,
                    q, Ec, Ev, kb, T, Nc, Nv,
                    prob_lo, prob_hi, geom);
 
-	// Calculate Error
+        if (SC_hi <= 0.) {
+            // no semiconductor region; set error to zero so the while loop terminates
+            err = 0.;
+        } else {
 
-	if (iter > 0){
-	   MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
-	   MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
-	   err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+            // Calculate Error
+            if (iter > 0){
+                MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
+                MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
+                err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+            }
+
+            //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
+            MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
+
+            iter = iter + 1;
+            amrex::Print() << iter << " iterations :: err = " << err << std::endl;
         }
-
-	//Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
-	
-        MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
-
-	iter = iter + 1;
-        std::cout << iter << " iterations :: err = " << err << std::endl;
     }
     
-    std::cout << "\n ========= Self-Consistent Initialization of P and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
-    std::cout << "\n ========= Advance Steps  ========== \n"<< std::endl;
+    amrex::Print() << "\n ========= Self-Consistent Initialization of P and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
+    amrex::Print() << "\n ========= Advance Steps  ========== \n"<< std::endl;
 
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
@@ -371,18 +367,21 @@ void main_main ()
     {
         Real step_strt_time = ParallelDescriptor::second();
 
-    	    // Evolve P
-	
-	CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, 
-			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-			P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, 
-			alpha, beta, gamma, g11, g44, lambda, 
-			prob_lo, prob_hi, 
-			geom);
+        // compute f^n = f(P^n,Phi^n)
+        CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, 
+                          FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+                          P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, 
+                          alpha, beta, gamma, g11, g44, lambda, 
+                          prob_lo, prob_hi, 
+                          geom);
+
+        // P^{n+1,*} = P^n = dt * f^n
+        MultiFab::LinComb(P_new_pre, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);
+        P_new_pre.FillBoundary(geom.periodicity());   
 
 	/**
-    * \brief dst = a*x + b*y
-    */
+         * \brief dst = a*x + b*y
+         */
 //    static void LinComb (MultiFab&       dst,
 //                         Real            a,
 //                         const MultiFab& x,
@@ -394,84 +393,183 @@ void main_main ()
 //                         int             numcomp,
 //                         int             nghost);
 	
+        err = 1.0;
+        iter = 0;
 
-	if(TimeIntegratorOrder == 1)
-        //1st Order Forward Euler
-	{
-        	MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);   
-	} else
-	{	
-        //2nd Order Predictor-Corrector
+        // iterate to compute Phi^{n+1,*}
+        while(err > tol){
+   
+            // Compute RHS of Poisson equation
+            ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, 
+                              FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+                              P_BC_flag_lo, P_BC_flag_hi, 
+                              lambda, 
+                              prob_lo, prob_hi, 
+                              geom);
 
-	        //Predictor
-	        MultiFab::LinComb(P_new_pre, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);    
-	        
-                P_new_pre.FillBoundary(geom.periodicity());
+            //Initial guess for phi
+            PoissonPhi.setVal(0.);
 
-	        //New RHS	
-	        ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, 
-	        		FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-	        		P_BC_flag_lo, P_BC_flag_hi, lambda, 
-	        		prob_lo, prob_hi, 
-	        		geom);
+            //Poisson Solve
+            mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+	
+            // Calculate rho from Phi in SC region
+            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
+                       SC_lo, SC_hi,
+                       q, Ec, Ev, kb, T, Nc, Nv,
+                       prob_lo, prob_hi, geom);
 
+            if (SC_hi <= 0.) {
+                // no semiconductor region; set error to zero so the while loop terminates
+                err = 0.;
+            } else {
+                
+                // Calculate Error
+                if (iter > 0){
+                    MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
+                    MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
+                    err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+                }
+
+                //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
+                MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
+
+                iter = iter + 1;
+                amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+            }
+        }
+        
+        if (TimeIntegratorOrder == 1) {
+
+            // copy new solution into old solution
+            MultiFab::Copy(P_old, P_new_pre, 0, 0, 1, 0);
+
+            // fill periodic ghost cells
+            P_old.FillBoundary(geom.periodicity());
+            
+        } else {
+        
+            // compute f^{n+1,*} = f(P^{n+1,*},Phi^{n+1,*})
+            CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, 
+                              FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+                              P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, 
+                              alpha, beta, gamma, g11, g44, lambda, 
+                              prob_lo, prob_hi, 
+                              geom);
+
+            // P^{n+1} = P^n + dt/2 * f^n + dt/2 * f^{n+1,*}
+            MultiFab::LinComb(GL_rhs_avg, 0.5, GL_rhs, 0, 0.5, GL_rhs_pre, 0, 0, 1, Nghost);    
+            MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs_avg, 0, 0, 1, Nghost);
+        
+            err = 1.0;
+            iter = 0;
+
+            // iterate to compute Phi^{n+1}
+            while(err > tol){
+   
+                // Compute RHS of Poisson equation
+                ComputePoissonRHS(PoissonRHS, P_new, charge_den, 
+                                  FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+                                  P_BC_flag_lo, P_BC_flag_hi, 
+                                  lambda, 
+                                  prob_lo, prob_hi, 
+                                  geom);
+
+                //Initial guess for phi
                 PoissonPhi.setVal(0.);
+
+                //Poisson Solve
                 mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+	
+                // Calculate rho from Phi in SC region
+                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
+                           SC_lo, SC_hi,
+                           q, Ec, Ev, kb, T, Nc, Nv,
+                           prob_lo, prob_hi, geom);
 
-	        CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, 
-	        		FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-	        		P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, 
-	        		alpha, beta, gamma, g11, g44, lambda, 
-	        		prob_lo, prob_hi, 
-	        		geom);
+                if (SC_hi <= 0.) {
+                    // no semiconductor region; set error to zero so the while loop terminates
+                    err = 0.;
+                } else {
+                    
+                    // Calculate Error
+                    if (iter > 0){
+                        MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
+                        MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
+                        err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+                    }
 
-	        //Get average of GL_rhs and GL_rhs_pre
-	        MultiFab::LinComb(GL_rhs_avg, 0.5, GL_rhs, 0, 0.5, GL_rhs_pre, 0, 0, 1, Nghost);    
-	        //Corrector
-	        MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs_avg, 0, 0, 1, Nghost);
+                    //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
+                    MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
+
+                    iter = iter + 1;
+                    amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+                }
+            }
+            
+            // copy new solution into old solution
+            MultiFab::Copy(P_old, P_new, 0, 0, 1, 0);
+
+            // fill periodic ghost cells
+            P_old.FillBoundary(geom.periodicity());
 
         }
-        // copy new solution into old solution
-        MultiFab::Copy(P_old, P_new, 0, 0, 1, 0);
-
-        // fill periodic ghost cells
-        P_old.FillBoundary(geom.periodicity());
-
-	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, charge_den, 
-			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-			P_BC_flag_lo, P_BC_flag_hi, lambda, 
-			prob_lo, prob_hi, 
-			geom);
 
         if (inc_step > 0 && step%inc_step == 0) {
             Phi_Bc_hi = Phi_Bc_hi + Phi_Bc_inc;
+            amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
+        
+            // Set Dirichlet BC for Phi in z
+            SetPhiBC_z(PoissonPhi, n_cell, Phi_Bc_lo, Phi_Bc_hi);
+
+            err = 1.0;
+            iter = 0;
+
+            // iterate to compute Phi^{n+1} with new Dirichlet value
+            while(err > tol){
+   
+                // Compute RHS of Poisson equation
+                ComputePoissonRHS(PoissonRHS, P_new, charge_den, 
+                                  FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
+                                  P_BC_flag_lo, P_BC_flag_hi, 
+                                  lambda, 
+                                  prob_lo, prob_hi, 
+                                  geom);
+
+                //Initial guess for phi
+                PoissonPhi.setVal(0.);
+
+                //Poisson Solve
+                mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+	
+                // Calculate rho from Phi in SC region
+                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
+                           SC_lo, SC_hi,
+                           q, Ec, Ev, kb, T, Nc, Nv,
+                           prob_lo, prob_hi, geom);
+
+                if (SC_hi <= 0.) {
+                    // no semiconductor region; set error to zero so the while loop terminates
+                    err = 0.;
+                } else {
+                
+                    // Calculate Error
+                    if (iter > 0){
+                        MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
+                        MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
+                        err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+                    }
+
+                    //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
+                    MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
+
+                    iter = iter + 1;
+                    amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+                }
+            }
         }
-        amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
-        
-        // Set Dirichlet BC for Phi in z
-        SetPhiBC_z(PoissonPhi, n_cell, Phi_Bc_lo, Phi_Bc_hi); 
-        
-        // set Dirichlet BC by reading in the ghost cell values
-        mlabec.setLevelBC(0, &PoissonPhi);
-        
-        //Declare MLMG object
-        MLMG mlmg(mlabec);
-
-        //Initial guess for phi
-        PoissonPhi.setVal(0.);
-        mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-
-        // Calculate rho from Phi in SC region
-
-        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
-                   SC_lo, SC_hi,
-                   q, Ec, Ev, kb, T, Nc, Nv,
-                   prob_lo, prob_hi, geom);
-
 
         // Calculate E from Phi
-
 	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, prob_lo, prob_hi, geom);
 
 	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
