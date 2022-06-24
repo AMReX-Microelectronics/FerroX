@@ -518,9 +518,12 @@ void main_main ()
         if (inc_step > 0 && step%inc_step == 0) {
             Phi_Bc_hi = Phi_Bc_hi + Phi_Bc_inc;
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
-        
+
             // Set Dirichlet BC for Phi in z
             SetPhiBC_z(PoissonPhi, n_cell, Phi_Bc_lo, Phi_Bc_hi);
+    
+            // set Dirichlet BC by reading in the ghost cell values
+            mlabec.setLevelBC(0, &PoissonPhi);
 
             err = 1.0;
             iter = 0;
