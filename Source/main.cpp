@@ -60,6 +60,13 @@ void main_main ()
     Real DE_lo, DE_hi, FE_lo, FE_hi, SC_lo, SC_hi;
     Real lambda;
 
+    //Generalized Gauss-Laguerre quadrature nodes and weights
+    amrex::GpuArray<amrex::Real, 10> node{0.22987298, 0.92448155, 2.0994105, 3.7828809, 6.0199180, 8.8803476, 12.474832, 16.990847, 22.791003, 30.806406};
+    amrex::GpuArray<amrex::Real, 10> weight{0.17547081, 0.35522339, 0.25268356, 0.086356103, 0.015109778, 0.0013282156, 5.4187800e-5, 8.7374759e-7, 4.0196999e-9, 2.2922215e-12};
+
+    for(int i = 0; i < 10; i++) amrex::Print() << "(xi, wi[" << i << "]) = (" << node[i] << ", " << weight[i] << ") \n";
+
+
     // inputs parameters
     {
         // ParmParse is way of reading inputs from the inputs file
@@ -141,6 +148,7 @@ void main_main ()
                 prob_hi[i] = temp[i];
             }
         }
+
     }
 
 
@@ -157,6 +165,9 @@ void main_main ()
     Real q = 1.602e-19; 
     Real kb = 1.38e-23; // Boltzmann constant
     Real T = 300; // Room Temp
+    Real h = 6.62607e-34;
+    Real m_n = 1.08*9.11e-31;
+    Real m_p = 0.81*9.11e-31;
 
     // **********************************
     // SIMULATION SETUP
@@ -293,11 +304,12 @@ void main_main ()
     InitializePandRho(prob_type, P_old, Gamma, charge_den, e_den, hole_den, 
 		    SC_lo, SC_hi, DE_lo, DE_hi, 
 		    BigGamma, q, Ec, Ev, kb, T, Nc, Nv,
+                    h, m_n, m_p, node, weight,
 		    prob_lo, prob_hi, 
 		    geom);
 
     //Obtain self consisten Phi and rho
-    Real tol = 1.e-5;
+    Real tol = 1.e-4;
     Real err = 1.0;
     int iter = 0;
     //while(iter < 10){
@@ -321,6 +333,7 @@ void main_main ()
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
                    SC_lo, SC_hi,
                    q, Ec, Ev, kb, T, Nc, Nv,
+                   h, m_n, m_p, node, weight,
                    prob_lo, prob_hi, geom);
 
         if (SC_hi <= 0.) {
@@ -417,6 +430,7 @@ void main_main ()
             ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
                        SC_lo, SC_hi,
                        q, Ec, Ev, kb, T, Nc, Nv,
+                       h, m_n, m_p, node, weight,
                        prob_lo, prob_hi, geom);
 
             if (SC_hi <= 0.) {
@@ -485,6 +499,7 @@ void main_main ()
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
                            SC_lo, SC_hi,
                            q, Ec, Ev, kb, T, Nc, Nv,
+                           h, m_n, m_p, node, weight,
                            prob_lo, prob_hi, geom);
 
                 if (SC_hi <= 0.) {
@@ -549,6 +564,7 @@ void main_main ()
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
                            SC_lo, SC_hi,
                            q, Ec, Ev, kb, T, Nc, Nv,
+                           h, m_n, m_p, node, weight,
                            prob_lo, prob_hi, geom);
 
                 if (SC_hi <= 0.) {
