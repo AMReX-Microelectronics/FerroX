@@ -54,6 +54,7 @@ void main_main ()
     int prob_type;
 
     int TimeIntegratorOrder;
+    int quadrature_order;
 
     // TDGL right hand side parameters
     Real epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, epsilon_si, alpha, beta, gamma, BigGamma, g11, g44;
@@ -61,10 +62,48 @@ void main_main ()
     Real lambda;
 
     //Generalized Gauss-Laguerre quadrature nodes and weights
-    amrex::GpuArray<amrex::Real, 10> node{0.22987298, 0.92448155, 2.0994105, 3.7828809, 6.0199180, 8.8803476, 12.474832, 16.990847, 22.791003, 30.806406};
-    amrex::GpuArray<amrex::Real, 10> weight{0.17547081, 0.35522339, 0.25268356, 0.086356103, 0.015109778, 0.0013282156, 5.4187800e-5, 8.7374759e-7, 4.0196999e-9, 2.2922215e-12};
+    amrex::GpuArray<amrex::Real, 50> node;
+    amrex::GpuArray<amrex::Real, 50> weight;
 
-    for(int i = 0; i < 10; i++) amrex::Print() << "(xi, wi[" << i << "]) = (" << node[i] << ", " << weight[i] << ") \n";
+//    node[0] = 0.4313988;
+//    node[1] = 1.7597537;   
+//    node[2] = 4.1044654;
+//    node[3] = 7.7467038;
+//    node[4] = 13.457678;
+//
+//    weight[0] = 0.37045057;
+//    weight[1] = 0.41258437;   
+//    weight[2] = 0.097779820;
+//    weight[3] = 0.0053734153;
+//    weight[4] = 3.8746282e-5;
+//
+    node[0] = 0.22987298;
+    node[1] = 0.92448155;   
+    node[2] = 2.0994105;
+    node[3] = 3.7828809;
+    node[4] = 6.0199180;
+    node[5] = 8.8803476;
+    node[6] = 12.474832;   
+    node[7] = 16.990847;
+    node[8] = 22.791003;
+    node[9] = 30.806406;
+
+    weight[0] = 0.17547081;
+    weight[1] = 0.35522339;   
+    weight[2] = 0.25268356;
+    weight[3] = 0.086356103;
+    weight[4] = 0.015109778;
+    weight[5] = 0.0013282156;
+    weight[6] = 5.4187800e-5;   
+    weight[7] = 8.7374759e-7;
+    weight[8] = 4.0196999e-9;
+    weight[9] = 2.2922215e-12;
+//    aamrex::GpuArray<amrex::Real, 10> weigmrex::GpuArray<amrex::Real, 10> node{0.22987298, 0.92448155, 2.0994105, 3.7828809, 6.0199180, 8.8803476, 12.474832, 16.990847, 22.791003, 30.806406};
+//    amrex::GpuArray<amrex::Real, 10> weight{0.17547081, 0.35522339, 0.25268356, 0.086356103, 0.015109778, 0.0013282156, 5.4187800e-5, 8.7374759e-7, 4.0196999e-9, 2.2922215e-12};
+
+//    amrex::GpuArray<amrex::Real, 20> node{0.11895909, 0.47652107, 1.0747619, 1.9172163, 3.0089954, 4.3569661, 5.9700059, 7.8593597, 10.039135, 12.526998, 15.345160, 18.521823, 22.093355, 26.107702, 30.630041, 35.752806, 41.615202, 48.446589, 56.685020, 67.453384};
+//    amrex::GpuArray<amrex::Real, 20> weight{0.072890473, 0.20464756, 0.25468503, 0.19666756, 0.10429708, 0.039564676, 0.010915968, 0.0021995244, 0.00032237602, 3.4007747e-5, 2.5389052e-6, 1.3097455e-7, 4.5188857e-9, 9.9751430e-11, 1.3250483e-12, 9.7032152e-15, 3.4319323e-17, 4.7174727e-20, 1.6695484e-23, 5.3989143e-28};
+
 
 
     // inputs parameters
@@ -100,6 +139,10 @@ void main_main ()
 
         pp.get("prob_type", prob_type);
 
+        quadrature_order = 5;
+        pp.query("quadrature_order",quadrature_order);
+
+        for(int i = 0; i < quadrature_order; i++) amrex::Print() << "(xi, wi[" << i << "]) = (" << node[i] << ", " << weight[i] << ") \n";
         // Material Properties
 	
         pp.get("epsilon_0",epsilon_0); // epsilon_0
@@ -304,12 +347,12 @@ void main_main ()
     InitializePandRho(prob_type, P_old, Gamma, charge_den, e_den, hole_den, 
 		    SC_lo, SC_hi, DE_lo, DE_hi, 
 		    BigGamma, q, Ec, Ev, kb, T, Nc, Nv,
-                    h, m_n, m_p, node, weight,
+                    h, m_n, m_p, quadrature_order, node, weight,
 		    prob_lo, prob_hi, 
 		    geom);
 
     //Obtain self consisten Phi and rho
-    Real tol = 1.e-4;
+    Real tol = 1.e-5;
     Real err = 1.0;
     int iter = 0;
     //while(iter < 10){
@@ -333,7 +376,7 @@ void main_main ()
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
                    SC_lo, SC_hi,
                    q, Ec, Ev, kb, T, Nc, Nv,
-                   h, m_n, m_p, node, weight,
+                   h, m_n, m_p, quadrature_order, node, weight,
                    prob_lo, prob_hi, geom);
 
         if (SC_hi <= 0.) {
@@ -430,7 +473,7 @@ void main_main ()
             ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
                        SC_lo, SC_hi,
                        q, Ec, Ev, kb, T, Nc, Nv,
-                       h, m_n, m_p, node, weight,
+                       h, m_n, m_p, quadrature_order, node, weight,
                        prob_lo, prob_hi, geom);
 
             if (SC_hi <= 0.) {
@@ -499,7 +542,7 @@ void main_main ()
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
                            SC_lo, SC_hi,
                            q, Ec, Ev, kb, T, Nc, Nv,
-                           h, m_n, m_p, node, weight,
+                           h, m_n, m_p, quadrature_order, node, weight,
                            prob_lo, prob_hi, geom);
 
                 if (SC_hi <= 0.) {
@@ -564,7 +607,7 @@ void main_main ()
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
                            SC_lo, SC_hi,
                            q, Ec, Ev, kb, T, Nc, Nv,
-                           h, m_n, m_p, node, weight,
+                           h, m_n, m_p, quadrature_order, node, weight,
                            prob_lo, prob_hi, geom);
 
                 if (SC_hi <= 0.) {
