@@ -19,12 +19,6 @@ void InitializePandRho(int prob_type,
                    Real        T,
                    Real        Nc,
                    Real        Nv,
-                   Real        h,
-                   Real        m_n,
-                   Real        m_p,
-                   int         quadrature_order,
-                   amrex::GpuArray<amrex::Real, 50> node,
-                   amrex::GpuArray<amrex::Real, 50> weight,
                    amrex::GpuArray<amrex::Real, 3> prob_lo,
                    amrex::GpuArray<amrex::Real, 3> prob_hi,
                    const       Geometry& geom)
@@ -115,47 +109,27 @@ void InitializePandRho(int prob_type,
 
              if(z <= SC_hi){ //SC region
 
-                //Real qPhi = 0.5*(Ec + Ev); //eV
-//                Real qPhi = 0.5*(Ec + Ev); //eV
-//                hole_den_arr(i,j,k) = Nv*exp(-(qPhi - Ev)*1.602e-19/(kb*T));
-//                e_den_arr(i,j,k) = Nc*exp(-(Ec - qPhi)*1.602e-19/(kb*T));
+                  Real Phi = 0.5*(Ec + Ev); //eV
+//                hole_den_arr(i,j,k) = Nv*exp(-(Phi - Ev)*1.602e-19/(kb*T));
+//                e_den_arr(i,j,k) = Nc*exp(-(Ec - Phi)*1.602e-19/(kb*T));
 //                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
 
-                //Fermi-Dirac
-//                Real n_coeff = 8.0*3.14*m_n*kb*T*sqrt(2.0*m_n*kb*T)/h/h/h; //SI
-//                Real p_coeff = 8.0*3.14*m_p*kb*T*sqrt(2.0*m_p*kb*T)/h/h/h; //SI
-                Real qPhi = Ev; //0.5*(Ec + Ev); //eV
-                Real n_coef1 = 2.0*m_n*kb*T/h/h;
-                Real p_coef1 = 2.0*m_p*kb*T/h/h;
-                Real n_coeff = 4.0*3.14*std::pow(n_coef1,1.5);
-                Real p_coeff = 4.0*3.14*std::pow(p_coef1,1.5);
+                  //Approximate FD integral
+                  Real eta_n = q*(Phi - Ec)/(kb*T);
+                  Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2.0)));
+                  Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
+                  Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
 
-//                for (int ii = 0; ii < quadrature_order; ii++)
-//                {
-//
-//                    e_den_arr(i,j,k) += n_coeff*weight[ii]*exp(node[ii])/(1.0 + exp(node[ii] - 1.602e-19*(qPhi - Ec)/(kb*T)));
-//                    hole_den_arr(i,j,k) += p_coeff*weight[ii]*exp(node[ii])/(1.0 + exp(node[ii] - 1.602e-19*(Ev - qPhi)/(kb*T)));
-//                    //hole_den_arr(i,j,k) += p_coeff*weight[ii]*(exp(1.602e-19*(Ev - qPhi)/(kb*T))/(1.0 + exp(-node[ii] + 1.602e-19*(Ev - qPhi)/(kb*T))));
-//               
-//                }
-                    //hole_den_arr(i,j,k) = Nv*exp(-(qPhi - Ev)*1.602e-19/(kb*T));
-                  //amrex::Print() << "ne = " << e_den_arr(i,j,k) << ", np = " << hole_den_arr(i,j,k) << "\n" ;
-                    //Approximate FD integral
-                    Real eta_n = q*(qPhi - Ec)/(kb*T);
-                    Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2)));
-                    Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
-                    Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
+                  e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
 
-                    e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
+                  Real eta_p = q*(Ev - Phi)/(kb*T);
+                  Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2.0)));
+                  Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
+                  Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
 
-                    Real eta_p = q*(Ev - qPhi)/(kb*T);
-                    Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2)));
-                    Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
-                    Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
-
-                    hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
-                    charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
-
+                  hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
+                  charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+ 
 	     } else {
 
                 charge_den_arr(i,j,k) = 0.0;
@@ -183,12 +157,6 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 Real           T,
                 Real           Nc,
                 Real           Nv,
-                Real        h,
-                Real        m_n,
-                Real        m_p,
-                int         quadrature_order,
-                amrex::GpuArray<amrex::Real, 50> node,
-                amrex::GpuArray<amrex::Real, 50> weight,
                 amrex::GpuArray<amrex::Real, 3> prob_lo,
                 amrex::GpuArray<amrex::Real, 3> prob_hi,
                 const          Geometry& geom)
@@ -214,33 +182,12 @@ void ComputeRho(MultiFab&      PoissonPhi,
 
              if(z <= SC_hi){ //SC region
 
+                    //Maxwell-Boltzmann
 //                hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));
 //                e_den_arr(i,j,k) = Nc*exp(-(Ec*1.602e-19 - q*phi(i,j,k))/(kb*T));
 //                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
 
-                //Fermi-Dirac
-//                Real n_coeff = 8.0*3.14*m_n*kb*T*sqrt(2.0*m_n*kb*T)/h/h/h; //SI
-//                Real p_coeff = 8.0*3.14*m_p*kb*T*sqrt(2.0*m_p*kb*T)/h/h/h; //SI
-//                for (int ii = 0; ii < quadrature_order; ii++)
-//                {
-//
-//                    e_den_arr(i,j,k) += n_coeff*weight[ii]*exp(node[ii])/(1.0 + exp(node[ii] - (q*phi(i,j,k) - Ec*1.602e-19)/(kb*T)));
-//                   // hole_den_arr(i,j,k) += p_coeff*weight[ii]*exp(node[ii])*(1.0 - 1.0/(1.0 + exp(node[ii] + 1.602e-19*(q*phi(i,j,k) - Ev)/(kb*T))));
-//                   hole_den_arr(i,j,k) += p_coeff*weight[ii]*(exp((1.602e-19*Ev - q*phi(i,j,k))/(kb*T))/(1.0 + exp(-node[ii] + (1.602e-19*Ev - q*phi(i,j,k))/(kb*T))));
-                     Real n_coef1 = 2.0*m_n*kb*T/h/h;
-                     Real p_coef1 = 2.0*m_p*kb*T/h/h;
-                     Real n_coeff = 4.0*3.14*std::pow(n_coef1,1.5);
-                     Real p_coeff = 4.0*3.14*std::pow(p_coef1,1.5);
-
-//                     for (int ii = 0; ii < quadrature_order; ii++)
-//                     {
-//
-//                         e_den_arr(i,j,k) += n_coeff*weight[ii]*exp(node[ii])/(1.0 + exp(node[ii] - q*(phi(i,j,k) - Ec)/(kb*T)));
-//                         hole_den_arr(i,j,k) += p_coeff*weight[ii]*exp(node[ii])/(1.0 + exp(node[ii] - q*(Ev - phi(i,j,k))/(kb*T)));
-//                     }
-                    //hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));
-                    //amrex::Print() << "ne = " << e_den_arr(i,j,k) << ", np = " << hole_den_arr(i,j,k) << "\n" ;
-                    //Approximate FD integral
+                    //Fermi-Dirac
                     Real eta_n = q*(phi(i,j,k) - Ec)/(kb*T);
                     Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2)));
                     Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
@@ -256,7 +203,8 @@ void ComputeRho(MultiFab&      PoissonPhi,
                     hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
 
                     charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
-             } else {
+
+	     } else {
 
                 charge_den_arr(i,j,k) = 0.0;
 

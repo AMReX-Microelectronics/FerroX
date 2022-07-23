@@ -8,7 +8,7 @@ P_BC_flag_lo = 0 # Polarization BC at FE-DE interface
 P_BC_flag_hi = 1 # Polarization BC at FE-Metal interface
 
 Phi_Bc_lo = 0.0  # Dirichlet BC for Poisson solve at bottom metal contact
-Phi_Bc_hi = 0.0   # Dirichlet BC for Poisson solve at top metal contact
+Phi_Bc_hi = 1.2   # Dirichlet BC for Poisson solve at top metal contact
 
 TimeIntegratorOrder = 1
 
