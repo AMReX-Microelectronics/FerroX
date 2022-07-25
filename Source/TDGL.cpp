@@ -109,11 +109,30 @@ void InitializePandRho(int prob_type,
 
              if(z <= SC_hi){ //SC region
 
-                //Real qPhi = 0.5*(Ec + Ev); //eV
-                Real qPhi = 0.5*(Ec + Ev) - 0.56; //eV
-                hole_den_arr(i,j,k) = Nv*exp(-(qPhi - Ev)*1.602e-19/(kb*T));
-                e_den_arr(i,j,k) = Nc*exp(-(Ec - qPhi)*1.602e-19/(kb*T));
-                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+                  Real Phi = 0.5*(Ec + Ev); //eV
+		  //Maxwell-Boltzmann
+//                hole_den_arr(i,j,k) = Nv*exp(-(Phi - Ev)*1.602e-19/(kb*T));
+//                e_den_arr(i,j,k) = Nc*exp(-(Ec - Phi)*1.602e-19/(kb*T));
+//                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+
+                  //Approximate FD integral 
+		  //Analytical approximation to the Fermi-Dirac integral of order 1/2 is used 
+                  //from the paper: (https://doi.org/10.1016/0375-9601(78)90283-9)
+                  Real eta_n = q*(Phi - Ec)/(kb*T);
+                  Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2.0)));
+                  Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
+                  Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
+
+                  e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
+
+                  Real eta_p = q*(Ev - Phi)/(kb*T);
+                  Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2.0)));
+                  Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
+                  Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
+
+                  hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
+                  charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+ 
 	     } else {
 
                 charge_den_arr(i,j,k) = 0.0;
@@ -134,7 +153,8 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 MultiFab&      p_den,
                 Real           Sc_lo,
                 Real           SC_hi,
-                Real           q, Real Ec,
+                Real           q, 
+                Real           Ec,
                 Real           Ev,
                 Real           kb,
                 Real           T,
@@ -165,10 +185,32 @@ void ComputeRho(MultiFab&      PoissonPhi,
 
              if(z <= SC_hi){ //SC region
 
-                hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));
-                e_den_arr(i,j,k) = Nc*exp(-(Ec*1.602e-19 - q*phi(i,j,k))/(kb*T));
-                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
-             } else {
+                    //Maxwell-Boltzmann
+//                hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));
+//                e_den_arr(i,j,k) = Nc*exp(-(Ec*1.602e-19 - q*phi(i,j,k))/(kb*T));
+//                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+
+                    //Fermi-Dirac
+		    //Approximate FD integral 
+		    //Analytical approximation to the Fermi-Dirac integral of order 1/2 is used i
+                    //from the paper: (https://doi.org/10.1016/0375-9601(78)90283-9)
+                    Real eta_n = q*(phi(i,j,k) - Ec)/(kb*T);
+                    Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2)));
+                    Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
+                    Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
+
+                    e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
+
+                    Real eta_p = q*(Ev - phi(i,j,k))/(kb*T);
+                    Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2)));
+                    Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
+                    Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
+
+                    hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
+
+                    charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+
+	     } else {
 
                 charge_den_arr(i,j,k) = 0.0;
 

@@ -141,13 +141,14 @@ void main_main ()
                 prob_hi[i] = temp[i];
             }
         }
+
     }
 
 
     // For Silicon:
     // Nc = 2.8e25 m^-3
     // Nv = 1.04e25 m^-3
-    // Ec = 1.12eV and Ev = 0, such that band gap Eg = 1.12eV
+    // Band gap Eg = 1.12eV
     // 1eV = 1.602e-19 J
 
     Real Nc = 2.8e25;
@@ -300,7 +301,7 @@ void main_main ()
     Real tol = 1.e-5;
     Real err = 1.0;
     int iter = 0;
-    //while(iter < 10){
+    //while(iter < 2){
     while(err > tol){
    
 	//Compute RHS of Poisson equation
@@ -397,6 +398,7 @@ void main_main ()
         iter = 0;
 
         // iterate to compute Phi^{n+1,*}
+        //while(iter < 2){
         while(err > tol){
    
             // Compute RHS of Poisson equation
@@ -465,6 +467,7 @@ void main_main ()
             iter = 0;
 
             // iterate to compute Phi^{n+1}
+            //while(iter < 2){
             while(err > tol){
    
                 // Compute RHS of Poisson equation
@@ -529,6 +532,7 @@ void main_main ()
             iter = 0;
 
             // iterate to compute Phi^{n+1} with new Dirichlet value
+            //while(iter < 10){
             while(err > tol){
    
                 // Compute RHS of Poisson equation
