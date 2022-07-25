@@ -116,7 +116,8 @@ void InitializePandRho(int prob_type,
 //                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
 
                   //Approximate FD integral 
-		  //Analytical approximation to the Fermi-Dirac integral of order 1/2 is used from the paper: (https://doi.org/10.1016/0375-9601(78)90283-9)
+		  //Analytical approximation to the Fermi-Dirac integral of order 1/2 is used 
+                  //from the paper: (https://doi.org/10.1016/0375-9601(78)90283-9)
                   Real eta_n = q*(Phi - Ec)/(kb*T);
                   Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2.0)));
                   Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
@@ -191,7 +192,8 @@ void ComputeRho(MultiFab&      PoissonPhi,
 
                     //Fermi-Dirac
 		    //Approximate FD integral 
-		    //Analytical approximation to the Fermi-Dirac integral of order 1/2 is used from the paper: (https://doi.org/10.1016/0375-9601(78)90283-9)
+		    //Analytical approximation to the Fermi-Dirac integral of order 1/2 is used i
+                    //from the paper: (https://doi.org/10.1016/0375-9601(78)90283-9)
                     Real eta_n = q*(phi(i,j,k) - Ec)/(kb*T);
                     Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2)));
                     Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
