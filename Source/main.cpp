@@ -6,7 +6,10 @@
 #include <AMReX_MultiFab.H> 
 #include <AMReX_VisMF.H>
 #include "myfunc.H"
-#include "TDGL.H"
+#include "ElectrostaticSolver.H"
+#include "Initialization.H"
+#include "ChargeDensity.H"
+#include "TotalEnergyDensity.H"
 
 using namespace amrex;
 

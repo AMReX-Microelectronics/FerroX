@@ -1,4 +1,10 @@
 CEXE_sources += main.cpp
-CEXE_sources += TDGL.cpp
+CEXE_sources += ElectrostaticSolver.cpp
+CEXE_sources += Initialization.cpp
+CEXE_sources += ChargeDensity.cpp
+CEXE_sources += TotalEnergyDensity.cpp
 CEXE_headers += myfunc.H
-CEXE_headers += TDGL.H
+CEXE_headers += ElectrostaticSolver.H
+CEXE_headers += Initialization.H
+CEXE_headers += ChargeDensity.H
+CEXE_headers += TotalEnergyDensity.H
