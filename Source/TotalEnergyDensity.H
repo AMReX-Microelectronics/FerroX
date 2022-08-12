@@ -72,9 +72,9 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
 
     } else if (z_hi < FE_hi && z_lo > FE_lo) { // inside FE
         return inv_dz * inv_dz * (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1));
-    } else {
-     return 0.;
-    }
+    } 
+        return 0.;
+    
  }
 
  /**
