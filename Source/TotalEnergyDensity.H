@@ -70,7 +70,7 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
         }
 
-    } else if (z < FE_hi && z > FE_lo) { // inside FE
+    } else if (z_hi < FE_hi && z_lo > FE_lo) { // inside FE
         return inv_dz * inv_dz * (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1));
     } else {
      return 0.;
