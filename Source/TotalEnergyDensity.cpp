@@ -61,7 +61,7 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
                     Real P_int = 0.0;
                     d2P_z = 4.*(2.*P_int - 3.*pOld(i,j,k) + pOld(i,j,k+1))/3./dx[2]/dx[2];//2nd Order
                   } else if (P_BC_flag_lo == 1){
-                    Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda);
+                    Real P_int = ( 9.*pOld(i,j,k) - pOld(i,j,k+1) ) / (8. + 3.*dx[2] / lambda);
                     Real dPdz = P_int/lambda;
                     d2P_z = (-dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/dx[2]/dx[2];//2nd Order
                   } else if (P_BC_flag_lo == 2){
@@ -74,11 +74,11 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
 
                 } else if (z_hi > prob_hi[2]){ //Top metal
 
-                        if(P_BC_flag_hi == 0){
+		  if(P_BC_flag_hi == 0){
                     Real P_int = 0.0;
                     d2P_z = 4.*(2.*P_int - 3.*pOld(i,j,k) + pOld(i,j,k-1))/3./dx[2]/dx[2];//2nd Order
                   } else if (P_BC_flag_hi == 1){
-                    Real P_int = pOld(i,j,k)/(1 - dx[2]/2/lambda);
+		    Real P_int = ( 9.*pOld(i,j,k) - pOld(i,j,k-1) ) / (8. - 3.*dx[2] / lambda);
                     Real dPdz = P_int/lambda;
                     d2P_z = (dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k-1))/dx[2]/dx[2];//2nd Order
                   } else if (P_BC_flag_hi == 2){

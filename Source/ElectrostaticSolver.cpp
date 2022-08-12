@@ -46,7 +46,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                      Real P_int = 0.0;
                      RHS(i,j,k) = -(-4.*P_int + 3.*pOld(i,j,k) + pOld(i,j,k+1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k+1)
                    } else if (P_BC_flag_lo == 1){
-                     Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda);
+                    Real P_int = ( 9.*pOld(i,j,k) - pOld(i,j,k+1) ) / (8. + 3.*dx[2] / lambda);
                      Real dPdz = P_int/lambda;
                      RHS(i,j,k) = -(dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/(2.*dx[2]);
                    } else if (P_BC_flag_lo == 2){
@@ -60,7 +60,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                      Real P_int = 0.0;
                      RHS(i,j,k) = -(4.*P_int - 3.*pOld(i,j,k) - pOld(i,j,k-1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
                      } else if (P_BC_flag_hi == 1){
-                     Real P_int = pOld(i,j,k)/(1 - dx[2]/2/lambda);
+		     Real P_int = ( 9.*pOld(i,j,k) - pOld(i,j,k-1) ) / (8. - 3.*dx[2] / lambda);
                      Real dPdz = P_int/lambda;
                      RHS(i,j,k) = -(dx[2]*dPdz + pOld(i,j,k) - pOld(i,j,k-1))/(2.*dx[2]);
                      } else if (P_BC_flag_hi == 2){
