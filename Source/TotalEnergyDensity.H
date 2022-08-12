@@ -53,9 +53,11 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
             return inv_dz * (inv_dz * (F(i,j,k+1) - F(i,j,k)) - F_lo/lambda); // dPdz = P_lo/lambda;
         } else if (P_BC_flag_lo == 2){
             return inv_dz * inv_dz * (F(i,j,k+1) - F(i,j,k)); //dPdz = 0.
+        } else {
+            amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
         }
 
-    } else if (z_hi > FE_hi){ // FE higher boundary
+    } else if (z_hi > FE_hi && z <= FE_hi ){ // FE higher boundary
         if(P_BC_flag_hi == 0){
             Real F_hi = 0.0;
             return inv_dz * inv_dz * 4./3. * (2.*F_hi - 3.*F(i,j,k) + F(i,j,k-1));//2nd Order
@@ -64,10 +66,14 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
             return inv_dz * (inv_dz * (F(i,j,k-1) - F(i,j,k)) + F_hi/lambda); // dPdz = P_hi/lambda;
         } else if (P_BC_flag_hi == 2){
             return inv_dz * inv_dz * (F(i,j,k-1) - F(i,j,k)); //dPdz = 0.
+        } else {
+            amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
         }
 
-    } else{ // inside FE
+    } else if (z < FE_hi && z > FE_lo) { // inside FE
         return inv_dz * inv_dz * (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1));
+    } else {
+     return 0.;
     }
  }
 
@@ -94,6 +100,5 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
 
     } else { // inside stack
         return (1./2.) * inv_dz * (F(i,j,k+1) - F(i,j,k-1)) ;
-
     }
  }
