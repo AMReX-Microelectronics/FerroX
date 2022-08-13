@@ -37,10 +37,7 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
     int const P_BC_flag_lo, int const P_BC_flag_hi,
     amrex::Real const FE_lo, amrex::Real const FE_hi,
     amrex::Real lambda,
-    int const i, int const j, int const k, const Geometry& geom) {
-
-    // extract dx from the geometry object
-    GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+    int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx) {
 
     amrex::Real const inv_dz = 1./dx[2];
 
@@ -55,8 +52,8 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
             return inv_dz * inv_dz * (F(i,j,k+1) - F(i,j,k)); //dPdz = 0.
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
+            return 0.;
         }
-
     } else if (z_hi > FE_hi && z <= FE_hi ){ // FE higher boundary
         if(P_BC_flag_hi == 0){
             Real F_hi = 0.0;
@@ -68,13 +65,14 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
             return inv_dz * inv_dz * (F(i,j,k-1) - F(i,j,k)); //dPdz = 0.
         } else {
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
+            return 0.;
         }
-
+        
     } else if (z_hi < FE_hi && z_lo > FE_lo) { // inside FE
         return inv_dz * inv_dz * (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1));
-    } 
-        return 0.;
-    
+    } else {
+         return 0.;
+    }
  }
 
  /**
@@ -85,10 +83,7 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
     amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
     amrex::GpuArray<amrex::Real, 3> prob_lo, amrex::GpuArray<amrex::Real, 3> prob_hi,
     amrex::Real const Phi_Bc_hi, amrex::Real const Phi_Bc_lo,
-    int const i, int const j, int const k, const Geometry& geom) {
-
-    // extract dx from the geometry object
-    GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+    int const i, int const j, int const k,  amrex::GpuArray<amrex::Real, 3> dx) {
 
     amrex::Real const inv_dz = 1./dx[2];
 

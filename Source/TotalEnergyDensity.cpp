@@ -47,8 +47,8 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
                     (  alpha*pOld(i,j,k) + beta*std::pow(pOld(i,j,k),3.) + gamma*std::pow(pOld(i,j,k),5.)
                      - g44 * (pOld(i+1,j,k) - 2.*pOld(i,j,k) + pOld(i-1,j,k)) / (dx[0]*dx[0])
                      - g44 * (pOld(i,j+1,k) - 2.*pOld(i,j,k) + pOld(i,j-1,k)) / (dx[1]*dx[1])
-                     - g11 * DoubleDPDz(pOld, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j, k, geom)
-                     + DPhiDz(phi, z, z_hi, z_lo, prob_lo, prob_hi, Phi_Bc_hi, Phi_Bc_lo, i, j, k, geom)
+                     - g11 * DoubleDPDz(pOld, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j, k, dx)
+                     + DPhiDz(phi, z, z_hi, z_lo, prob_lo, prob_hi, Phi_Bc_hi, Phi_Bc_lo, i, j, k, dx)
                     );
             });
         }
