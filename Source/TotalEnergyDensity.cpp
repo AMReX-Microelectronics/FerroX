@@ -1,4 +1,5 @@
 #include "TotalEnergyDensity.H"
+#include "DerivativeAlgorithm.H"
 
 void CalculateTDGL_RHS(MultiFab&                GL_rhs,
                 MultiFab&                       P_old,
@@ -49,7 +50,7 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
                      - g44 * (pOld(i+1,j,k) - 2.*pOld(i,j,k) + pOld(i-1,j,k)) / (dx[0]*dx[0])
                      - g44 * (pOld(i,j+1,k) - 2.*pOld(i,j,k) + pOld(i,j-1,k)) / (dx[1]*dx[1])
                      - g11 * DoubleDPDz(pOld, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j, k, dx)
-                     + DPhiDz(phi, z, z_hi, z_lo, prob_lo, prob_hi, Phi_Bc_hi, Phi_Bc_lo, i, j, k, dx)
+                     + DphiDz(phi, z, z_hi, z_lo, prob_lo, prob_hi, Phi_Bc_hi, Phi_Bc_lo, i, j, k, dx)
                     );
             });
         }

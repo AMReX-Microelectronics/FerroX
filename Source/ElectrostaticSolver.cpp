@@ -1,4 +1,5 @@
 #include "ElectrostaticSolver.H"
+#include "DerivativeAlgorithm.H"
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS,
                 MultiFab&                      P_old,
@@ -40,37 +41,8 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
                    RHS(i,j,k) = 0.;
 
-                 } else if (DE_hi > z_lo && DE_hi <= z) { //FE side of FE-DE interface
-
-                   if(P_BC_flag_lo == 0){
-                     Real P_int = 0.0;
-                     RHS(i,j,k) = -(-4.*P_int + 3.*pOld(i,j,k) + pOld(i,j,k+1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k+1)
-                   } else if (P_BC_flag_lo == 1){
-                     Real P_int = pOld(i,j,k)/(1 + dx[2]/2/lambda);
-                     Real dPdz = P_int/lambda;
-                     RHS(i,j,k) = -(dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/(2.*dx[2]);
-                   } else if (P_BC_flag_lo == 2){
-                     Real dPdz = 0.;
-                     RHS(i,j,k) = -(dx[2]*dPdz - pOld(i,j,k) + pOld(i,j,k+1))/(2.*dx[2]);
-                   }
-
-                 } else if (z_hi > prob_hi[2]){ //Top metal
-                    
-	             if(P_BC_flag_hi == 0){
-                     Real P_int = 0.0;
-                     RHS(i,j,k) = -(4.*P_int - 3.*pOld(i,j,k) - pOld(i,j,k-1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
-                     } else if (P_BC_flag_hi == 1){
-                     Real P_int = pOld(i,j,k)/(1 - dx[2]/2/lambda);
-                     Real dPdz = P_int/lambda;
-                     RHS(i,j,k) = -(dx[2]*dPdz + pOld(i,j,k) - pOld(i,j,k-1))/(2.*dx[2]);
-                     } else if (P_BC_flag_hi == 2){
-                     Real dPdz = 0.;
-                     RHS(i,j,k) = -(dx[2]*dPdz + pOld(i,j,k) - pOld(i,j,k-1))/(2.*dx[2]);
-                   }
-
-                 } else{ //inside FE
-
-                   RHS(i,j,k) = -(pOld(i,j,k+1) - pOld(i,j,k-1))/(2.*dx[2]);
+                 } else {
+                   RHS(i,j,k) = - DPDz(pOld, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j, k, dx);
 
                  }
 
