@@ -27,4 +27,3 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
                 amrex::GpuArray<amrex::Real, 3> prob_lo,
                 amrex::GpuArray<amrex::Real, 3> prob_hi,
                 const Geometry& geom);
-                
