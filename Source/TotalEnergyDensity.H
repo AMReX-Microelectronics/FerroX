@@ -60,67 +60,57 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
     amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
     int const P_BC_flag_lo, int const P_BC_flag_hi,
     amrex::Real const FE_lo, amrex::Real const FE_hi,
-    amrex::Real lambda, amrex::Real g11,
+    amrex::Real lambda, 
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
     ) {
-      
-    Real  d2P_z;
         
     if (FE_lo > z_lo && FE_lo <= z) { //FE lower boundary
       
         if(P_BC_flag_lo == 0){
             Real F_lo = 0.0;
-            d2P_z = 4.*(2.*F_lo - 3.*F(i,j,k) + F(i,j,k+1))/3./dx[2]/dx[2];//2nd Order
+            return 4.*(2.*F_lo - 3.*F(i,j,k) + F(i,j,k+1))/3./dx[2]/dx[2];//2nd Order
 
         } else if (P_BC_flag_lo == 1){
 
             Real F_lo = F(i,j,k)/(1 + dx[2]/2/lambda);
-            Real dFdz = F_lo/lambda;
-            d2P_z = (-dx[2]*dFdz - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = P_lo/lambda;
-
-            // Real F_lo = F(i,j,k)/(1 + dx[2]/2/lambda);
-            // d2P_z = (-dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = P_lo/lambda;
+            return (-dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = P_lo/lambda;
 
             // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
-            // d2P_z =  (-dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];// dPdz = P_lo/lambda;
+            // return  (-dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];// dPdz = P_lo/lambda;
 
         } else if (P_BC_flag_lo == 2){
-            d2P_z = ( - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = 0.
+            return ( - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = 0.
 
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
-        }
-        return g11 * d2P_z;     
+            return 0.0;
+        }     
 
     } else if (z_hi > FE_hi && z <= FE_hi ){ // FE higher boundary
 
         if(P_BC_flag_hi == 0){
             Real F_hi = 0.0;
-            d2P_z = 4.*(2.*F_hi - 3.*F(i,j,k) + F(i,j,k-1))/3./dx[2]/dx[2];//2nd Order
+            return 4.*(2.*F_hi - 3.*F(i,j,k) + F(i,j,k-1))/3./dx[2]/dx[2];//2nd Order
 
         } else if (P_BC_flag_hi == 1){
-
-            Real F_hi = F(i,j,k)/(1 - dx[2]/2/lambda);
-            Real dFdz = F_hi/lambda;
-            d2P_z = (dx[2]*dFdz - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = P_hi/lambda;
             
-            // Real F_hi = F(i,j,k)/(1 - dx[2]/2/lambda);
-            // d2P_z = (dx[2]*F_hi/lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = P_hi/lambda;
+            Real F_hi = F(i,j,k)/(1 - dx[2]/2/lambda);
+            return (dx[2]*F_hi/lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = P_hi/lambda;
 
             // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
-            // d2P_z = (dx[2]*F_hi/lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2]; // dPdz = P_hi/lambda;
+            // return (dx[2]*F_hi/lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2]; // dPdz = P_hi/lambda;
 
         } else if (P_BC_flag_hi == 2){
-            d2P_z = ( - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = 0.
+            return ( - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = 0.
 
         } else {
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
+            return 0.0;
         }
-        return g11 * d2P_z;
                   
     } else if (z_hi <= FE_hi && z_lo >= FE_lo) { // inside FE
-        return g11 * (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1)) / (dx[2]*dx[2]);  
-              
+        return (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1)) / (dx[2]*dx[2]);  
+
     } else {
         return 0.0;
     }
