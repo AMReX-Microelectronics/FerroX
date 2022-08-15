@@ -21,6 +21,24 @@
  }
 
 /**
+  * Perform first derivative dF/dx */
+ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+ static amrex::Real DFDx (
+    amrex::Array4<amrex::Real> const& F,
+    int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx) {
+    return (F(i+1,j,k) - F(i-1,j,k))/(2.*dx[0]);
+ }
+
+ /**
+  * Perform first derivative dF/dy */
+ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+ static amrex::Real DFDy (
+    amrex::Array4<amrex::Real> const& F,
+    int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx) {
+    return (F(i,j+1,k) - F(i,j-1,k))/(2.*dx[1]);
+ }
+
+/**
   * Perform first derivative dP/dz */
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
  static amrex::Real DPDz (
@@ -83,6 +101,26 @@
         return 0.0;
     }
  }
+
+/**
+  * Perform double derivative (d^2)P/dx^2 */
+ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+ static amrex::Real DoubleDPDx (
+    amrex::Array4<amrex::Real> const& F, 
+    int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx) {
+        return (F(i+1,j,k) - 2.*F(i,j,k) + F(i-1,j,k)) / (dx[0]*dx[0]);  
+               
+}
+
+/**
+  * Perform double derivative (d^2)P/dy^2 */
+ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+ static amrex::Real DoubleDPDy (
+    amrex::Array4<amrex::Real> const& F, 
+    int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx) {
+        return (F(i,j+1,k) - 2.*F(i,j,k) + F(i,j-1,k)) / (dx[1]*dx[1]);  
+               
+}
 
 /**
   * Perform double derivative (d^2)P/dz^2 */

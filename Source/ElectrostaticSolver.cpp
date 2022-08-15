@@ -2,7 +2,7 @@
 #include "DerivativeAlgorithm.H"
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS,
-                MultiFab&                      P_old,
+                Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 MultiFab&                      rho,
                 Real                           FE_lo,
                 Real                           FE_hi,
@@ -23,7 +23,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
             // extract dx from the geometry object
             GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-            const Array4<Real>& pOld = P_old.array(mfi);
+            const Array4<Real> &pOld_x = P_old[0].array(mfi);
+            const Array4<Real> &pOld_y = P_old[1].array(mfi);
+            const Array4<Real> &pOld_z = P_old[2].array(mfi);
             const Array4<Real>& RHS = PoissonRHS.array(mfi);
             const Array4<Real>& charge_den_arr = rho.array(mfi);
 
@@ -42,7 +44,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                    RHS(i,j,k) = 0.;
 
                  } else {
-                   RHS(i,j,k) = - DPDz(pOld, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j, k, dx);
+                   RHS(i,j,k) = - DPDz(pOld_z, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j, k, dx)
+                                - DFDx(pOld_x, i, j, k, dx)
+                                - DFDy(pOld_y, i, j, k, dx);
 
                  }
 

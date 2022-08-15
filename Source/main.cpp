@@ -59,7 +59,8 @@ void main_main ()
     int TimeIntegratorOrder;
 
     // TDGL right hand side parameters
-    Real epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, epsilon_si, alpha, beta, gamma, BigGamma, g11, g44;
+    Real epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, epsilon_si, alpha, beta, gamma, BigGamma, g11, g44, g44_p, g12;
+    Real alpha_12, alpha_112, alpha_123; // alpha = 2*alpha_1, beta = 4*alpha_11, gamma = 6*alpha_111
     Real DE_lo, DE_hi, FE_lo, FE_hi, SC_lo, SC_hi;
     Real lambda;
 
@@ -106,9 +107,14 @@ void main_main ()
         pp.get("alpha",alpha);
         pp.get("beta",beta);
         pp.get("gamma",gamma);
+        pp.get("alpha_12",alpha_12);
+        pp.get("alpha_112",alpha_112);
+        pp.get("alpha_123",alpha_123);
         pp.get("BigGamma",BigGamma);
         pp.get("g11",g11);
         pp.get("g44",g44);
+        pp.get("g12",g12);
+        pp.get("g44_p",g44_p);
 
 	//stack thickness is assumed to be along z
 	
@@ -208,13 +214,50 @@ void main_main ()
     DistributionMapping dm(ba);
 
     // we allocate two P multifabs; one will store the old state, the other the new.
-    MultiFab P_old(ba, dm, Ncomp, Nghost);
-    MultiFab P_new(ba, dm, Ncomp, Nghost);
-    MultiFab P_new_pre(ba, dm, Ncomp, Nghost);
+    // MultiFab P_old(ba, dm, Ncomp, Nghost);
+    // MultiFab P_new(ba, dm, Ncomp, Nghost);
+    // MultiFab P_new_pre(ba, dm, Ncomp, Nghost);
     MultiFab Gamma(ba, dm, Ncomp, Nghost);
-    MultiFab GL_rhs(ba, dm, Ncomp, Nghost);
-    MultiFab GL_rhs_pre(ba, dm, Ncomp, Nghost);
-    MultiFab GL_rhs_avg(ba, dm, Ncomp, Nghost);
+    // MultiFab GL_rhs(ba, dm, Ncomp, Nghost);
+    // MultiFab GL_rhs_pre(ba, dm, Ncomp, Nghost);
+    // MultiFab GL_rhs_avg(ba, dm, Ncomp, Nghost);
+
+    Array<MultiFab, AMREX_SPACEDIM> P_old;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        P_old[dir].define(ba, dm, Ncomp, Nghost);
+    }
+
+    Array<MultiFab, AMREX_SPACEDIM> P_new;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        P_new[dir].define(ba, dm, Ncomp, Nghost);
+    }
+
+    Array<MultiFab, AMREX_SPACEDIM> P_new_pre;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        P_new_pre[dir].define(ba, dm, Ncomp, Nghost);
+    }
+
+    Array<MultiFab, AMREX_SPACEDIM> GL_rhs;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        GL_rhs[dir].define(ba, dm, Ncomp, Nghost);
+    }
+
+    Array<MultiFab, AMREX_SPACEDIM> GL_rhs_pre;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        GL_rhs_pre[dir].define(ba, dm, Ncomp, Nghost);
+    }
+
+    Array<MultiFab, AMREX_SPACEDIM> GL_rhs_avg;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        GL_rhs_avg[dir].define(ba, dm, Ncomp, Nghost);
+    }
+
     MultiFab PoissonRHS(ba, dm, 1, 0);
     MultiFab PoissonPhi(ba, dm, 1, 1);
     MultiFab PoissonPhi_Prev(ba, dm, 1, 1);
@@ -228,7 +271,6 @@ void main_main ()
     MultiFab charge_den(ba, dm, 1, 0);
 
     MultiFab Plt(ba, dm, 9, 0);
-    MultiFab Plt_debug(ba, dm, 4, 0);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -355,7 +397,20 @@ void main_main ()
     {
         int step = 0;
         const std::string& pltfile = amrex::Concatenate("plt",step,8);
-        MultiFab::Copy(Plt, P_old, 0, 0, 1, 0);  
+        // MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
+        // MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
+        // MultiFab::Copy(Plt, P_old[2], 0, 2, 1, 0);  
+        // MultiFab::Copy(Plt, PoissonPhi, 0, 3, 1, 0);
+        // MultiFab::Copy(Plt, PoissonRHS, 0, 4, 1, 0);
+        // MultiFab::Copy(Plt, Ex, 0, 5, 1, 0);
+        // MultiFab::Copy(Plt, Ey, 0, 6, 1, 0);
+        // MultiFab::Copy(Plt, Ez, 0, 7, 1, 0);
+        // MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
+        // MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
+        // MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
+        // WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
+
+        MultiFab::Copy(Plt, P_old[2], 0, 0, 1, 0);  
         MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
         MultiFab::Copy(Plt, PoissonRHS, 0, 2, 1, 0);
         MultiFab::Copy(Plt, Ex, 0, 3, 1, 0);
@@ -364,7 +419,7 @@ void main_main ()
         MultiFab::Copy(Plt, hole_den, 0, 6, 1, 0);
         MultiFab::Copy(Plt, e_den, 0, 7, 1, 0);
         MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
-        WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
+        WriteSingleLevelPlotfile(pltfile, Plt, {"Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
     }
 
     for (int step = 1; step <= nsteps; ++step)
@@ -372,16 +427,19 @@ void main_main ()
         Real step_strt_time = ParallelDescriptor::second();
 
         // compute f^n = f(P^n,Phi^n)
-        CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, 
-                          FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-                          P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, 
-                          alpha, beta, gamma, g11, g44, lambda, 
-                          prob_lo, prob_hi, 
+        CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma,
+                          FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                          P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi,
+                          alpha, beta, gamma, g11, g44, g44_p, g12, lambda,
+                          alpha_12, alpha_112, alpha_123,
+                          prob_lo,prob_hi,
                           geom);
 
         // P^{n+1,*} = P^n = dt * f^n
-        MultiFab::LinComb(P_new_pre, 1.0, P_old, 0, dt, GL_rhs, 0, 0, 1, Nghost);
-        P_new_pre.FillBoundary(geom.periodicity());   
+        for (int i = 0; i < 3; i++){
+            MultiFab::LinComb(P_new_pre[i], 1.0, P_old[i], 0, dt, GL_rhs[i], 0, 0, 1, Nghost);
+            P_new_pre[i].FillBoundary(geom.periodicity()); 
+        }  
 
 	/**
          * \brief dst = a*x + b*y
@@ -447,24 +505,28 @@ void main_main ()
         if (TimeIntegratorOrder == 1) {
 
             // copy new solution into old solution
-            MultiFab::Copy(P_old, P_new_pre, 0, 0, 1, 0);
-
-            // fill periodic ghost cells
-            P_old.FillBoundary(geom.periodicity());
+            for (int i = 0; i < 3; i++){
+                MultiFab::Copy(P_old[i], P_new_pre[i], 0, 0, 1, 0);
+                // fill periodic ghost cells
+                P_old[i].FillBoundary(geom.periodicity());
+            }
             
         } else {
         
             // compute f^{n+1,*} = f(P^{n+1,*},Phi^{n+1,*})
             CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, 
-                              FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-                              P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi, 
-                              alpha, beta, gamma, g11, g44, lambda, 
-                              prob_lo, prob_hi, 
+                              FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                              P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi,
+                              alpha, beta, gamma, g11, g44, g44_p, g12, lambda,
+                              alpha_12, alpha_112, alpha_123,
+                              prob_lo,prob_hi,
                               geom);
 
             // P^{n+1} = P^n + dt/2 * f^n + dt/2 * f^{n+1,*}
-            MultiFab::LinComb(GL_rhs_avg, 0.5, GL_rhs, 0, 0.5, GL_rhs_pre, 0, 0, 1, Nghost);    
-            MultiFab::LinComb(P_new, 1.0, P_old, 0, dt, GL_rhs_avg, 0, 0, 1, Nghost);
+            for (int i = 0; i < 3; i++){
+                MultiFab::LinComb(GL_rhs_avg[i], 0.5, GL_rhs[i], 0, 0.5, GL_rhs_pre[i], 0, 0, 1, Nghost);    
+                MultiFab::LinComb(P_new[i], 1.0, P_old[i], 0, dt, GL_rhs_avg[i], 0, 0, 1, Nghost);
+            }
         
             err = 1.0;
             iter = 0;
@@ -514,10 +576,11 @@ void main_main ()
             }
             
             // copy new solution into old solution
-            MultiFab::Copy(P_old, P_new, 0, 0, 1, 0);
-
-            // fill periodic ghost cells
-            P_old.FillBoundary(geom.periodicity());
+            for (int i = 0; i < 3; i++){
+                MultiFab::Copy(P_old[i], P_new[i], 0, 0, 1, 0);
+                // fill periodic ghost cells
+                P_old[i].FillBoundary(geom.periodicity());
+            }
 
         }
 
@@ -594,7 +657,20 @@ void main_main ()
         if (plot_int > 0 && step%plot_int == 0)
         {
             const std::string& pltfile = amrex::Concatenate("plt",step,8);
-            MultiFab::Copy(Plt, P_old, 0, 0, 1, 0);  
+            // MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
+            // MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
+            // MultiFab::Copy(Plt, P_old[2], 0, 2, 1, 0);  
+            // MultiFab::Copy(Plt, PoissonPhi, 0, 3, 1, 0);
+            // MultiFab::Copy(Plt, PoissonRHS, 0, 4, 1, 0);
+            // MultiFab::Copy(Plt, Ex, 0, 5, 1, 0);
+            // MultiFab::Copy(Plt, Ey, 0, 6, 1, 0);
+            // MultiFab::Copy(Plt, Ez, 0, 7, 1, 0);
+            // MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
+            // MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
+            // MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
+            // WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
+
+            MultiFab::Copy(Plt, P_old[2], 0, 0, 1, 0);  
             MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
             MultiFab::Copy(Plt, PoissonRHS, 0, 2, 1, 0);
             MultiFab::Copy(Plt, Ex, 0, 3, 1, 0);
@@ -603,7 +679,7 @@ void main_main ()
             MultiFab::Copy(Plt, hole_den, 0, 6, 1, 0);
             MultiFab::Copy(Plt, e_den, 0, 7, 1, 0);
             MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
-            WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
+            WriteSingleLevelPlotfile(pltfile, Plt, {"Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
         }
 
         // MultiFab memory usage

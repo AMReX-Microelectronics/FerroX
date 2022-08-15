@@ -4,8 +4,8 @@
 
 using namespace amrex;
 
-void CalculateTDGL_RHS(MultiFab&                GL_rhs,
-                MultiFab&                       P_old,
+void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
+                Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 MultiFab&                       PoissonPhi,
                 MultiFab&                       Gamma,
                 Real                            FE_lo,
@@ -23,7 +23,12 @@ void CalculateTDGL_RHS(MultiFab&                GL_rhs,
                 Real                            gamma,
                 Real                            g11,
                 Real                            g44,
+                Real                            g44_p,
+                Real                            g12,
                 Real                            lambda,
+                Real                            alpha_12,
+                Real                            alpha_112,
+                Real                            alpha_123,
                 amrex::GpuArray<amrex::Real, 3> prob_lo,
                 amrex::GpuArray<amrex::Real, 3> prob_hi,
                 const Geometry& geom);
