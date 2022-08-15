@@ -85,9 +85,9 @@
  }
 
 /**
-  * Perform double derivative (d^2)P/dz^2 */
+  * Perform second derivative (d^2)P/dz^2 */
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
- static amrex::Real DoubleDPDz (
+ static amrex::Real D2PDz2 (
     amrex::Array4<amrex::Real> const& F,
     amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
     int const P_BC_flag_lo, int const P_BC_flag_hi,
