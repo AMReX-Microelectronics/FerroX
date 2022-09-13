@@ -9,6 +9,8 @@ Phi_Bc_hi = 0.0
 
 TimeIntegratorOrder = 2
 
+prob_type = 2
+
 nsteps = 400
 plot_int = 40
 
