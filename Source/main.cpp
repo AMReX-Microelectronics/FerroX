@@ -329,7 +329,7 @@ void main_main ()
                 P_BC_flag_lo, P_BC_flag_hi, lambda, 
                 prob_lo, prob_hi, geom);
 
-        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, f_prime); // delta = small number? what should delta be ? 
+        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, f_prime); 
 
         mlabec.setACoeffs(0, f_prime);
  
@@ -430,6 +430,18 @@ void main_main ()
                               prob_lo, prob_hi, 
                               geom);
 
+            dF_dPhi(f_prime, PoissonRHS, PoissonRHS_phi_plus_delta,
+                    PoissonPhi, PoissonPhi_plus_delta, delta, 
+                    P_new_pre, charge_den, e_den, hole_den, 
+                    FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                    q, Ec, Ev, kb, T, Nc, Nv,
+                    P_BC_flag_lo, P_BC_flag_hi, lambda, 
+                    prob_lo, prob_hi, geom);
+
+            ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, f_prime); 
+
+            mlabec.setACoeffs(0, f_prime);
+ 
             //Initial guess for phi
             PoissonPhi.setVal(0.);
 
@@ -499,6 +511,18 @@ void main_main ()
                                   prob_lo, prob_hi, 
                                   geom);
 
+                dF_dPhi(f_prime, PoissonRHS, PoissonRHS_phi_plus_delta,
+                        PoissonPhi, PoissonPhi_plus_delta, delta, 
+                        P_new, charge_den, e_den, hole_den, 
+                        FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                        q, Ec, Ev, kb, T, Nc, Nv,
+                        P_BC_flag_lo, P_BC_flag_hi, lambda, 
+                        prob_lo, prob_hi, geom);
+
+                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, f_prime); 
+
+                mlabec.setACoeffs(0, f_prime);
+ 
                 //Initial guess for phi
                 PoissonPhi.setVal(0.);
 
@@ -564,6 +588,18 @@ void main_main ()
                                   prob_lo, prob_hi, 
                                   geom);
 
+                dF_dPhi(f_prime, PoissonRHS, PoissonRHS_phi_plus_delta,
+                        PoissonPhi, PoissonPhi_plus_delta, delta, 
+                        P_new, charge_den, e_den, hole_den, 
+                        FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                        q, Ec, Ev, kb, T, Nc, Nv,
+                        P_BC_flag_lo, P_BC_flag_hi, lambda, 
+                        prob_lo, prob_hi, geom);
+
+                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, f_prime); 
+
+                mlabec.setACoeffs(0, f_prime);
+ 
                 //Initial guess for phi
                 PoissonPhi.setVal(0.);
 
