@@ -1,4 +1,5 @@
 #include "ElectrostaticSolver.H"
+#include "ChargeDensity.H"
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS,
                 MultiFab&                      P_old,
@@ -77,6 +78,91 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
             });
         }
    
+}
+
+void dF_dPhi(MultiFab&      f_prime,
+             MultiFab&      PoissonRHS, 
+             MultiFab&      PoissonRHS_phi_plus_delta, 
+             MultiFab&      PoissonPhi, 
+             MultiFab&      PoissonPhi_plus_delta, 
+             Real           delta,
+             MultiFab&      P_old,
+             MultiFab&      rho,
+             MultiFab&      e_den,
+             MultiFab&      p_den,
+             Real           FE_lo,
+             Real           FE_hi,
+             Real           DE_lo,
+             Real           DE_hi,
+             Real           Sc_lo,
+             Real           SC_hi,
+             Real           q,
+             Real           Ec,
+             Real           Ev,
+             Real           kb,
+             Real           T,
+             Real           Nc,
+             Real           Nv,
+             int                            P_BC_flag_lo,
+             int                            P_BC_flag_hi,
+             Real                           lambda,
+             amrex::GpuArray<amrex::Real, 3> prob_lo,
+             amrex::GpuArray<amrex::Real, 3> prob_hi,
+             const          Geometry& geom)
+
+{
+    
+        MultiFab::Copy(PoissonPhi_plus_delta, PoissonPhi, 0, 0, 1, 0); 
+        PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
+
+        // Calculate rho from Phi in SC region
+        ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, 
+                   Sc_lo, SC_hi,
+                   q, Ec, Ev, kb, T, Nc, Nv, 
+                   prob_lo, prob_hi, geom);
+
+        //Compute RHS of Poisson equation
+        ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, 
+                        FE_lo, FE_hi, DE_lo, DE_hi, Sc_lo, SC_hi, 
+                        P_BC_flag_lo, P_BC_flag_hi, 
+                        lambda, 
+                        prob_lo, prob_hi, 
+                        geom);
+
+
+        for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
+        {
+            const Box& bx = mfi.validbox();
+
+            const Array4<Real>& fprime = f_prime.array(mfi);
+            const Array4<Real>& phi = PoissonPhi.array(mfi);
+            const Array4<Real>& poissonRHS = PoissonRHS.array(mfi);
+            const Array4<Real>& poissonRHS_phi_plus_delta = PoissonRHS_phi_plus_delta.array(mfi);
+
+            amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                   fprime(i,j,k) = 1./delta*(poissonRHS_phi_plus_delta(i,j,k) - poissonRHS(i,j,k));
+            });
+        }
+}
+void ComputePoissonRHS_Newton(MultiFab& PoissonRHS, 
+                              MultiFab& PoissonPhi, 
+                              MultiFab& f_prime)
+{
+     
+        for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
+        {
+            const Box& bx = mfi.validbox();
+
+            const Array4<Real>& phi = PoissonPhi.array(mfi);
+            const Array4<Real>& poissonRHS = PoissonRHS.array(mfi);
+            const Array4<Real>& fprime = f_prime.array(mfi);
+
+            amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                   poissonRHS(i,j,k) = poissonRHS(i,j,k) - fprime(i,j,k)*phi(i,j,k) ;
+            });
+        }
 }
 
 void ComputeEfromPhi(MultiFab&                 PoissonPhi,

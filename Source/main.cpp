@@ -227,6 +227,11 @@ void main_main ()
     MultiFab e_den(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
 
+    //Related to Newtons method
+    MultiFab PoissonPhi_plus_delta(ba, dm, 1, 0);
+    MultiFab PoissonRHS_phi_plus_delta(ba, dm, 1, 0);
+    MultiFab f_prime(ba, dm, 1, 0);
+
     MultiFab Plt(ba, dm, 9, 0);
     MultiFab Plt_debug(ba, dm, 4, 0);
 
@@ -264,7 +269,7 @@ void main_main ()
                  beta_face[2].define(convert(ba,IntVect(AMREX_D_DECL(0,0,1))), dm, 1, 0););
     
     // set cell-centered alpha coefficient to zero
-    alpha_cc.setVal(0.);
+    //alpha_cc.setVal(0.);
 
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
@@ -281,13 +286,12 @@ void main_main ()
     mlabec.setLevelBC(0, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
-    mlabec.setScalars(0.0, 1.0); // A = 0.0, B = 1.0
-    mlabec.setACoeffs(0, alpha_cc); //First argument 0 is lev
+    mlabec.setScalars(-1.0, 1.0); // A = 1.0, B = 1.0
     mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));
 
     //Declare MLMG object
     MLMG mlmg(mlabec);
-//    mlmg.setVerbose(2);
+    mlmg.setVerbose(2);
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -302,8 +306,10 @@ void main_main ()
 
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
+    Real delta = 1.e-6;
     Real err = 1.0;
     int iter = 0;
+    
     //while(iter < 2){
     while(err > tol){
    
@@ -315,6 +321,18 @@ void main_main ()
 			prob_lo, prob_hi, 
 			geom);
 
+        dF_dPhi(f_prime, PoissonRHS, PoissonRHS_phi_plus_delta,
+                PoissonPhi, PoissonPhi_plus_delta, delta, 
+                P_old, charge_den, e_den, hole_den, 
+                FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                q, Ec, Ev, kb, T, Nc, Nv,
+                P_BC_flag_lo, P_BC_flag_hi, lambda, 
+                prob_lo, prob_hi, geom);
+
+        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, f_prime); // delta = small number? what should delta be ? 
+
+        mlabec.setACoeffs(0, f_prime);
+ 
         //Initial guess for phi
         PoissonPhi.setVal(0.);
 
