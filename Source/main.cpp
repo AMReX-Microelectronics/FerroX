@@ -297,7 +297,7 @@ void main_main ()
 
     //Declare MLMG object
     MLMG mlmg(mlabec);
-    mlmg.setVerbose(2);
+    //mlmg.setVerbose(2);
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -645,6 +645,7 @@ void main_main ()
         ParallelDescriptor::ReduceRealMax(step_stop_time);
 
         amrex::Print() << "Advanced step " << step << " in " << step_stop_time << " seconds\n";
+        amrex::Print() << " \n";
 
         // update time
         time = time + dt;
@@ -664,6 +665,8 @@ void main_main ()
             MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
             WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
         }
+
+    }
 
         // MultiFab memory usage
         const int IOProc = ParallelDescriptor::IOProcessorNumber();
@@ -685,11 +688,10 @@ void main_main ()
 
         amrex::Print() << "Curent     FAB megabyte spread across MPI nodes: ["
                        << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
-
-    }
     
         Real total_step_stop_time = ParallelDescriptor::second() - total_step_strt_time;
         ParallelDescriptor::ReduceRealMax(total_step_stop_time);
 
         amrex::Print() << "Total run time " << total_step_stop_time << " seconds\n";
+
 }
