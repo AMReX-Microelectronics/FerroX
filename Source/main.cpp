@@ -44,7 +44,7 @@ void main_main ()
 
     // time step
     Real dt;
-    
+
     amrex::GpuArray<amrex::Real, 3> prob_lo; // physical lo coordinate
     amrex::GpuArray<amrex::Real, 3> prob_hi; // physical hi coordinate
 
@@ -63,6 +63,9 @@ void main_main ()
     Real DE_lo, DE_hi, FE_lo, FE_hi, SC_lo, SC_hi;
     Real lambda;
 
+    //delta for calculating Jacobian in Newton's method for iterative Poisson solve in MFIS
+    Real delta;
+    
     // inputs parameters
     {
         // ParmParse is way of reading inputs from the inputs file
@@ -132,6 +135,9 @@ void main_main ()
 
         // time step
         pp.get("dt",dt);
+
+        delta = 1.e-6;
+        pp.query("delta",delta);
 
         amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
         if (pp.queryarr("prob_lo",temp)) {
@@ -306,7 +312,6 @@ void main_main ()
 
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
-    Real delta = 1.e-6;
     Real err = 1.0;
     int iter = 0;
     
