@@ -292,7 +292,7 @@ void main_main ()
     mlabec.setLevelBC(0, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
-    mlabec.setScalars(-1.0, 1.0); // A = 1.0, B = 1.0
+    mlabec.setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-A*alpha - div beta grad) phi = RHS
     mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));
 
     //Declare MLMG object
