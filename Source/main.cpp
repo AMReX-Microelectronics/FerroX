@@ -136,7 +136,6 @@ void main_main ()
         // time step
         pp.get("dt",dt);
 
-        delta = 1.e-6;
         pp.query("delta",delta);
 
         amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
