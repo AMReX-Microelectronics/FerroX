@@ -64,7 +64,7 @@ void main_main ()
     Real lambda;
 
     //delta for calculating Jacobian in Newton's method for iterative Poisson solve in MFIS
-    Real delta;
+    Real delta = 1.e-6;
     
     // inputs parameters
     {
