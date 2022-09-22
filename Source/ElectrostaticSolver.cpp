@@ -80,38 +80,39 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
    
 }
 
-void dF_dPhi(MultiFab&      f_prime,
-             MultiFab&      PoissonRHS, 
-             MultiFab&      PoissonRHS_phi_plus_delta, 
-             MultiFab&      PoissonPhi, 
-             MultiFab&      PoissonPhi_plus_delta, 
-             Real           delta,
-             MultiFab&      P_old,
-             MultiFab&      rho,
-             MultiFab&      e_den,
-             MultiFab&      p_den,
-             Real           FE_lo,
-             Real           FE_hi,
-             Real           DE_lo,
-             Real           DE_hi,
-             Real           Sc_lo,
-             Real           SC_hi,
-             Real           q,
-             Real           Ec,
-             Real           Ev,
-             Real           kb,
-             Real           T,
-             Real           Nc,
-             Real           Nv,
-             int                            P_BC_flag_lo,
-             int                            P_BC_flag_hi,
-             Real                           lambda,
+void dF_dPhi(MultiFab&            alpha_cc,
+             MultiFab&            PoissonRHS, 
+             MultiFab&            PoissonPhi, 
+             Real                 delta,
+             MultiFab&            P_old,
+             MultiFab&            rho,
+             MultiFab&            e_den,
+             MultiFab&            p_den,
+             Real                 FE_lo,
+             Real                 FE_hi,
+             Real                 DE_lo,
+             Real                 DE_hi,
+             Real                 Sc_lo,
+             Real                 SC_hi,
+             Real                 q,
+             Real                 Ec,
+             Real                 Ev,
+             Real                 kb,
+             Real                 T,
+             Real                 Nc,
+             Real                 Nv,
+             int                  P_BC_flag_lo,
+             int                  P_BC_flag_hi,
+             Real                 lambda,
              amrex::GpuArray<amrex::Real, 3> prob_lo,
              amrex::GpuArray<amrex::Real, 3> prob_hi,
              const          Geometry& geom)
 
 {
-    
+   
+        MultiFab PoissonPhi_plus_delta(PoissonPhi.boxArray(), PoissonPhi.DistributionMap(), 1, 0); 
+        MultiFab PoissonRHS_phi_plus_delta(PoissonRHS.boxArray(), PoissonRHS.DistributionMap(), 1, 0); 
+ 
         MultiFab::Copy(PoissonPhi_plus_delta, PoissonPhi, 0, 0, 1, 0); 
         PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
 
@@ -134,20 +135,20 @@ void dF_dPhi(MultiFab&      f_prime,
         {
             const Box& bx = mfi.validbox();
 
-            const Array4<Real>& fprime = f_prime.array(mfi);
+            const Array4<Real>& alpha = alpha_cc.array(mfi);
             const Array4<Real>& phi = PoissonPhi.array(mfi);
             const Array4<Real>& poissonRHS = PoissonRHS.array(mfi);
             const Array4<Real>& poissonRHS_phi_plus_delta = PoissonRHS_phi_plus_delta.array(mfi);
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                   fprime(i,j,k) = 1./delta*(poissonRHS_phi_plus_delta(i,j,k) - poissonRHS(i,j,k));
+                   alpha(i,j,k) = 1./delta*(poissonRHS_phi_plus_delta(i,j,k) - poissonRHS(i,j,k));
             });
         }
 }
 void ComputePoissonRHS_Newton(MultiFab& PoissonRHS, 
                               MultiFab& PoissonPhi, 
-                              MultiFab& f_prime)
+                              MultiFab& alpha_cc)
 {
      
         for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
@@ -156,11 +157,11 @@ void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
 
             const Array4<Real>& phi = PoissonPhi.array(mfi);
             const Array4<Real>& poissonRHS = PoissonRHS.array(mfi);
-            const Array4<Real>& fprime = f_prime.array(mfi);
+            const Array4<Real>& alpha = alpha_cc.array(mfi);
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                   poissonRHS(i,j,k) = poissonRHS(i,j,k) - fprime(i,j,k)*phi(i,j,k) ;
+                   poissonRHS(i,j,k) = poissonRHS(i,j,k) - alpha(i,j,k)*phi(i,j,k) ;
             });
         }
 }

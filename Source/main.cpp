@@ -63,6 +63,7 @@ void main_main ()
     Real DE_lo, DE_hi, FE_lo, FE_hi, SC_lo, SC_hi;
     Real lambda;
 
+    int mlmg_verbosity = 1;
     //delta for calculating Jacobian in Newton's method for iterative Poisson solve in MFIS
     Real delta = 1.e-6;
     
@@ -98,6 +99,8 @@ void main_main ()
 	pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 
         pp.get("prob_type", prob_type);
+
+        pp.query("mlmg_verbosity",mlmg_verbosity);
 
         // Material Properties
 	
@@ -232,13 +235,7 @@ void main_main ()
     MultiFab e_den(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
 
-    //Related to Newtons method
-    MultiFab PoissonPhi_plus_delta(ba, dm, 1, 0);
-    MultiFab PoissonRHS_phi_plus_delta(ba, dm, 1, 0);
-    MultiFab f_prime(ba, dm, 1, 0);
-
     MultiFab Plt(ba, dm, 9, 0);
-    MultiFab Plt_debug(ba, dm, 4, 0);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -291,12 +288,12 @@ void main_main ()
     mlabec.setLevelBC(0, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
-    mlabec.setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-A*alpha - div beta grad) phi = RHS
+    mlabec.setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
     mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));
 
     //Declare MLMG object
     MLMG mlmg(mlabec);
-    //mlmg.setVerbose(2);
+    mlmg.setVerbose(mlmg_verbosity);
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -325,17 +322,17 @@ void main_main ()
 			prob_lo, prob_hi, 
 			geom);
 
-        dF_dPhi(f_prime, PoissonRHS, PoissonRHS_phi_plus_delta,
-                PoissonPhi, PoissonPhi_plus_delta, delta, 
+        dF_dPhi(alpha_cc, PoissonRHS,
+                PoissonPhi, delta, 
                 P_old, charge_den, e_den, hole_den, 
                 FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
                 q, Ec, Ev, kb, T, Nc, Nv,
                 P_BC_flag_lo, P_BC_flag_hi, lambda, 
                 prob_lo, prob_hi, geom);
 
-        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, f_prime); 
+        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-        mlabec.setACoeffs(0, f_prime);
+        mlabec.setACoeffs(0, alpha_cc);
  
         //Initial guess for phi
         PoissonPhi.setVal(0.);
@@ -434,17 +431,17 @@ void main_main ()
                               prob_lo, prob_hi, 
                               geom);
 
-            dF_dPhi(f_prime, PoissonRHS, PoissonRHS_phi_plus_delta,
-                    PoissonPhi, PoissonPhi_plus_delta, delta, 
+            dF_dPhi(alpha_cc, PoissonRHS,
+                    PoissonPhi, delta, 
                     P_new_pre, charge_den, e_den, hole_den, 
                     FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
                     q, Ec, Ev, kb, T, Nc, Nv,
                     P_BC_flag_lo, P_BC_flag_hi, lambda, 
                     prob_lo, prob_hi, geom);
 
-            ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, f_prime); 
+            ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-            mlabec.setACoeffs(0, f_prime);
+            mlabec.setACoeffs(0, alpha_cc);
  
             //Initial guess for phi
             PoissonPhi.setVal(0.);
@@ -515,17 +512,17 @@ void main_main ()
                                   prob_lo, prob_hi, 
                                   geom);
 
-                dF_dPhi(f_prime, PoissonRHS, PoissonRHS_phi_plus_delta,
-                        PoissonPhi, PoissonPhi_plus_delta, delta, 
+                dF_dPhi(alpha_cc, PoissonRHS,
+                        PoissonPhi, delta, 
                         P_new, charge_den, e_den, hole_den, 
                         FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
                         q, Ec, Ev, kb, T, Nc, Nv,
                         P_BC_flag_lo, P_BC_flag_hi, lambda, 
                         prob_lo, prob_hi, geom);
 
-                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, f_prime); 
+                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-                mlabec.setACoeffs(0, f_prime);
+                mlabec.setACoeffs(0, alpha_cc);
  
                 //Initial guess for phi
                 PoissonPhi.setVal(0.);
@@ -592,17 +589,17 @@ void main_main ()
                                   prob_lo, prob_hi, 
                                   geom);
 
-                dF_dPhi(f_prime, PoissonRHS, PoissonRHS_phi_plus_delta,
-                        PoissonPhi, PoissonPhi_plus_delta, delta, 
+                dF_dPhi(alpha_cc, PoissonRHS,
+                        PoissonPhi, delta, 
                         P_new, charge_den, e_den, hole_den, 
                         FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
                         q, Ec, Ev, kb, T, Nc, Nv,
                         P_BC_flag_lo, P_BC_flag_hi, lambda, 
                         prob_lo, prob_hi, geom);
 
-                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, f_prime); 
+                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-                mlabec.setACoeffs(0, f_prime);
+                mlabec.setACoeffs(0, alpha_cc);
  
                 //Initial guess for phi
                 PoissonPhi.setVal(0.);
@@ -667,30 +664,30 @@ void main_main ()
 
     }
 
-        // MultiFab memory usage
-        const int IOProc = ParallelDescriptor::IOProcessorNumber();
+    // MultiFab memory usage
+    const int IOProc = ParallelDescriptor::IOProcessorNumber();
 
-        amrex::Long min_fab_megabytes  = amrex::TotalBytesAllocatedInFabsHWM()/1048576;
-        amrex::Long max_fab_megabytes  = min_fab_megabytes;
+    amrex::Long min_fab_megabytes  = amrex::TotalBytesAllocatedInFabsHWM()/1048576;
+    amrex::Long max_fab_megabytes  = min_fab_megabytes;
 
-        ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
-        ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
+    ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
+    ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
 
-        amrex::Print() << "High-water FAB megabyte spread across MPI nodes: ["
-                       << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
+    amrex::Print() << "High-water FAB megabyte spread across MPI nodes: ["
+                   << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
 
-        min_fab_megabytes  = amrex::TotalBytesAllocatedInFabs()/1048576;
-        max_fab_megabytes  = min_fab_megabytes;
+    min_fab_megabytes  = amrex::TotalBytesAllocatedInFabs()/1048576;
+    max_fab_megabytes  = min_fab_megabytes;
 
-        ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
-        ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
+    ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
+    ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
 
-        amrex::Print() << "Curent     FAB megabyte spread across MPI nodes: ["
-                       << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
+    amrex::Print() << "Curent     FAB megabyte spread across MPI nodes: ["
+                   << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
     
-        Real total_step_stop_time = ParallelDescriptor::second() - total_step_strt_time;
-        ParallelDescriptor::ReduceRealMax(total_step_stop_time);
+    Real total_step_stop_time = ParallelDescriptor::second() - total_step_strt_time;
+    ParallelDescriptor::ReduceRealMax(total_step_stop_time);
 
-        amrex::Print() << "Total run time " << total_step_stop_time << " seconds\n";
+    amrex::Print() << "Total run time " << total_step_stop_time << " seconds\n";
 
 }
