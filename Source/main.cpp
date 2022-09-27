@@ -269,9 +269,6 @@ void main_main ()
     AMREX_D_TERM(beta_face[0].define(convert(ba,IntVect(AMREX_D_DECL(1,0,0))), dm, 1, 0);,
                  beta_face[1].define(convert(ba,IntVect(AMREX_D_DECL(0,1,0))), dm, 1, 0);,
                  beta_face[2].define(convert(ba,IntVect(AMREX_D_DECL(0,0,1))), dm, 1, 0););
-    
-    // set cell-centered alpha coefficient to zero
-    //alpha_cc.setVal(0.);
 
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
