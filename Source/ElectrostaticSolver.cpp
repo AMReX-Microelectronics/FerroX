@@ -130,21 +130,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
                         prob_lo, prob_hi, 
                         geom);
 
-
-        for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
-        {
-            const Box& bx = mfi.validbox();
-
-            const Array4<Real>& alpha = alpha_cc.array(mfi);
-            const Array4<Real>& phi = PoissonPhi.array(mfi);
-            const Array4<Real>& poissonRHS = PoissonRHS.array(mfi);
-            const Array4<Real>& poissonRHS_phi_plus_delta = PoissonRHS_phi_plus_delta.array(mfi);
-
-            amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                   alpha(i,j,k) = 1./delta*(poissonRHS_phi_plus_delta(i,j,k) - poissonRHS(i,j,k));
-            });
-        }
+        LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 0);
 }
 void ComputePoissonRHS_Newton(MultiFab& PoissonRHS, 
                               MultiFab& PoissonPhi, 
