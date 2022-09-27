@@ -44,7 +44,7 @@ void main_main ()
 
     // time step
     Real dt;
-    
+
     amrex::GpuArray<amrex::Real, 3> prob_lo; // physical lo coordinate
     amrex::GpuArray<amrex::Real, 3> prob_hi; // physical hi coordinate
 
@@ -63,6 +63,10 @@ void main_main ()
     Real DE_lo, DE_hi, FE_lo, FE_hi, SC_lo, SC_hi;
     Real lambda;
 
+    int mlmg_verbosity = 1;
+    //delta for calculating Jacobian in Newton's method for iterative Poisson solve in MFIS
+    Real delta = 1.e-6;
+    
     // inputs parameters
     {
         // ParmParse is way of reading inputs from the inputs file
@@ -95,6 +99,8 @@ void main_main ()
 	pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 
         pp.get("prob_type", prob_type);
+
+        pp.query("mlmg_verbosity",mlmg_verbosity);
 
         // Material Properties
 	
@@ -132,6 +138,8 @@ void main_main ()
 
         // time step
         pp.get("dt",dt);
+
+        pp.query("delta",delta);
 
         amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
         if (pp.queryarr("prob_lo",temp)) {
@@ -228,7 +236,6 @@ void main_main ()
     MultiFab charge_den(ba, dm, 1, 0);
 
     MultiFab Plt(ba, dm, 9, 0);
-    MultiFab Plt_debug(ba, dm, 4, 0);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -262,9 +269,6 @@ void main_main ()
     AMREX_D_TERM(beta_face[0].define(convert(ba,IntVect(AMREX_D_DECL(1,0,0))), dm, 1, 0);,
                  beta_face[1].define(convert(ba,IntVect(AMREX_D_DECL(0,1,0))), dm, 1, 0);,
                  beta_face[2].define(convert(ba,IntVect(AMREX_D_DECL(0,0,1))), dm, 1, 0););
-    
-    // set cell-centered alpha coefficient to zero
-    alpha_cc.setVal(0.);
 
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
@@ -281,13 +285,12 @@ void main_main ()
     mlabec.setLevelBC(0, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
-    mlabec.setScalars(0.0, 1.0); // A = 0.0, B = 1.0
-    mlabec.setACoeffs(0, alpha_cc); //First argument 0 is lev
+    mlabec.setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
     mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));
 
     //Declare MLMG object
     MLMG mlmg(mlabec);
-//    mlmg.setVerbose(2);
+    mlmg.setVerbose(mlmg_verbosity);
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -304,6 +307,7 @@ void main_main ()
     Real tol = 1.e-5;
     Real err = 1.0;
     int iter = 0;
+    
     //while(iter < 2){
     while(err > tol){
    
@@ -315,6 +319,18 @@ void main_main ()
 			prob_lo, prob_hi, 
 			geom);
 
+        dF_dPhi(alpha_cc, PoissonRHS,
+                PoissonPhi, delta, 
+                P_old, charge_den, e_den, hole_den, 
+                FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                q, Ec, Ev, kb, T, Nc, Nv,
+                P_BC_flag_lo, P_BC_flag_hi, lambda, 
+                prob_lo, prob_hi, geom);
+
+        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+
+        mlabec.setACoeffs(0, alpha_cc);
+ 
         //Initial guess for phi
         PoissonPhi.setVal(0.);
 
@@ -412,6 +428,18 @@ void main_main ()
                               prob_lo, prob_hi, 
                               geom);
 
+            dF_dPhi(alpha_cc, PoissonRHS,
+                    PoissonPhi, delta, 
+                    P_new_pre, charge_den, e_den, hole_den, 
+                    FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                    q, Ec, Ev, kb, T, Nc, Nv,
+                    P_BC_flag_lo, P_BC_flag_hi, lambda, 
+                    prob_lo, prob_hi, geom);
+
+            ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+
+            mlabec.setACoeffs(0, alpha_cc);
+ 
             //Initial guess for phi
             PoissonPhi.setVal(0.);
 
@@ -481,6 +509,18 @@ void main_main ()
                                   prob_lo, prob_hi, 
                                   geom);
 
+                dF_dPhi(alpha_cc, PoissonRHS,
+                        PoissonPhi, delta, 
+                        P_new, charge_den, e_den, hole_den, 
+                        FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                        q, Ec, Ev, kb, T, Nc, Nv,
+                        P_BC_flag_lo, P_BC_flag_hi, lambda, 
+                        prob_lo, prob_hi, geom);
+
+                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+
+                mlabec.setACoeffs(0, alpha_cc);
+ 
                 //Initial guess for phi
                 PoissonPhi.setVal(0.);
 
@@ -546,6 +586,18 @@ void main_main ()
                                   prob_lo, prob_hi, 
                                   geom);
 
+                dF_dPhi(alpha_cc, PoissonRHS,
+                        PoissonPhi, delta, 
+                        P_new, charge_den, e_den, hole_den, 
+                        FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
+                        q, Ec, Ev, kb, T, Nc, Nv,
+                        P_BC_flag_lo, P_BC_flag_hi, lambda, 
+                        prob_lo, prob_hi, geom);
+
+                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+
+                mlabec.setACoeffs(0, alpha_cc);
+ 
                 //Initial guess for phi
                 PoissonPhi.setVal(0.);
 
@@ -586,6 +638,7 @@ void main_main ()
         ParallelDescriptor::ReduceRealMax(step_stop_time);
 
         amrex::Print() << "Advanced step " << step << " in " << step_stop_time << " seconds\n";
+        amrex::Print() << " \n";
 
         // update time
         time = time + dt;
@@ -606,31 +659,32 @@ void main_main ()
             WriteSingleLevelPlotfile(pltfile, Plt, {"P","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
         }
 
-        // MultiFab memory usage
-        const int IOProc = ParallelDescriptor::IOProcessorNumber();
-
-        amrex::Long min_fab_megabytes  = amrex::TotalBytesAllocatedInFabsHWM()/1048576;
-        amrex::Long max_fab_megabytes  = min_fab_megabytes;
-
-        ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
-        ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
-
-        amrex::Print() << "High-water FAB megabyte spread across MPI nodes: ["
-                       << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
-
-        min_fab_megabytes  = amrex::TotalBytesAllocatedInFabs()/1048576;
-        max_fab_megabytes  = min_fab_megabytes;
-
-        ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
-        ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
-
-        amrex::Print() << "Curent     FAB megabyte spread across MPI nodes: ["
-                       << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
-
     }
-    
-        Real total_step_stop_time = ParallelDescriptor::second() - total_step_strt_time;
-        ParallelDescriptor::ReduceRealMax(total_step_stop_time);
 
-        amrex::Print() << "Total run time " << total_step_stop_time << " seconds\n";
+    // MultiFab memory usage
+    const int IOProc = ParallelDescriptor::IOProcessorNumber();
+
+    amrex::Long min_fab_megabytes  = amrex::TotalBytesAllocatedInFabsHWM()/1048576;
+    amrex::Long max_fab_megabytes  = min_fab_megabytes;
+
+    ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
+    ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
+
+    amrex::Print() << "High-water FAB megabyte spread across MPI nodes: ["
+                   << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
+
+    min_fab_megabytes  = amrex::TotalBytesAllocatedInFabs()/1048576;
+    max_fab_megabytes  = min_fab_megabytes;
+
+    ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
+    ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
+
+    amrex::Print() << "Curent     FAB megabyte spread across MPI nodes: ["
+                   << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
+    
+    Real total_step_stop_time = ParallelDescriptor::second() - total_step_strt_time;
+    ParallelDescriptor::ReduceRealMax(total_step_stop_time);
+
+    amrex::Print() << "Total run time " << total_step_stop_time << " seconds\n";
+
 }
