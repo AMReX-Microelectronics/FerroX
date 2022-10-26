@@ -270,7 +270,7 @@ void main_main ()
     MultiFab e_den(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
 
-    MultiFab Plt(ba, dm, 9, 0);
+    MultiFab Plt(ba, dm, 11, 0);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -397,29 +397,29 @@ void main_main ()
     {
         int step = 0;
         const std::string& pltfile = amrex::Concatenate("plt",step,8);
-        // MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
-        // MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
-        // MultiFab::Copy(Plt, P_old[2], 0, 2, 1, 0);  
-        // MultiFab::Copy(Plt, PoissonPhi, 0, 3, 1, 0);
-        // MultiFab::Copy(Plt, PoissonRHS, 0, 4, 1, 0);
-        // MultiFab::Copy(Plt, Ex, 0, 5, 1, 0);
-        // MultiFab::Copy(Plt, Ey, 0, 6, 1, 0);
-        // MultiFab::Copy(Plt, Ez, 0, 7, 1, 0);
-        // MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
-        // MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
-        // MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
-        // WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
+        MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
+        MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
+        MultiFab::Copy(Plt, P_old[2], 0, 2, 1, 0);  
+        MultiFab::Copy(Plt, PoissonPhi, 0, 3, 1, 0);
+        MultiFab::Copy(Plt, PoissonRHS, 0, 4, 1, 0);
+        MultiFab::Copy(Plt, Ex, 0, 5, 1, 0);
+        MultiFab::Copy(Plt, Ey, 0, 6, 1, 0);
+        MultiFab::Copy(Plt, Ez, 0, 7, 1, 0);
+        MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
+        MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
+        MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
+        WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
 
-        MultiFab::Copy(Plt, P_old[2], 0, 0, 1, 0);  
-        MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
-        MultiFab::Copy(Plt, PoissonRHS, 0, 2, 1, 0);
-        MultiFab::Copy(Plt, Ex, 0, 3, 1, 0);
-        MultiFab::Copy(Plt, Ey, 0, 4, 1, 0);
-        MultiFab::Copy(Plt, Ez, 0, 5, 1, 0);
-        MultiFab::Copy(Plt, hole_den, 0, 6, 1, 0);
-        MultiFab::Copy(Plt, e_den, 0, 7, 1, 0);
-        MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
-        WriteSingleLevelPlotfile(pltfile, Plt, {"Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
+        //MultiFab::Copy(Plt, P_old[2], 0, 0, 1, 0);  
+        //MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
+        //MultiFab::Copy(Plt, PoissonRHS, 0, 2, 1, 0);
+        //MultiFab::Copy(Plt, Ex, 0, 3, 1, 0);
+        //MultiFab::Copy(Plt, Ey, 0, 4, 1, 0);
+        //MultiFab::Copy(Plt, Ez, 0, 5, 1, 0);
+        //MultiFab::Copy(Plt, hole_den, 0, 6, 1, 0);
+        //MultiFab::Copy(Plt, e_den, 0, 7, 1, 0);
+        //MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
+        //WriteSingleLevelPlotfile(pltfile, Plt, {"Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
     }
 
     for (int step = 1; step <= nsteps; ++step)
@@ -657,29 +657,29 @@ void main_main ()
         if (plot_int > 0 && step%plot_int == 0)
         {
             const std::string& pltfile = amrex::Concatenate("plt",step,8);
-            // MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
-            // MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
-            // MultiFab::Copy(Plt, P_old[2], 0, 2, 1, 0);  
-            // MultiFab::Copy(Plt, PoissonPhi, 0, 3, 1, 0);
-            // MultiFab::Copy(Plt, PoissonRHS, 0, 4, 1, 0);
-            // MultiFab::Copy(Plt, Ex, 0, 5, 1, 0);
-            // MultiFab::Copy(Plt, Ey, 0, 6, 1, 0);
-            // MultiFab::Copy(Plt, Ez, 0, 7, 1, 0);
-            // MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
-            // MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
-            // MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
-            // WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
+            MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
+            MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
+            MultiFab::Copy(Plt, P_old[2], 0, 2, 1, 0);  
+            MultiFab::Copy(Plt, PoissonPhi, 0, 3, 1, 0);
+            MultiFab::Copy(Plt, PoissonRHS, 0, 4, 1, 0);
+            MultiFab::Copy(Plt, Ex, 0, 5, 1, 0);
+            MultiFab::Copy(Plt, Ey, 0, 6, 1, 0);
+            MultiFab::Copy(Plt, Ez, 0, 7, 1, 0);
+            MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
+            MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
+            MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
+            WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
 
-            MultiFab::Copy(Plt, P_old[2], 0, 0, 1, 0);  
-            MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
-            MultiFab::Copy(Plt, PoissonRHS, 0, 2, 1, 0);
-            MultiFab::Copy(Plt, Ex, 0, 3, 1, 0);
-            MultiFab::Copy(Plt, Ey, 0, 4, 1, 0);
-            MultiFab::Copy(Plt, Ez, 0, 5, 1, 0);
-            MultiFab::Copy(Plt, hole_den, 0, 6, 1, 0);
-            MultiFab::Copy(Plt, e_den, 0, 7, 1, 0);
-            MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
-            WriteSingleLevelPlotfile(pltfile, Plt, {"Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
+            //MultiFab::Copy(Plt, P_old[2], 0, 0, 1, 0);  
+            //MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
+            //MultiFab::Copy(Plt, PoissonRHS, 0, 2, 1, 0);
+            //MultiFab::Copy(Plt, Ex, 0, 3, 1, 0);
+            //MultiFab::Copy(Plt, Ey, 0, 4, 1, 0);
+            //MultiFab::Copy(Plt, Ez, 0, 5, 1, 0);
+            //MultiFab::Copy(Plt, hole_den, 0, 6, 1, 0);
+            //MultiFab::Copy(Plt, e_den, 0, 7, 1, 0);
+            //MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
+            //WriteSingleLevelPlotfile(pltfile, Plt, {"Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
         }
 
         // MultiFab memory usage
