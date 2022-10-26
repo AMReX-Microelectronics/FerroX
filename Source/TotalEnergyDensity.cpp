@@ -55,28 +55,28 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
                 Real dFdPx_Landau = alpha*pOld_x(i,j,k) + beta*std::pow(pOld_x(i,j,k),3.) + gamma*std::pow(pOld_x(i,j,k),5.)
-                                    + 2 * alpha_12 * pOld_x(i,j,k) * std::pow(pOld_y(i,j,k),2.)
-                                    + 2 * alpha_12 * pOld_x(i,j,k) * std::pow(pOld_z(i,j,k),2.)
-                                    + 4 * alpha_112 * std::pow(pOld_x(i,j,k),3.) * (std::pow(pOld_y(i,j,k),2.) + std::pow(pOld_z(i,j,k),2.))
-                                    + 2 * alpha_112 * pOld_x(i,j,k) * std::pow(pOld_y(i,j,k),4.)
-                                    + 2 * alpha_112 * pOld_x(i,j,k) * std::pow(pOld_z(i,j,k),4.)
-                                    + 2 * alpha_123 * pOld_x(i,j,k) * std::pow(pOld_y(i,j,k),2.) * std::pow(pOld_z(i,j,k),2.);
+                                    + 2. * alpha_12 * pOld_x(i,j,k) * std::pow(pOld_y(i,j,k),2.)
+                                    + 2. * alpha_12 * pOld_x(i,j,k) * std::pow(pOld_z(i,j,k),2.)
+                                    + 4. * alpha_112 * std::pow(pOld_x(i,j,k),3.) * (std::pow(pOld_y(i,j,k),2.) + std::pow(pOld_z(i,j,k),2.))
+                                    + 2. * alpha_112 * pOld_x(i,j,k) * std::pow(pOld_y(i,j,k),4.)
+                                    + 2. * alpha_112 * pOld_x(i,j,k) * std::pow(pOld_z(i,j,k),4.)
+                                    + 2. * alpha_123 * pOld_x(i,j,k) * std::pow(pOld_y(i,j,k),2.) * std::pow(pOld_z(i,j,k),2.);
 
                 Real dFdPy_Landau = alpha*pOld_y(i,j,k) + beta*std::pow(pOld_y(i,j,k),3.) + gamma*std::pow(pOld_y(i,j,k),5.)
-                                    + 2 * alpha_12 * pOld_y(i,j,k) * std::pow(pOld_x(i,j,k),2.)
-                                    + 2 * alpha_12 * pOld_y(i,j,k) * std::pow(pOld_z(i,j,k),2.)
-                                    + 4 * alpha_112 * std::pow(pOld_y(i,j,k),3.) * (std::pow(pOld_x(i,j,k),2.) + std::pow(pOld_z(i,j,k),2.))
-                                    + 2 * alpha_112 * pOld_y(i,j,k) * std::pow(pOld_x(i,j,k),4.)
-                                    + 2 * alpha_112 * pOld_y(i,j,k) * std::pow(pOld_z(i,j,k),4.)
-                                    + 2 * alpha_123 * pOld_y(i,j,k) * std::pow(pOld_x(i,j,k),2.) * std::pow(pOld_z(i,j,k),2.);
+                                    + 2. * alpha_12 * pOld_y(i,j,k) * std::pow(pOld_x(i,j,k),2.)
+                                    + 2. * alpha_12 * pOld_y(i,j,k) * std::pow(pOld_z(i,j,k),2.)
+                                    + 4. * alpha_112 * std::pow(pOld_y(i,j,k),3.) * (std::pow(pOld_x(i,j,k),2.) + std::pow(pOld_z(i,j,k),2.))
+                                    + 2. * alpha_112 * pOld_y(i,j,k) * std::pow(pOld_x(i,j,k),4.)
+                                    + 2. * alpha_112 * pOld_y(i,j,k) * std::pow(pOld_z(i,j,k),4.)
+                                    + 2. * alpha_123 * pOld_y(i,j,k) * std::pow(pOld_x(i,j,k),2.) * std::pow(pOld_z(i,j,k),2.);
                 
                 Real dFdPz_Landau = alpha*pOld_z(i,j,k) + beta*std::pow(pOld_z(i,j,k),3.) + gamma*std::pow(pOld_z(i,j,k),5.)
-                                    + 2 * alpha_12 * pOld_z(i,j,k) * std::pow(pOld_x(i,j,k),2.)
-                                    + 2 * alpha_12 * pOld_z(i,j,k) * std::pow(pOld_y(i,j,k),2.)
-                                    + 4 * alpha_112 * std::pow(pOld_z(i,j,k),3.) * (std::pow(pOld_x(i,j,k),2.) + std::pow(pOld_y(i,j,k),2.))
-                                    + 2 * alpha_112 * pOld_z(i,j,k) * std::pow(pOld_x(i,j,k),4.)
-                                    + 2 * alpha_112 * pOld_z(i,j,k) * std::pow(pOld_y(i,j,k),4.)
-                                    + 2 * alpha_123 * pOld_z(i,j,k) * std::pow(pOld_x(i,j,k),2.) * std::pow(pOld_y(i,j,k),2.);
+                                    + 2. * alpha_12 * pOld_z(i,j,k) * std::pow(pOld_x(i,j,k),2.)
+                                    + 2. * alpha_12 * pOld_z(i,j,k) * std::pow(pOld_y(i,j,k),2.)
+                                    + 4. * alpha_112 * std::pow(pOld_z(i,j,k),3.) * (std::pow(pOld_x(i,j,k),2.) + std::pow(pOld_y(i,j,k),2.))
+                                    + 2. * alpha_112 * pOld_z(i,j,k) * std::pow(pOld_x(i,j,k),4.)
+                                    + 2. * alpha_112 * pOld_z(i,j,k) * std::pow(pOld_y(i,j,k),4.)
+                                    + 2. * alpha_123 * pOld_z(i,j,k) * std::pow(pOld_x(i,j,k),2.) * std::pow(pOld_y(i,j,k),2.);
 
                 Real dFdPx_grad = - g11 * DoubleDPDx(pOld_x, i, j, k, dx)
                                   - (g44 + g44_p) * DoubleDPDy(pOld_x, i, j, k, dx)
