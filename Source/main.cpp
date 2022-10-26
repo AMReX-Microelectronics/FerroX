@@ -723,17 +723,6 @@ void main_main ()
             MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
             MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
             WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
-
-            //MultiFab::Copy(Plt, P_old[2], 0, 0, 1, 0);  
-            //MultiFab::Copy(Plt, PoissonPhi, 0, 1, 1, 0);
-            //MultiFab::Copy(Plt, PoissonRHS, 0, 2, 1, 0);
-            //MultiFab::Copy(Plt, Ex, 0, 3, 1, 0);
-            //MultiFab::Copy(Plt, Ey, 0, 4, 1, 0);
-            //MultiFab::Copy(Plt, Ez, 0, 5, 1, 0);
-            //MultiFab::Copy(Plt, hole_den, 0, 6, 1, 0);
-            //MultiFab::Copy(Plt, e_den, 0, 7, 1, 0);
-            //MultiFab::Copy(Plt, charge_den, 0, 8, 1, 0);
-            //WriteSingleLevelPlotfile(pltfile, Plt, {"Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
         }
 
     }
