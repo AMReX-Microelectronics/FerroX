@@ -221,14 +221,7 @@ void main_main ()
     // How Boxes are distrubuted among MPI processes
     DistributionMapping dm(ba);
 
-    // we allocate two P multifabs; one will store the old state, the other the new.
-    // MultiFab P_old(ba, dm, Ncomp, Nghost);
-    // MultiFab P_new(ba, dm, Ncomp, Nghost);
-    // MultiFab P_new_pre(ba, dm, Ncomp, Nghost);
     MultiFab Gamma(ba, dm, Ncomp, Nghost);
-    // MultiFab GL_rhs(ba, dm, Ncomp, Nghost);
-    // MultiFab GL_rhs_pre(ba, dm, Ncomp, Nghost);
-    // MultiFab GL_rhs_avg(ba, dm, Ncomp, Nghost);
 
     Array<MultiFab, AMREX_SPACEDIM> P_old;
     for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
