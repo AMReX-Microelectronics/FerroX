@@ -2,7 +2,7 @@
 
 // INITIALIZE rho in SC region
 void InitializePandRho(int prob_type,
-                   MultiFab&   P_old,
+                   Array<MultiFab, AMREX_SPACEDIM> &P_old,
                    MultiFab&   Gamma,
                    MultiFab&   rho,
                    MultiFab&   e_den,
@@ -58,7 +58,9 @@ void InitializePandRho(int prob_type,
         // extract dx from the geometry object
         GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-        const Array4<Real>& pOld = P_old.array(mfi);
+        const Array4<Real> &pOld_x = P_old[0].array(mfi);
+        const Array4<Real> &pOld_y = P_old[1].array(mfi);
+        const Array4<Real> &pOld_z = P_old[2].array(mfi);
         const Array4<Real>& Gam = Gamma.array(mfi);
 
         Real pi = 3.141592653589793238;
@@ -70,21 +72,21 @@ void InitializePandRho(int prob_type,
             Real y = prob_lo[1] + (j+0.5) * dx[1];
             Real z = prob_lo[2] + (k+0.5) * dx[2];
             if (z <= DE_hi) {
-               pOld(i,j,k) = 0.0;
+               pOld_z(i,j,k) = 0.0;
                Gam(i,j,k) = 0.0;
             } else {
                if (prob_type == 1) {  //2D : Initialize uniform P in y direction
 
                   double tmp = (i%3 + k%4)/5.;
-                  pOld(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
+                  pOld_z(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
 
                } else if (prob_type == 2) { // 3D : Initialize random P
 
-                 pOld(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
+                 pOld_z(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
 
                } else if (prob_type == 3) { // smooth P for convergence tests
 
-                 pOld(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi)*(z - 1.5*DE_hi)/(2.0*2.0e-9*2.0e-9)));
+                 pOld_z(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi)*(z - 1.5*DE_hi)/(2.0*2.0e-9*2.0e-9)));
 
                } else {
 
@@ -94,6 +96,8 @@ void InitializePandRho(int prob_type,
 
                Gam(i,j,k) = BigGamma;
             }
+            pOld_x(i,j,k) = 0.0;
+            pOld_y(i,j,k) = 0.0;
         });
         // Calculate charge density from Phi, Nc, Nv, Ec, and Ev
 
@@ -135,8 +139,10 @@ void InitializePandRho(int prob_type,
              }
         });
     }
-    // fill periodic ghost cells
-    P_old.FillBoundary(geom.periodicity());
+    for (int i = 0; i < 3; i++){
+      // fill periodic ghost cells
+      P_old[i].FillBoundary(geom.periodicity());
+    }
 
  }
 

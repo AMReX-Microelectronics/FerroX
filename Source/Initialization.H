@@ -5,7 +5,7 @@
 using namespace amrex;
 
 void InitializePandRho(int prob_type,
-                   MultiFab&   P_old,
+                   Array<MultiFab, AMREX_SPACEDIM> &P_old,
                    MultiFab&   Gamma,
                    MultiFab&   rho,
                    MultiFab&   e_den,

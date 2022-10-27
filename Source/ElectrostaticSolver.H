@@ -5,7 +5,7 @@
 using namespace amrex;
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS, 
-		MultiFab&                      P_old, 
+		Array<MultiFab, AMREX_SPACEDIM> &P_old,
 		MultiFab&                      rho, 
 		Real                           FE_lo, 
 		Real                           FE_hi, 
@@ -53,7 +53,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS, 
              MultiFab&            PoissonPhi, 
              Real                 delta,
-             MultiFab&            P_old,
+	     Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
