@@ -400,7 +400,9 @@ void main_main ()
     }
     
     amrex::Print() << "\n ========= Self-Consistent Initialization of P and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
-    amrex::Print() << "\n ========= Advance Steps  ========== \n"<< std::endl;
+
+    // Calculate E from Phi
+    ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, prob_lo, prob_hi, Phi_Bc_hi, Phi_Bc_lo, geom);
 
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
@@ -420,6 +422,8 @@ void main_main ()
         MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
         WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
     }
+
+    amrex::Print() << "\n ========= Advance Steps  ========== \n"<< std::endl;
 
     for (int step = 1; step <= nsteps; ++step)
     {
@@ -678,7 +682,7 @@ void main_main ()
         }
 
         // Calculate E from Phi
-	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, prob_lo, prob_hi, geom);
+	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, prob_lo, prob_hi, Phi_Bc_hi, Phi_Bc_lo, geom);
 
 	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
         ParallelDescriptor::ReduceRealMax(step_stop_time);

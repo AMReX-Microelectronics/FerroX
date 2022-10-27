@@ -26,6 +26,8 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                 MultiFab&                      Ez,
                 amrex::GpuArray<amrex::Real, 3> prob_lo,
                 amrex::GpuArray<amrex::Real, 3> prob_hi,
+		amrex::Real const Phi_Bc_hi,
+                amrex::Real const Phi_Bc_lo,
                 const Geometry&                 geom);
 
 void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,

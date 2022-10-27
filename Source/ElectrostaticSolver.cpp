@@ -134,6 +134,8 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                 MultiFab&                      Ez,
                 amrex::GpuArray<amrex::Real, 3> prob_lo,
                 amrex::GpuArray<amrex::Real, 3> prob_hi,
+		amrex::Real const Phi_Bc_hi,
+	       	amrex::Real const Phi_Bc_lo,
                 const Geometry&                 geom)
 {
        // Calculate E from Phi
@@ -152,20 +154,14 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                     Ex_arr(i,j,k) = -(phi(i+1,j,k) - phi(i-1,j,k))/(2.*dx[0]);
-                     Ey_arr(i,j,k) = -(phi(i,j+1,k) - phi(i,j-1,k))/(2.*dx[1]);
-
                      Real z    = prob_lo[2] + (k+0.5) * dx[2];
                      Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
                      Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
-                     if(z_lo < prob_lo[2]){ //Bottom Boundary
-                       Ez_arr(i,j,k) = -(phi(i,j,k+1) - phi(i,j,k))/(dx[2]);
-                     } else if (z_hi > prob_hi[2]){ //Top Boundary
-                       Ez_arr(i,j,k) = -(phi(i,j,k) - phi(i,j,k-1))/(dx[2]);
-                     } else{ //inside
-                       Ez_arr(i,j,k) = -(phi(i,j,k+1) - phi(i,j,k-1))/(2.*dx[2]);
-                     }
+                     Ex_arr(i,j,k) = - DFDx(phi, i, j, k, dx);
+                     Ey_arr(i,j,k) = - DFDy(phi, i, j, k, dx);
+                     Ez_arr(i,j,k) = - DphiDz(phi, z, z_hi, z_lo, prob_lo, prob_hi, Phi_Bc_hi, Phi_Bc_lo, i, j, k, dx);
+
              });
         }
 
