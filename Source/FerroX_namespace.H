@@ -30,7 +30,7 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED amrex::Real epsilon_si;
     extern AMREX_GPU_MANAGED amrex::Real alpha; // alpha = 2*alpha_1
     extern AMREX_GPU_MANAGED amrex::Real beta; // beta = 4*alpha_11
-    extern AMREX_GPU_MANAGED amrex::Real gama; // gamma = 6*alpha_111
+    extern AMREX_GPU_MANAGED amrex::Real gamma; // gamma = 6*alpha_111
     extern AMREX_GPU_MANAGED amrex::Real BigGamma;
     extern AMREX_GPU_MANAGED amrex::Real g11;
     extern AMREX_GPU_MANAGED amrex::Real g44;

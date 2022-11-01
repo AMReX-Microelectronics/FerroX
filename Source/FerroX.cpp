@@ -32,7 +32,7 @@ AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_de;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_si;
 AMREX_GPU_MANAGED amrex::Real FerroX::alpha; // alpha = 2*alpha_1
 AMREX_GPU_MANAGED amrex::Real FerroX::beta; // beta = 4*alpha_11
-AMREX_GPU_MANAGED amrex::Real FerroX::gama; // gamma = 6*alpha_111
+AMREX_GPU_MANAGED amrex::Real FerroX::gamma; // gamma = 6*alpha_111
 AMREX_GPU_MANAGED amrex::Real FerroX::BigGamma;
 AMREX_GPU_MANAGED amrex::Real FerroX::g11;
 AMREX_GPU_MANAGED amrex::Real FerroX::g44;
@@ -114,7 +114,7 @@ void InitializeFerroXNamespace() {
      pp.get("epsilon_si",epsilon_si);// epsilon_r for SC
      pp.get("alpha",alpha);
      pp.get("beta",beta);
-     pp.get("gama",gama);
+     pp.get("gamma",FerroX::gamma);
      pp.get("alpha_12",alpha_12);
      pp.get("alpha_112",alpha_112);
      pp.get("alpha_123",alpha_123);
