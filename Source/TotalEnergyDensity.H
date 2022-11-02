@@ -4,7 +4,6 @@
 #include "FerroX.H"
 
 using namespace amrex;
-using namespace FerroX;
 
 void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,

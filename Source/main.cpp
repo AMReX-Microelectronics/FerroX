@@ -13,8 +13,6 @@
 
 using namespace amrex;
 
-using namespace FerroX;
-
 int main (int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
@@ -31,7 +29,7 @@ void main_main ()
     Real total_step_strt_time = ParallelDescriptor::second();
 
     // read in inputs file
-    InitializeFerroXNamespace();
+    InitializeGlobalVariables();
 
     // **********************************
     // SIMULATION SETUP
@@ -45,7 +43,7 @@ void main_main ()
 
     // AMREX_D_DECL means "do the first X of these, where X is the dimensionality of the simulation"
     IntVect dom_lo(AMREX_D_DECL(       0,        0,        0));
-    IntVect dom_hi(AMREX_D_DECL(n_cell[0]-1, n_cell[1]-1, n_cell[2]-1));
+    IntVect dom_hi(AMREX_D_DECL(FerroX::n_cell[0]-1, FerroX::n_cell[1]-1, FerroX::n_cell[2]-1));
 
     // Make a single box that is the entire domain
     Box domain(dom_lo, dom_hi);
@@ -53,12 +51,12 @@ void main_main ()
     // Initialize the boxarray "ba" from the single box "domain"
     ba.define(domain);
 
-    // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
-    ba.maxSize(max_grid_size);
+    // Break up boxarray "ba" into chunks no larger than "FerroX::max_grid_size" along a direction
+    ba.maxSize(FerroX::max_grid_size);
 
     // This defines the physical box in each direction.
-    RealBox real_box({AMREX_D_DECL( prob_lo[0], prob_lo[1], prob_lo[2])},
-                     {AMREX_D_DECL( prob_hi[0], prob_hi[1], prob_hi[2])});
+    RealBox real_box({AMREX_D_DECL( FerroX::prob_lo[0], FerroX::prob_lo[1], FerroX::prob_lo[2])},
+                     {AMREX_D_DECL( FerroX::prob_hi[0], FerroX::prob_hi[1], FerroX::prob_hi[2])});
 
     // periodic in x and y directions
     Array<int,AMREX_SPACEDIM> is_periodic{AMREX_D_DECL(1,1,0)};
@@ -179,7 +177,7 @@ void main_main ()
 
     //Declare MLMG object
     MLMG mlmg(mlabec);
-    mlmg.setVerbose(mlmg_verbosity);
+    mlmg.setVerbose(FerroX::mlmg_verbosity);
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -214,7 +212,7 @@ void main_main ()
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
-        if (SC_hi <= 0.) {
+        if (FerroX::SC_hi <= 0.) {
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
         } else {
@@ -239,8 +237,8 @@ void main_main ()
     // Calculate E from Phi
     ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom);
 
-    // Write a plotfile of the initial data if plot_int > 0
-    if (plot_int > 0)
+    // Write a plotfile of the initial data if FerroX::plot_int > 0
+    if (FerroX::plot_int > 0)
     {
         int step = 0;
         const std::string& pltfile = amrex::Concatenate("plt",step,8);
@@ -260,7 +258,7 @@ void main_main ()
 
     amrex::Print() << "\n ========= Advance Steps  ========== \n"<< std::endl;
 
-    for (int step = 1; step <= nsteps; ++step)
+    for (int step = 1; step <= FerroX::nsteps; ++step)
     {
         Real step_strt_time = ParallelDescriptor::second();
 
@@ -269,7 +267,7 @@ void main_main ()
 
         // P^{n+1,*} = P^n = dt * f^n
         for (int i = 0; i < 3; i++){
-            MultiFab::LinComb(P_new_pre[i], 1.0, P_old[i], 0, dt, GL_rhs[i], 0, 0, 1, Nghost);
+            MultiFab::LinComb(P_new_pre[i], 1.0, P_old[i], 0, FerroX::dt, GL_rhs[i], 0, 0, 1, Nghost);
             P_new_pre[i].FillBoundary(geom.periodicity()); 
         }  
 
@@ -312,7 +310,7 @@ void main_main ()
             // Calculate rho from Phi in SC region
             ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
-            if (SC_hi <= 0.) {
+            if (FerroX::SC_hi <= 0.) {
                 // no semiconductor region; set error to zero so the while loop terminates
                 err = 0.;
             } else {
@@ -332,7 +330,7 @@ void main_main ()
             }
         }
         
-        if (TimeIntegratorOrder == 1) {
+        if (FerroX::TimeIntegratorOrder == 1) {
 
             // copy new solution into old solution
             for (int i = 0; i < 3; i++){
@@ -349,7 +347,7 @@ void main_main ()
             // P^{n+1} = P^n + dt/2 * f^n + dt/2 * f^{n+1,*}
             for (int i = 0; i < 3; i++){
                 MultiFab::LinComb(GL_rhs_avg[i], 0.5, GL_rhs[i], 0, 0.5, GL_rhs_pre[i], 0, 0, 1, Nghost);    
-                MultiFab::LinComb(P_new[i], 1.0, P_old[i], 0, dt, GL_rhs_avg[i], 0, 0, 1, Nghost);
+                MultiFab::LinComb(P_new[i], 1.0, P_old[i], 0, FerroX::dt, GL_rhs_avg[i], 0, 0, 1, Nghost);
             }
         
             err = 1.0;
@@ -377,7 +375,7 @@ void main_main ()
                 // Calculate rho from Phi in SC region
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
-                if (SC_hi <= 0.) {
+                if (FerroX::SC_hi <= 0.) {
                     // no semiconductor region; set error to zero so the while loop terminates
                     err = 0.;
                 } else {
@@ -406,9 +404,9 @@ void main_main ()
 
         }
 
-        if (inc_step > 0 && step%inc_step == 0) {
-            Phi_Bc_hi = Phi_Bc_hi + Phi_Bc_inc;
-            amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
+        if (FerroX::inc_step > 0 && step%FerroX::inc_step == 0) {
+            FerroX::Phi_Bc_hi = FerroX::Phi_Bc_hi + FerroX::Phi_Bc_inc;
+            amrex::Print() << "step = " << step << ", FerroX::Phi_Bc_hi = " << FerroX::Phi_Bc_hi << std::endl;
 
             // Set Dirichlet BC for Phi in z
             SetPhiBC_z(PoissonPhi);
@@ -441,7 +439,7 @@ void main_main ()
                 // Calculate rho from Phi in SC region
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
-                if (SC_hi <= 0.) {
+                if (FerroX::SC_hi <= 0.) {
                     // no semiconductor region; set error to zero so the while loop terminates
                     err = 0.;
                 } else {
@@ -472,10 +470,10 @@ void main_main ()
         amrex::Print() << " \n";
 
         // update time
-        time = time + dt;
+        time = time + FerroX::dt;
 
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
-        if (plot_int > 0 && step%plot_int == 0)
+        if (FerroX::plot_int > 0 && step%FerroX::plot_int == 0)
         {
             const std::string& pltfile = amrex::Concatenate("plt",step,8);
             MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
