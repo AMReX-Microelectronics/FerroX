@@ -9,9 +9,6 @@ AMREX_GPU_MANAGED int FerroX::plot_int;
 // time step
 AMREX_GPU_MANAGED amrex::Real FerroX::dt;
 
-amrex::Vector<int> FerroX::bc_lo;
-amrex::Vector<int> FerroX::bc_hi;
-
 AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::n_cell; // number of cells in each direction
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::prob_lo; // physical lo coordinate
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::prob_hi; // physical hi coordinate
