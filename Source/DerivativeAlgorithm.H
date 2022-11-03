@@ -1,11 +1,13 @@
+#include "FerroX.H"
+
+using namespace FerroX;
+
 /**
   * Perform first derivative dphi/dz */
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
  static amrex::Real DphiDz (
     amrex::Array4<amrex::Real> const& F,
     amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
-    amrex::GpuArray<amrex::Real, 3> prob_lo, amrex::GpuArray<amrex::Real, 3> prob_hi,
-    amrex::Real const Phi_Bc_hi, amrex::Real const Phi_Bc_lo,
     int const i, int const j, int const k,  amrex::GpuArray<amrex::Real, 3> dx) {
 
     if (z_lo < prob_lo[2]){ // bottom metal
@@ -44,9 +46,6 @@
  static amrex::Real DPDz (
     amrex::Array4<amrex::Real> const& F,
     amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
-    int const P_BC_flag_lo, int const P_BC_flag_hi,
-    amrex::Real const FE_lo, amrex::Real const FE_hi,
-    amrex::Real lambda, 
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
 ) {
 
@@ -128,9 +127,6 @@
  static amrex::Real DoubleDPDz (
     amrex::Array4<amrex::Real> const& F,
     amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
-    int const P_BC_flag_lo, int const P_BC_flag_hi,
-    amrex::Real const FE_lo, amrex::Real const FE_hi,
-    amrex::Real lambda, 
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
     ) {
         

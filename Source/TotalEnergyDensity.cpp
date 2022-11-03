@@ -5,29 +5,6 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 MultiFab&                       PoissonPhi,
                 MultiFab&                       Gamma,
-                Real                            FE_lo,
-                Real                            FE_hi,
-                Real                            DE_lo,
-                Real                            DE_hi,
-                Real                            SC_lo,
-                Real                            SC_hi,
-                int                             P_BC_flag_lo,
-                int                             P_BC_flag_hi,
-                Real                            Phi_Bc_lo,
-                Real                            Phi_Bc_hi,
-                Real                            alpha,
-                Real                            beta,
-                Real                            gamma,
-                Real                            g11,
-                Real                            g44,
-                Real                            g44_p,
-                Real                            g12,
-                Real                            lambda,
-                Real                            alpha_12,
-                Real                            alpha_112,
-                Real                            alpha_123,
-                amrex::GpuArray<amrex::Real, 3> prob_lo,
-                amrex::GpuArray<amrex::Real, 3> prob_hi,
                 const Geometry& geom)
 {
         // loop over boxes
@@ -54,7 +31,7 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
                 Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
-                Real dFdPx_Landau = alpha*pOld_x(i,j,k) + beta*std::pow(pOld_x(i,j,k),3.) + gamma*std::pow(pOld_x(i,j,k),5.)
+                Real dFdPx_Landau = alpha*pOld_x(i,j,k) + beta*std::pow(pOld_x(i,j,k),3.) + FerroX::gamma*std::pow(pOld_x(i,j,k),5.)
                                     + 2. * alpha_12 * pOld_x(i,j,k) * std::pow(pOld_y(i,j,k),2.)
                                     + 2. * alpha_12 * pOld_x(i,j,k) * std::pow(pOld_z(i,j,k),2.)
                                     + 4. * alpha_112 * std::pow(pOld_x(i,j,k),3.) * (std::pow(pOld_y(i,j,k),2.) + std::pow(pOld_z(i,j,k),2.))
@@ -62,7 +39,7 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                                     + 2. * alpha_112 * pOld_x(i,j,k) * std::pow(pOld_z(i,j,k),4.)
                                     + 2. * alpha_123 * pOld_x(i,j,k) * std::pow(pOld_y(i,j,k),2.) * std::pow(pOld_z(i,j,k),2.);
 
-                Real dFdPy_Landau = alpha*pOld_y(i,j,k) + beta*std::pow(pOld_y(i,j,k),3.) + gamma*std::pow(pOld_y(i,j,k),5.)
+                Real dFdPy_Landau = alpha*pOld_y(i,j,k) + beta*std::pow(pOld_y(i,j,k),3.) + FerroX::gamma*std::pow(pOld_y(i,j,k),5.)
                                     + 2. * alpha_12 * pOld_y(i,j,k) * std::pow(pOld_x(i,j,k),2.)
                                     + 2. * alpha_12 * pOld_y(i,j,k) * std::pow(pOld_z(i,j,k),2.)
                                     + 4. * alpha_112 * std::pow(pOld_y(i,j,k),3.) * (std::pow(pOld_x(i,j,k),2.) + std::pow(pOld_z(i,j,k),2.))
@@ -70,7 +47,7 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                                     + 2. * alpha_112 * pOld_y(i,j,k) * std::pow(pOld_z(i,j,k),4.)
                                     + 2. * alpha_123 * pOld_y(i,j,k) * std::pow(pOld_x(i,j,k),2.) * std::pow(pOld_z(i,j,k),2.);
                 
-                Real dFdPz_Landau = alpha*pOld_z(i,j,k) + beta*std::pow(pOld_z(i,j,k),3.) + gamma*std::pow(pOld_z(i,j,k),5.)
+                Real dFdPz_Landau = alpha*pOld_z(i,j,k) + beta*std::pow(pOld_z(i,j,k),3.) + FerroX::gamma*std::pow(pOld_z(i,j,k),5.)
                                     + 2. * alpha_12 * pOld_z(i,j,k) * std::pow(pOld_x(i,j,k),2.)
                                     + 2. * alpha_12 * pOld_z(i,j,k) * std::pow(pOld_y(i,j,k),2.)
                                     + 4. * alpha_112 * std::pow(pOld_z(i,j,k),3.) * (std::pow(pOld_x(i,j,k),2.) + std::pow(pOld_y(i,j,k),2.))
@@ -80,25 +57,25 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
 
                 Real dFdPx_grad = - g11 * DoubleDPDx(pOld_x, i, j, k, dx)
                                   - (g44 + g44_p) * DoubleDPDy(pOld_x, i, j, k, dx)
-                                  - (g44 + g44_p) * DoubleDPDz(pOld_x, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j, k, dx)
+                                  - (g44 + g44_p) * DoubleDPDz(pOld_x, z, z_hi, z_lo, i, j, k, dx)
                                   - (g12 + g44 - g44_p) * (DFDy(pOld_y, i+1, j, k, dx) - DFDy(pOld_y, i-1, j, k, dx)) / 2. /dx[0];
-                                  - (g12 + g44 - g44_p) * (DPDz(pOld_z, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i+1, j, k, dx)
-                                                         - DPDz(pOld_z, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i-1, j, k, dx)) / 2. /dx[0]; // d2P/dxdz
+                                  - (g12 + g44 - g44_p) * (DPDz(pOld_z, z, z_hi, z_lo, i+1, j, k, dx)
+                                                         - DPDz(pOld_z, z, z_hi, z_lo, i-1, j, k, dx)) / 2. /dx[0]; // d2P/dxdz
                 
                 Real dFdPy_grad = - g11 * DoubleDPDy(pOld_y, i, j, k, dx)
                                   - (g44 - g44_p) * DoubleDPDx(pOld_y, i, j, k, dx)
-                                  - (g44 - g44_p) * DoubleDPDz(pOld_y, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j, k, dx)
+                                  - (g44 - g44_p) * DoubleDPDz(pOld_y, z, z_hi, z_lo, i, j, k, dx)
                                   - (g12 + g44 + g44_p) * (DFDx(pOld_x, i, j+1, k, dx) - DFDx(pOld_x, i, j-1, k, dx)) / 2. / dx[1]
-                                  - (g12 + g44 - g44_p) * (DPDz(pOld_z, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j+1, k, dx) 
-                                                         - DPDz(pOld_z, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j-1, k, dx)) / 2. /dx[1];
+                                  - (g12 + g44 - g44_p) * (DPDz(pOld_z, z, z_hi, z_lo, i, j+1, k, dx) 
+                                                         - DPDz(pOld_z, z, z_hi, z_lo, i, j-1, k, dx)) / 2. /dx[1];
 
-                Real dFdPz_grad = - g11 * DoubleDPDz(pOld_z, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j, k, dx)
+                Real dFdPz_grad = - g11 * DoubleDPDz(pOld_z, z, z_hi, z_lo, i, j, k, dx)
                                   - (g44 - g44_p) * DoubleDPDx(pOld_z, i, j, k, dx)
                                   - (g44 - g44_p) * DoubleDPDy(pOld_z, i, j, k, dx)
-                                  - (g44 + g44_p + g12) * (DPDz(pOld_y, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j+1, k, dx) 
-                                                         - DPDz(pOld_y, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i, j-1, k, dx)) / 2. /dx[1]; // d2P/dydz
-                                  - (g44 + g44_p + g12) * (DPDz(pOld_x, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i+1, j, k, dx) 
-                                                         - DPDz(pOld_x, z, z_hi, z_lo, P_BC_flag_lo, P_BC_flag_hi, FE_lo, FE_hi, lambda, i-1, j, k, dx)) / 2. /dx[0]; // d2P/dxdz
+                                  - (g44 + g44_p + g12) * (DPDz(pOld_y, z, z_hi, z_lo, i, j+1, k, dx) 
+                                                         - DPDz(pOld_y, z, z_hi, z_lo, i, j-1, k, dx)) / 2. /dx[1]; // d2P/dydz
+                                  - (g44 + g44_p + g12) * (DPDz(pOld_x, z, z_hi, z_lo, i+1, j, k, dx) 
+                                                         - DPDz(pOld_x, z, z_hi, z_lo, i-1, j, k, dx)) / 2. /dx[0]; // d2P/dxdz
 
                 GL_RHS_x(i,j,k)  = -1.0 * Gam(i,j,k) *
                     (  dFdPx_Landau
@@ -112,10 +89,12 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                      + DFDy(phi, i, j, k, dx)
                     );
 
+		GL_RHS_x(i,j,k)  = 0.0;
+		GL_RHS_y(i,j,k)  = 0.0;
                 GL_RHS_z(i,j,k)  = -1.0 * Gam(i,j,k) *
                     (  dFdPz_Landau
                      + dFdPz_grad
-                     + DphiDz(phi, z, z_hi, z_lo, prob_lo, prob_hi, Phi_Bc_hi, Phi_Bc_lo, i, j, k, dx)
+                     + DphiDz(phi, z, z_hi, z_lo, i, j, k, dx)
                     );
 
             });

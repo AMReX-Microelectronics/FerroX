@@ -5,13 +5,15 @@
 #include <AMReX_MLMG.H> 
 #include <AMReX_MultiFab.H> 
 #include <AMReX_VisMF.H>
-#include "myfunc.H"
+#include "FerroX.H"
 #include "ElectrostaticSolver.H"
 #include "Initialization.H"
 #include "ChargeDensity.H"
 #include "TotalEnergyDensity.H"
 
 using namespace amrex;
+
+using namespace FerroX;
 
 int main (int argc, char* argv[])
 {
@@ -28,153 +30,8 @@ void main_main ()
 
     Real total_step_strt_time = ParallelDescriptor::second();
 
-    // **********************************
-    // SIMULATION PARAMETERS
-
-    amrex::GpuArray<int, 3> n_cell; // Number of cells in each dimension
-
-    // size of each box (or grid)
-    int max_grid_size;
-
-    // total steps in simulation
-    int nsteps;
-
-    // how often to write a plotfile
-    int plot_int;
-
-    // time step
-    Real dt;
-
-    amrex::GpuArray<amrex::Real, 3> prob_lo; // physical lo coordinate
-    amrex::GpuArray<amrex::Real, 3> prob_hi; // physical hi coordinate
-
-    int P_BC_flag_hi;
-    int P_BC_flag_lo;
-    Real Phi_Bc_hi;
-    Real Phi_Bc_lo;
-    Real Phi_Bc_inc;
-    int inc_step;
-    int prob_type;
-
-    int TimeIntegratorOrder;
-
-    // TDGL right hand side parameters
-    Real epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, epsilon_si, alpha, beta, gamma, BigGamma, g11, g44, g44_p, g12;
-    Real alpha_12, alpha_112, alpha_123; // alpha = 2*alpha_1, beta = 4*alpha_11, gamma = 6*alpha_111
-    Real DE_lo, DE_hi, FE_lo, FE_hi, SC_lo, SC_hi;
-    Real lambda;
-
-    int mlmg_verbosity = 1;
-    //delta for calculating Jacobian in Newton's method for iterative Poisson solve in MFIS
-    Real delta = 1.e-6;
-    
-    // inputs parameters
-    {
-        // ParmParse is way of reading inputs from the inputs file
-        // pp.get means we require the inputs file to have it
-        // pp.query means we optionally need the inputs file to have it - but we must supply a default here
-        ParmParse pp;
-
-        // We need to get n_cell from the inputs file - this is the number of cells on each side of
-        amrex::Vector<int> temp_int(AMREX_SPACEDIM);
-        if (pp.queryarr("n_cell",temp_int)) {
-            for (int i=0; i<AMREX_SPACEDIM; ++i) {
-                n_cell[i] = temp_int[i];
-            }
-        }
-
-        // The domain is broken into boxes of size max_grid_size
-        pp.get("max_grid_size",max_grid_size);
-
-        pp.get("P_BC_flag_hi",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
-        pp.get("P_BC_flag_lo",P_BC_flag_lo); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
-        pp.get("Phi_Bc_hi",Phi_Bc_hi);
-        pp.get("Phi_Bc_lo",Phi_Bc_lo);
-
-        Phi_Bc_inc = 0.;
-        pp.query("Phi_Bc_inc",Phi_Bc_inc);
-
-        inc_step = -1;
-        pp.query("inc_step",inc_step);
-
-	pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
-
-        pp.get("prob_type", prob_type);
-
-        pp.query("mlmg_verbosity",mlmg_verbosity);
-
-        // Material Properties
-	
-        pp.get("epsilon_0",epsilon_0); // epsilon_0
-        pp.get("epsilonX_fe",epsilonX_fe);// epsilon_r for FE
-        pp.get("epsilonZ_fe",epsilonZ_fe);// epsilon_r for FE
-        pp.get("epsilon_de",epsilon_de);// epsilon_r for DE
-        pp.get("epsilon_si",epsilon_si);// epsilon_r for SC
-        pp.get("alpha",alpha);
-        pp.get("beta",beta);
-        pp.get("gamma",gamma);
-        pp.get("alpha_12",alpha_12);
-        pp.get("alpha_112",alpha_112);
-        pp.get("alpha_123",alpha_123);
-        pp.get("BigGamma",BigGamma);
-        pp.get("g11",g11);
-        pp.get("g44",g44);
-        pp.get("g12",g12);
-        pp.get("g44_p",g44_p);
-
-	//stack thickness is assumed to be along z
-	
-        pp.get("DE_lo",DE_lo);
-        pp.get("DE_hi",DE_hi);
-        pp.get("FE_lo",FE_lo);
-        pp.get("FE_hi",FE_hi);
-        pp.get("SC_lo",SC_lo);
-        pp.get("SC_hi",SC_hi);
-
-        pp.get("lambda",lambda);
-
-        // Default nsteps to 10, allow us to set it to something else in the inputs file
-        nsteps = 10;
-        pp.query("nsteps",nsteps);
-
-        // Default plot_int to -1, allow us to set it to something else in the inputs file
-        //  If plot_int < 0 then no plot files will be written
-        plot_int = -1;
-        pp.query("plot_int",plot_int);
-
-        // time step
-        pp.get("dt",dt);
-
-        pp.query("delta",delta);
-
-        amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
-        if (pp.queryarr("prob_lo",temp)) {
-            for (int i=0; i<AMREX_SPACEDIM; ++i) {
-                prob_lo[i] = temp[i];
-            }
-        }
-        if (pp.queryarr("prob_hi",temp)) {
-            for (int i=0; i<AMREX_SPACEDIM; ++i) {
-                prob_hi[i] = temp[i];
-            }
-        }
-
-    }
-
-
-    // For Silicon:
-    // Nc = 2.8e25 m^-3
-    // Nv = 1.04e25 m^-3
-    // Band gap Eg = 1.12eV
-    // 1eV = 1.602e-19 J
-
-    Real Nc = 2.8e25;
-    Real Nv = 1.04e25;
-    Real Ec = 0.56;//*1.602e-19;
-    Real Ev = -0.56;//*1.602e-19;
-    Real q = 1.602e-19; 
-    Real kb = 1.38e-23; // Boltzmann constant
-    Real T = 300; // Room Temp
+    // read in inputs file
+    InitializeFerroXNamespace();
 
     // **********************************
     // SIMULATION SETUP
@@ -308,14 +165,10 @@ void main_main ()
 
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
-    InitializePermittivity(beta_face,
-		        FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
-                        epsilon_0, epsilonX_fe, epsilonZ_fe, epsilon_de, epsilon_si,
-                        prob_lo, prob_hi,
-                        geom);
+    InitializePermittivity(beta_face, geom);
 
     // Set Dirichlet BC for Phi in z
-    SetPhiBC_z(PoissonPhi, n_cell, Phi_Bc_lo, Phi_Bc_hi); 
+    SetPhiBC_z(PoissonPhi); 
     
     // set Dirichlet BC by reading in the ghost cell values
     mlabec.setLevelBC(0, &PoissonPhi);
@@ -333,11 +186,7 @@ void main_main ()
 
     // INITIALIZE P in FE and rho in SC regions
 
-    InitializePandRho(prob_type, P_old, Gamma, charge_den, e_den, hole_den, 
-		    SC_lo, SC_hi, DE_lo, DE_hi, 
-		    BigGamma, q, Ec, Ev, kb, T, Nc, Nv,
-		    prob_lo, prob_hi, 
-		    geom);
+    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom);
 
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
@@ -348,20 +197,9 @@ void main_main ()
     while(err > tol){
    
 	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, charge_den, 
-			FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-			P_BC_flag_lo, P_BC_flag_hi, 
-			lambda, 
-			prob_lo, prob_hi, 
-			geom);
+	ComputePoissonRHS(PoissonRHS, P_old, charge_den, geom);
 
-        dF_dPhi(alpha_cc, PoissonRHS,
-                PoissonPhi, delta, 
-                P_old, charge_den, e_den, hole_den, 
-                FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
-                q, Ec, Ev, kb, T, Nc, Nv,
-                P_BC_flag_lo, P_BC_flag_hi, lambda, 
-                prob_lo, prob_hi, geom);
+        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, geom);
 
         ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -374,10 +212,7 @@ void main_main ()
         mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	
         // Calculate rho from Phi in SC region
-        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
-                   SC_lo, SC_hi,
-                   q, Ec, Ev, kb, T, Nc, Nv,
-                   prob_lo, prob_hi, geom);
+        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
         if (SC_hi <= 0.) {
             // no semiconductor region; set error to zero so the while loop terminates
@@ -402,7 +237,7 @@ void main_main ()
     amrex::Print() << "\n ========= Self-Consistent Initialization of P and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
 
     // Calculate E from Phi
-    ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, prob_lo, prob_hi, Phi_Bc_hi, Phi_Bc_lo, geom);
+    ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom);
 
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
@@ -430,13 +265,7 @@ void main_main ()
         Real step_strt_time = ParallelDescriptor::second();
 
         // compute f^n = f(P^n,Phi^n)
-        CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma,
-                          FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
-                          P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi,
-                          alpha, beta, gamma, g11, g44, g44_p, g12, lambda,
-                          alpha_12, alpha_112, alpha_123,
-                          prob_lo,prob_hi,
-                          geom);
+        CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, geom);
 
         // P^{n+1,*} = P^n = dt * f^n
         for (int i = 0; i < 3; i++){
@@ -466,20 +295,9 @@ void main_main ()
         while(err > tol){
    
             // Compute RHS of Poisson equation
-            ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, 
-                              FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-                              P_BC_flag_lo, P_BC_flag_hi, 
-                              lambda, 
-                              prob_lo, prob_hi, 
-                              geom);
+            ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, geom);
 
-            dF_dPhi(alpha_cc, PoissonRHS,
-                    PoissonPhi, delta, 
-                    P_new_pre, charge_den, e_den, hole_den, 
-                    FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
-                    q, Ec, Ev, kb, T, Nc, Nv,
-                    P_BC_flag_lo, P_BC_flag_hi, lambda, 
-                    prob_lo, prob_hi, geom);
+            dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, geom);
 
             ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -492,10 +310,7 @@ void main_main ()
             mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	
             // Calculate rho from Phi in SC region
-            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
-                       SC_lo, SC_hi,
-                       q, Ec, Ev, kb, T, Nc, Nv,
-                       prob_lo, prob_hi, geom);
+            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
             if (SC_hi <= 0.) {
                 // no semiconductor region; set error to zero so the while loop terminates
@@ -529,13 +344,7 @@ void main_main ()
         } else {
         
             // compute f^{n+1,*} = f(P^{n+1,*},Phi^{n+1,*})
-            CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, 
-                              FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
-                              P_BC_flag_lo, P_BC_flag_hi, Phi_Bc_lo, Phi_Bc_hi,
-                              alpha, beta, gamma, g11, g44, g44_p, g12, lambda,
-                              alpha_12, alpha_112, alpha_123,
-                              prob_lo,prob_hi,
-                              geom);
+            CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, geom);
 
             // P^{n+1} = P^n + dt/2 * f^n + dt/2 * f^{n+1,*}
             for (int i = 0; i < 3; i++){
@@ -551,20 +360,9 @@ void main_main ()
             while(err > tol){
    
                 // Compute RHS of Poisson equation
-                ComputePoissonRHS(PoissonRHS, P_new, charge_den, 
-                                  FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-                                  P_BC_flag_lo, P_BC_flag_hi, 
-                                  lambda, 
-                                  prob_lo, prob_hi, 
-                                  geom);
+                ComputePoissonRHS(PoissonRHS, P_new, charge_den, geom);
 
-                dF_dPhi(alpha_cc, PoissonRHS,
-                        PoissonPhi, delta, 
-                        P_new, charge_den, e_den, hole_den, 
-                        FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
-                        q, Ec, Ev, kb, T, Nc, Nv,
-                        P_BC_flag_lo, P_BC_flag_hi, lambda, 
-                        prob_lo, prob_hi, geom);
+                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, geom);
 
                 ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -577,10 +375,7 @@ void main_main ()
                 mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	
                 // Calculate rho from Phi in SC region
-                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
-                           SC_lo, SC_hi,
-                           q, Ec, Ev, kb, T, Nc, Nv,
-                           prob_lo, prob_hi, geom);
+                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
                 if (SC_hi <= 0.) {
                     // no semiconductor region; set error to zero so the while loop terminates
@@ -616,7 +411,7 @@ void main_main ()
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
 
             // Set Dirichlet BC for Phi in z
-            SetPhiBC_z(PoissonPhi, n_cell, Phi_Bc_lo, Phi_Bc_hi);
+            SetPhiBC_z(PoissonPhi);
     
             // set Dirichlet BC by reading in the ghost cell values
             mlabec.setLevelBC(0, &PoissonPhi);
@@ -629,20 +424,9 @@ void main_main ()
             while(err > tol){
    
                 // Compute RHS of Poisson equation
-                ComputePoissonRHS(PoissonRHS, P_new, charge_den, 
-                                  FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi, 
-                                  P_BC_flag_lo, P_BC_flag_hi, 
-                                  lambda, 
-                                  prob_lo, prob_hi, 
-                                  geom);
+                ComputePoissonRHS(PoissonRHS, P_new, charge_den, geom);
 
-                dF_dPhi(alpha_cc, PoissonRHS,
-                        PoissonPhi, delta, 
-                        P_new, charge_den, e_den, hole_den, 
-                        FE_lo, FE_hi, DE_lo, DE_hi, SC_lo, SC_hi,
-                        q, Ec, Ev, kb, T, Nc, Nv,
-                        P_BC_flag_lo, P_BC_flag_hi, lambda, 
-                        prob_lo, prob_hi, geom);
+                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, geom);
 
                 ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -655,10 +439,7 @@ void main_main ()
                 mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	
                 // Calculate rho from Phi in SC region
-                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, 
-                           SC_lo, SC_hi,
-                           q, Ec, Ev, kb, T, Nc, Nv,
-                           prob_lo, prob_hi, geom);
+                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
                 if (SC_hi <= 0.) {
                     // no semiconductor region; set error to zero so the while loop terminates
@@ -682,7 +463,7 @@ void main_main ()
         }
 
         // Calculate E from Phi
-	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, prob_lo, prob_hi, Phi_Bc_hi, Phi_Bc_lo, geom);
+	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom);
 
 	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
         ParallelDescriptor::ReduceRealMax(step_stop_time);
