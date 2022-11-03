@@ -21,15 +21,15 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                 Real z    = FerroX::prob_lo[2] + (k+0.5) * dx[2];
-                 Real z_hi = FerroX::prob_lo[2] + (k+1.5) * dx[2];
-                 Real z_lo = FerroX::prob_lo[2] + (k-0.5) * dx[2];
+                 Real z    = prob_lo[2] + (k+0.5) * dx[2];
+                 Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
+                 Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
-                 if(z <= FerroX::SC_hi){ //SC region
+                 if(z <= SC_hi){ //SC region
 
                    RHS(i,j,k) = charge_den_arr(i,j,k);
 
-                 } else if(z < FerroX::DE_hi){ //DE region
+                 } else if(z < DE_hi){ //DE region
 
                    RHS(i,j,k) = 0.;
 
@@ -60,7 +60,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
         MultiFab PoissonRHS_phi_plus_delta(PoissonRHS.boxArray(), PoissonRHS.DistributionMap(), 1, 0); 
  
         MultiFab::Copy(PoissonPhi_plus_delta, PoissonPhi, 0, 0, 1, 0); 
-        PoissonPhi_plus_delta.plus(FerroX::delta, 0, 1, 0); 
+        PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
 
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, geom);
@@ -68,7 +68,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
         //Compute RHS of Poisson equation
         ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, geom);
 
-        MultiFab::LinComb(alpha_cc, 1./FerroX::delta, PoissonRHS_phi_plus_delta, 0, -1./FerroX::delta, PoissonRHS, 0, 0, 1, 0);
+        MultiFab::LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 0);
 }
 void ComputePoissonRHS_Newton(MultiFab& PoissonRHS, 
                               MultiFab& PoissonPhi, 
@@ -112,9 +112,9 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                     Real z    = FerroX::prob_lo[2] + (k+0.5) * dx[2];
-                     Real z_hi = FerroX::prob_lo[2] + (k+1.5) * dx[2];
-                     Real z_lo = FerroX::prob_lo[2] + (k-0.5) * dx[2];
+                     Real z    = prob_lo[2] + (k+0.5) * dx[2];
+                     Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
+                     Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
                      Ex_arr(i,j,k) = - DFDx(phi, i, j, k, dx);
                      Ey_arr(i,j,k) = - DFDy(phi, i, j, k, dx);
@@ -146,18 +146,18 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
           //Real z = prob_lo[2] + k * dx[2];
-          Real z = FerroX::prob_lo[2] + (k+0.5) * dx[2];
-          if(z < FerroX::SC_hi-small) {
-             beta_f0(i,j,k) = FerroX::epsilon_si * FerroX::epsilon_0; //SC layer
-	  } else if(z >= FerroX::SC_hi-small && z < FerroX::SC_hi+small){
-             beta_f0(i,j,k) = 0.5*(FerroX::epsilon_de + FerroX::epsilon_si) * FerroX::epsilon_0; //SC-DE interface
-          } else if(z < FerroX::DE_hi-small) {
-             beta_f0(i,j,k) = FerroX::epsilon_de * FerroX::epsilon_0; //DE layer
-	  } else if(z >= FerroX::DE_hi-small && z < FerroX::DE_hi+small){
-             beta_f0(i,j,k) = 0.5*(FerroX::epsilon_de + FerroX::epsilonX_fe) * FerroX::epsilon_0; //DE-FE interface
-             //beta_f0(i,j,k) = FerroX::epsilon_de * FerroX::epsilon_0; //DE-FE interface
+          Real z = prob_lo[2] + (k+0.5) * dx[2];
+          if(z < SC_hi-small) {
+             beta_f0(i,j,k) = epsilon_si * epsilon_0; //SC layer
+	  } else if(z >= SC_hi-small && z < SC_hi+small){
+             beta_f0(i,j,k) = 0.5*(epsilon_de + epsilon_si) * epsilon_0; //SC-DE interface
+          } else if(z < DE_hi-small) {
+             beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE layer
+	  } else if(z >= DE_hi-small && z < DE_hi+small){
+             beta_f0(i,j,k) = 0.5*(epsilon_de + epsilonX_fe) * epsilon_0; //DE-FE interface
+             //beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE-FE interface
           } else {
-             beta_f0(i,j,k) = FerroX::epsilonX_fe * FerroX::epsilon_0; //FE layer
+             beta_f0(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
           }
         });
     }
@@ -171,18 +171,18 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
           //Real z = prob_lo[2] + k * dx[2];
-          Real z = FerroX::prob_lo[2] + (k+0.5) * dx[2];
-          if(z < FerroX::SC_hi-small) {
-             beta_f1(i,j,k) = FerroX::epsilon_si * FerroX::epsilon_0; //SC layer
-	  } else if(z >= FerroX::SC_hi-small && z < FerroX::SC_hi+small){
-             beta_f1(i,j,k) = 0.5*(FerroX::epsilon_de + FerroX::epsilon_si) * FerroX::epsilon_0; //SC-DE interface
-          } else if(z < FerroX::DE_hi-small) {
-             beta_f1(i,j,k) = FerroX::epsilon_de * FerroX::epsilon_0; //DE layer
-	  } else if(z >= FerroX::DE_hi-small && z < FerroX::DE_hi+small){
-             //beta_f1(i,j,k) = FerroX::epsilon_de * FerroX::epsilon_0; //DE-FE interface
-             beta_f1(i,j,k) = 0.5*(FerroX::epsilon_de + FerroX::epsilonX_fe) * FerroX::epsilon_0; //DE-FE interface
+          Real z = prob_lo[2] + (k+0.5) * dx[2];
+          if(z < SC_hi-small) {
+             beta_f1(i,j,k) = epsilon_si * epsilon_0; //SC layer
+	  } else if(z >= SC_hi-small && z < SC_hi+small){
+             beta_f1(i,j,k) = 0.5*(epsilon_de + epsilon_si) * epsilon_0; //SC-DE interface
+          } else if(z < DE_hi-small) {
+             beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE layer
+	  } else if(z >= DE_hi-small && z < DE_hi+small){
+             //beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE-FE interface
+             beta_f1(i,j,k) = 0.5*(epsilon_de + epsilonX_fe) * epsilon_0; //DE-FE interface
           } else {
-             beta_f1(i,j,k) = FerroX::epsilonX_fe * FerroX::epsilon_0; //FE layer
+             beta_f1(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
           }
         });
     }
@@ -195,18 +195,18 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-          Real z = FerroX::prob_lo[2] + k * dx[2];
-          if(z < FerroX::SC_hi-small) {
-             beta_f2(i,j,k) = FerroX::epsilon_si * FerroX::epsilon_0; //SC layer
-	  } else if(z >= FerroX::SC_hi-small && z < FerroX::SC_hi+small && FerroX::SC_hi > FerroX::prob_lo[2]+small){
-             beta_f2(i,j,k) = 0.5*(FerroX::epsilon_de + FerroX::epsilon_si) * FerroX::epsilon_0; //SC-DE interface
-          } else if(z < FerroX::DE_hi-small) {
-             beta_f2(i,j,k) = FerroX::epsilon_de * FerroX::epsilon_0; //DE layer
-	  } else if(z >= FerroX::DE_hi-small && z < FerroX::DE_hi+small){
-             beta_f2(i,j,k) = 0.5*(FerroX::epsilon_de + FerroX::epsilonZ_fe) * FerroX::epsilon_0; //DE-FE interface
-             //beta_f2(i,j,k) = FerroX::epsilon_de * FerroX::epsilon_0; //DE-FE interface
+          Real z = prob_lo[2] + k * dx[2];
+          if(z < SC_hi-small) {
+             beta_f2(i,j,k) = epsilon_si * epsilon_0; //SC layer
+	  } else if(z >= SC_hi-small && z < SC_hi+small && SC_hi > prob_lo[2]+small){
+             beta_f2(i,j,k) = 0.5*(epsilon_de + epsilon_si) * epsilon_0; //SC-DE interface
+          } else if(z < DE_hi-small) {
+             beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
+	  } else if(z >= DE_hi-small && z < DE_hi+small){
+             beta_f2(i,j,k) = 0.5*(epsilon_de + epsilonZ_fe) * epsilon_0; //DE-FE interface
+             //beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE-FE interface
           } else {
-             beta_f2(i,j,k) = FerroX::epsilonZ_fe * FerroX::epsilon_0; //FE layer
+             beta_f2(i,j,k) = epsilonZ_fe * epsilon_0; //FE layer
           }
         });
     }
@@ -224,9 +224,9 @@ void SetPhiBC_z(MultiFab& PoissonPhi)
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
           if(k < 0) {
-            Phi(i,j,k) = FerroX::Phi_Bc_lo;
-          } else if(k >= FerroX::n_cell[2]){
-            Phi(i,j,k) = FerroX::Phi_Bc_hi;
+            Phi(i,j,k) = Phi_Bc_lo;
+          } else if(k >= n_cell[2]){
+            Phi(i,j,k) = Phi_Bc_hi;
           }
         });
     }

@@ -4,6 +4,7 @@
 #include "FerroX.H"
 
 using namespace amrex;
+using namespace FerroX;
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS, 
 		Array<MultiFab, AMREX_SPACEDIM> &P_old,

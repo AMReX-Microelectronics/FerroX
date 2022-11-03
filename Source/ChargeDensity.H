@@ -4,6 +4,7 @@
 #include "FerroX.H"
 
 using namespace amrex;
+using namespace FerroX;
 
 void ComputeRho(MultiFab&      PoissonPhi,
                 MultiFab&      rho,

@@ -1,5 +1,6 @@
 #include "FerroX.H"
 
+using namespace FerroX;
 
 /**
   * Perform first derivative dphi/dz */
@@ -9,12 +10,12 @@
     amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
     int const i, int const j, int const k,  amrex::GpuArray<amrex::Real, 3> dx) {
 
-    if (z_lo < FerroX::prob_lo[2]){ // bottom metal
+    if (z_lo < prob_lo[2]){ // bottom metal
         // return (1./3.) * inv_dz * (-4.*Phi_Bc_lo + 3.*F(i,j,k) + F(i,j,k+1));
-        return (-4.*FerroX::Phi_Bc_lo + 3.*F(i,j,k) + F(i,j,k+1)) / (3. * dx[2]);
+        return (-4.*Phi_Bc_lo + 3.*F(i,j,k) + F(i,j,k+1)) / (3. * dx[2]);
         
-    } else if (z_hi > FerroX::prob_hi[2]){ // top metal
-        return (4.*FerroX::Phi_Bc_hi - 3.*F(i,j,k) - F(i,j,k-1)) / (3. * dx[2]);
+    } else if (z_hi > prob_hi[2]){ // top metal
+        return (4.*Phi_Bc_hi - 3.*F(i,j,k) - F(i,j,k-1)) / (3. * dx[2]);
 
     } else { // inside stack
         return (F(i,j,k+1) - F(i,j,k-1)) / (2. * dx[2]);
@@ -48,21 +49,21 @@
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
 ) {
 
-    if (FerroX::FE_lo > z_lo && FerroX::FE_lo <= z) { //FE lower boundary
+    if (FE_lo > z_lo && FE_lo <= z) { //FE lower boundary
       
-        if(FerroX::P_BC_flag_lo == 0){
+        if(P_BC_flag_lo == 0){
             Real F_lo = 0.0;
             return (-4.*F_lo + 3.*F(i,j,k) + F(i,j,k+1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k+1)
 
-        } else if (FerroX::P_BC_flag_lo == 1){
+        } else if (P_BC_flag_lo == 1){
 
-            Real F_lo = F(i,j,k)/(1 + dx[2]/2/FerroX::lambda);
-            return (dx[2]*F_lo/FerroX::lambda - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]); // dP/dz = P_lo/lambda;
+            Real F_lo = F(i,j,k)/(1 + dx[2]/2/lambda);
+            return (dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]); // dP/dz = P_lo/lambda;
 
             // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
             // return  -(dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]);// dP/dz = P_lo/lambda;
 
-        } else if (FerroX::P_BC_flag_lo == 2){
+        } else if (P_BC_flag_lo == 2){
             return ( - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]); //dPdz = 0.
 
         } else {
@@ -70,21 +71,21 @@
             return 0.0;
         }     
 
-    } else if (z_hi > FerroX::FE_hi && z <= FerroX::FE_hi ){ // FE higher boundary
+    } else if (z_hi > FE_hi && z <= FE_hi ){ // FE higher boundary
 
-        if(FerroX::P_BC_flag_hi == 0){
+        if(P_BC_flag_hi == 0){
             Real F_hi = 0.0;
             return (4.*F_hi - 3.*F(i,j,k) - F(i,j,k-1))/(3.*dx[2]);//2nd order using three point stencil using 0, pOld(i,j,k), and pOld(i,j,k-1)
 
-        } else if (FerroX::P_BC_flag_hi == 1){
+        } else if (P_BC_flag_hi == 1){
             
-            Real F_hi = F(i,j,k)/(1 - dx[2]/2/FerroX::lambda);
-            return (dx[2]*F_hi/FerroX::lambda + F(i,j,k) - F(i,j,k-1))/(2.*dx[2]);//dPdz = P_hi/lambda;
+            Real F_hi = F(i,j,k)/(1 - dx[2]/2/lambda);
+            return (dx[2]*F_hi/lambda + F(i,j,k) - F(i,j,k-1))/(2.*dx[2]);//dPdz = P_hi/lambda;
 
             // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
             // return  -(dx[2]*F_hi/lambda + F(i,j,k) - F(i,j,k-1))/(2.*dx[2]);//dPdz = P_hi/lambda;
 
-        } else if (FerroX::P_BC_flag_hi == 2){
+        } else if (P_BC_flag_hi == 2){
             return (F(i,j,k) - F(i,j,k-1))/(2.*dx[2]); //dPdz = 0.
 
         } else {
@@ -92,7 +93,7 @@
             return 0.0;
         }
                   
-    } else if (z_hi <= FerroX::FE_hi && z_lo >= FerroX::FE_lo) { // inside FE
+    } else if (z_hi <= FE_hi && z_lo >= FE_lo) { // inside FE
         return (F(i,j,k+1) - F(i,j,k-1))/(2.*dx[2]);
 
     } else {
@@ -129,21 +130,21 @@
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
     ) {
         
-    if (FerroX::FE_lo > z_lo && FerroX::FE_lo <= z) { //FE lower boundary
+    if (FE_lo > z_lo && FE_lo <= z) { //FE lower boundary
       
-        if(FerroX::P_BC_flag_lo == 0){
+        if(P_BC_flag_lo == 0){
             Real F_lo = 0.0;
             return 4.*(2.*F_lo - 3.*F(i,j,k) + F(i,j,k+1))/3./dx[2]/dx[2];//2nd Order
 
-        } else if (FerroX::P_BC_flag_lo == 1){
+        } else if (P_BC_flag_lo == 1){
 
-            Real F_lo = F(i,j,k)/(1 + dx[2]/2/FerroX::lambda);
-            return (-dx[2]*F_lo/FerroX::lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = P_lo/lambda;
+            Real F_lo = F(i,j,k)/(1 + dx[2]/2/lambda);
+            return (-dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = P_lo/lambda;
 
             // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
             // return  (-dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];// dPdz = P_lo/lambda;
 
-        } else if (FerroX::P_BC_flag_lo == 2){
+        } else if (P_BC_flag_lo == 2){
             return ( - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = 0.
 
         } else {
@@ -151,21 +152,21 @@
             return 0.0;
         }     
 
-    } else if (z_hi > FerroX::FE_hi && z <= FerroX::FE_hi ){ // FE higher boundary
+    } else if (z_hi > FE_hi && z <= FE_hi ){ // FE higher boundary
 
-        if(FerroX::P_BC_flag_hi == 0){
+        if(P_BC_flag_hi == 0){
             Real F_hi = 0.0;
             return 4.*(2.*F_hi - 3.*F(i,j,k) + F(i,j,k-1))/3./dx[2]/dx[2];//2nd Order
 
-        } else if (FerroX::P_BC_flag_hi == 1){
+        } else if (P_BC_flag_hi == 1){
             
-            Real F_hi = F(i,j,k)/(1 - dx[2]/2/FerroX::lambda);
-            return (dx[2]*F_hi/FerroX::lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = P_hi/lambda;
+            Real F_hi = F(i,j,k)/(1 - dx[2]/2/lambda);
+            return (dx[2]*F_hi/lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = P_hi/lambda;
 
             // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
             // return (dx[2]*F_hi/lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2]; // dPdz = P_hi/lambda;
 
-        } else if (FerroX::P_BC_flag_hi == 2){
+        } else if (P_BC_flag_hi == 2){
             return ( - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = 0.
 
         } else {
@@ -173,7 +174,7 @@
             return 0.0;
         }
                   
-    } else if (z_hi <= FerroX::FE_hi && z_lo >= FerroX::FE_lo) { // inside FE
+    } else if (z_hi <= FE_hi && z_lo >= FE_lo) { // inside FE
         return (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1)) / (dx[2]*dx[2]);  
 
     } else {

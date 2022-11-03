@@ -9,19 +9,19 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                    const       Geometry& geom)
 {
 
-    if (FerroX::prob_type == 1) {  //2D : Initialize uniform P in y direction
+    if (prob_type == 1) {  //2D : Initialize uniform P in y direction
 
        amrex::Print() << "==================================""\n"
                          "P is initialized for a 2D problem." "\n"
                          "==================================""\n" ;
 
-    } else if (FerroX::prob_type == 2) { // 3D : Initialize random P
+    } else if (prob_type == 2) { // 3D : Initialize random P
 
        amrex::Print() << "==================================""\n"
                          "P is initialized for a 3D problem." "\n"
                          "==================================""\n" ;
 
-    } else if (FerroX::prob_type == 3) {
+    } else if (prob_type == 3) {
 
        amrex::Print() << "==================================""\n"
                          "P is initialized for convergence test." "\n"
@@ -53,25 +53,25 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
         // set P
         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
-            Real x = FerroX::prob_lo[0] + (i+0.5) * dx[0];
-            Real y = FerroX::prob_lo[1] + (j+0.5) * dx[1];
-            Real z = FerroX::prob_lo[2] + (k+0.5) * dx[2];
-            if (z <= FerroX::DE_hi) {
+            Real x = prob_lo[0] + (i+0.5) * dx[0];
+            Real y = prob_lo[1] + (j+0.5) * dx[1];
+            Real z = prob_lo[2] + (k+0.5) * dx[2];
+            if (z <= DE_hi) {
                pOld_z(i,j,k) = 0.0;
                Gam(i,j,k) = 0.0;
             } else {
-               if (FerroX::prob_type == 1) {  //2D : Initialize uniform P in y direction
+               if (prob_type == 1) {  //2D : Initialize uniform P in y direction
 
                   double tmp = (i%3 + k%4)/5.;
                   pOld_z(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
 
-               } else if (FerroX::prob_type == 2) { // 3D : Initialize random P
+               } else if (prob_type == 2) { // 3D : Initialize random P
 
                  pOld_z(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
 
-               } else if (FerroX::prob_type == 3) { // smooth P for convergence tests
+               } else if (prob_type == 3) { // smooth P for convergence tests
 
-                 pOld_z(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*FerroX::DE_hi)*(z - 1.5*FerroX::DE_hi)/(2.0*2.0e-9*2.0e-9)));
+                 pOld_z(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi)*(z - 1.5*DE_hi)/(2.0*2.0e-9*2.0e-9)));
 
                } else {
 
@@ -79,7 +79,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
                }
 
-               Gam(i,j,k) = FerroX::BigGamma;
+               Gam(i,j,k) = BigGamma;
             }
             pOld_x(i,j,k) = 0.0;
             pOld_y(i,j,k) = 0.0;
@@ -92,30 +92,30 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
-             Real z = FerroX::prob_lo[2] + (k+0.5) * dx[2];
+             Real z = prob_lo[2] + (k+0.5) * dx[2];
 
-             if(z <= FerroX::SC_hi){ //SC region
+             if(z <= SC_hi){ //SC region
 
-                  Real Phi = 0.5*(FerroX::Ec + FerroX::Ev); //eV
+                  Real Phi = 0.5*(Ec + Ev); //eV
 //                hole_den_arr(i,j,k) = Nv*exp(-(Phi - Ev)*1.602e-19/(kb*T));
 //                e_den_arr(i,j,k) = Nc*exp(-(Ec - Phi)*1.602e-19/(kb*T));
 //                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
 
                   //Approximate FD integral
-                  Real eta_n = FerroX::q*(Phi - FerroX::Ec)/(FerroX::kb*FerroX::T);
+                  Real eta_n = q*(Phi - Ec)/(kb*T);
                   Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2.0)));
                   Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
                   Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
 
-                  e_den_arr(i,j,k) = 2.0/sqrt(3.14)*FerroX::Nc*FD_half_n;
+                  e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
 
-                  Real eta_p = FerroX::q*(FerroX::Ev - Phi)/(FerroX::kb*FerroX::T);
+                  Real eta_p = q*(Ev - Phi)/(kb*T);
                   Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2.0)));
                   Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
                   Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
 
-                  hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*FerroX::Nv*FD_half_p;
-                  charge_den_arr(i,j,k) = FerroX::q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+                  hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
+                  charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
 
              } else {
 
