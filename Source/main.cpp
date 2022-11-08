@@ -429,7 +429,6 @@ void main_main ()
 
         // Increment Phi_Bc_hi for applied voltage sweep. Following implementation allows for one sweep of a triangular wave profile
         if (inc_step > 0 && step%inc_step == 0) {
-           std::cout << "inc_step_sign_change = " << inc_step_sign_change << std::endl;
            if(step <= inc_step_sign_change)
 	   {
               Phi_Bc_hi += Phi_Bc_inc;
