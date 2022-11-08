@@ -406,8 +406,38 @@ void main_main ()
 
         }
 
+        // Calculate E from Phi
+	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom);
+
+        // Write a plotfile of the current data (plot_int was defined in the inputs file)
+        if (plot_int > 0 && step%plot_int == 0)
+        {
+            const std::string& pltfile = amrex::Concatenate("plt",step,8);
+            MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
+            MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
+            MultiFab::Copy(Plt, P_old[2], 0, 2, 1, 0);  
+            MultiFab::Copy(Plt, PoissonPhi, 0, 3, 1, 0);
+            MultiFab::Copy(Plt, PoissonRHS, 0, 4, 1, 0);
+            MultiFab::Copy(Plt, Ex, 0, 5, 1, 0);
+            MultiFab::Copy(Plt, Ey, 0, 6, 1, 0);
+            MultiFab::Copy(Plt, Ez, 0, 7, 1, 0);
+            MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
+            MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
+            MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
+            WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
+        }
+
+        // Increment Phi_Bc_hi for applied voltage sweep. Following implementation allows for one sweep of a triangular wave profile
         if (inc_step > 0 && step%inc_step == 0) {
-            Phi_Bc_hi = Phi_Bc_hi + Phi_Bc_inc;
+           std::cout << "inc_step_sign_change = " << inc_step_sign_change << std::endl;
+           if(step <= inc_step_sign_change)
+	   {
+              Phi_Bc_hi += Phi_Bc_inc;
+	   }
+	   else
+	   {
+              Phi_Bc_hi -= Phi_Bc_inc;
+           }
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
 
             // Set Dirichlet BC for Phi in z
@@ -462,9 +492,6 @@ void main_main ()
             }
         }
 
-        // Calculate E from Phi
-	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom);
-
 	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
         ParallelDescriptor::ReduceRealMax(step_stop_time);
 
@@ -474,23 +501,6 @@ void main_main ()
         // update time
         time = time + dt;
 
-        // Write a plotfile of the current data (plot_int was defined in the inputs file)
-        if (plot_int > 0 && step%plot_int == 0)
-        {
-            const std::string& pltfile = amrex::Concatenate("plt",step,8);
-            MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
-            MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
-            MultiFab::Copy(Plt, P_old[2], 0, 2, 1, 0);  
-            MultiFab::Copy(Plt, PoissonPhi, 0, 3, 1, 0);
-            MultiFab::Copy(Plt, PoissonRHS, 0, 4, 1, 0);
-            MultiFab::Copy(Plt, Ex, 0, 5, 1, 0);
-            MultiFab::Copy(Plt, Ey, 0, 6, 1, 0);
-            MultiFab::Copy(Plt, Ez, 0, 7, 1, 0);
-            MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
-            MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
-            MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
-            WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
-        }
 
     }
 

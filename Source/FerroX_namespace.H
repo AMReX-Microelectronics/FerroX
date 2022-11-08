@@ -54,6 +54,7 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED amrex::Real Phi_Bc_hi;
     extern AMREX_GPU_MANAGED amrex::Real Phi_Bc_inc;
     extern AMREX_GPU_MANAGED int inc_step;
+    extern AMREX_GPU_MANAGED int inc_step_sign_change;
 
     //problem type : initialization of P for 2D/3D/convergence problems
     extern AMREX_GPU_MANAGED int prob_type;
