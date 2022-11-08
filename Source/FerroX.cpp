@@ -14,12 +14,12 @@ AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::prob_lo; 
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::prob_hi; // physical hi coordinate
 
 // multimaterial stack geometry
-AMREX_GPU_MANAGED amrex::Real FerroX::DE_lo;
-AMREX_GPU_MANAGED amrex::Real FerroX::FE_lo;
-AMREX_GPU_MANAGED amrex::Real FerroX::SC_lo;
-AMREX_GPU_MANAGED amrex::Real FerroX::DE_hi;
-AMREX_GPU_MANAGED amrex::Real FerroX::FE_hi;
-AMREX_GPU_MANAGED amrex::Real FerroX::SC_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::DE_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::FE_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::SC_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::DE_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::FE_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::SC_hi;
 
 // material parameters
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_0;
@@ -121,15 +121,6 @@ void InitializeFerroXNamespace() {
      pp.get("g12",g12);
      pp.get("g44_p",g44_p);
 
-     //stack thickness is assumed to be along z
-
-     pp.get("DE_lo",DE_lo);
-     pp.get("DE_hi",DE_hi);
-     pp.get("FE_lo",FE_lo);
-     pp.get("FE_hi",FE_hi);
-     pp.get("SC_lo",SC_lo);
-     pp.get("SC_hi",SC_hi);
-
      pp.get("lambda",lambda);
 
      // Default nsteps to 10, allow us to set it to something else in the inputs file
@@ -156,6 +147,44 @@ void InitializeFerroXNamespace() {
      if (pp.queryarr("prob_hi",temp)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
              prob_hi[i] = temp[i];
+         }
+     }
+
+     //stack dimensions in 3D
+
+     if (pp.queryarr("DE_lo",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             DE_lo[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("DE_hi",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             DE_hi[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("FE_lo",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             FE_lo[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("FE_hi",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             FE_hi[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("SC_lo",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             SC_lo[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("SC_hi",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             SC_hi[i] = temp[i];
          }
      }
 

@@ -49,7 +49,7 @@ using namespace FerroX;
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
 ) {
 
-    if (FE_lo > z_lo && FE_lo <= z) { //FE lower boundary
+    if (FE_lo[2] > z_lo && FE_lo[2] <= z) { //FE lower boundary
       
         if(P_BC_flag_lo == 0){
             Real F_lo = 0.0;
@@ -71,7 +71,7 @@ using namespace FerroX;
             return 0.0;
         }     
 
-    } else if (z_hi > FE_hi && z <= FE_hi ){ // FE higher boundary
+    } else if (z_hi > FE_hi[2] && z <= FE_hi[2] ){ // FE higher boundary
 
         if(P_BC_flag_hi == 0){
             Real F_hi = 0.0;
@@ -93,7 +93,7 @@ using namespace FerroX;
             return 0.0;
         }
                   
-    } else if (z_hi <= FE_hi && z_lo >= FE_lo) { // inside FE
+    } else if (z_hi <= FE_hi[2] && z_lo >= FE_lo[2]) { // inside FE
         return (F(i,j,k+1) - F(i,j,k-1))/(2.*dx[2]);
 
     } else {
@@ -130,7 +130,7 @@ using namespace FerroX;
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
     ) {
         
-    if (FE_lo > z_lo && FE_lo <= z) { //FE lower boundary
+    if (FE_lo[2] > z_lo && FE_lo[2] <= z) { //FE lower boundary
       
         if(P_BC_flag_lo == 0){
             Real F_lo = 0.0;
@@ -152,7 +152,7 @@ using namespace FerroX;
             return 0.0;
         }     
 
-    } else if (z_hi > FE_hi && z <= FE_hi ){ // FE higher boundary
+    } else if (z_hi > FE_hi[2] && z <= FE_hi[2] ){ // FE higher boundary
 
         if(P_BC_flag_hi == 0){
             Real F_hi = 0.0;
@@ -174,7 +174,7 @@ using namespace FerroX;
             return 0.0;
         }
                   
-    } else if (z_hi <= FE_hi && z_lo >= FE_lo) { // inside FE
+    } else if (z_hi <= FE_hi[2] && z_lo >= FE_lo[2]) { // inside FE
         return (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1)) / (dx[2]*dx[2]);  
 
     } else {

@@ -56,7 +56,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
             Real x = prob_lo[0] + (i+0.5) * dx[0];
             Real y = prob_lo[1] + (j+0.5) * dx[1];
             Real z = prob_lo[2] + (k+0.5) * dx[2];
-            if (z <= DE_hi) {
+            if (z <= DE_hi[2]) {
                pOld_z(i,j,k) = 0.0;
                Gam(i,j,k) = 0.0;
             } else {
@@ -71,7 +71,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
                } else if (prob_type == 3) { // smooth P for convergence tests
 
-                 pOld_z(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi)*(z - 1.5*DE_hi)/(2.0*2.0e-9*2.0e-9)));
+                 pOld_z(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi[2])*(z - 1.5*DE_hi[2])/(2.0*2.0e-9*2.0e-9)));
 
                } else {
 
@@ -94,7 +94,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
         {
              Real z = prob_lo[2] + (k+0.5) * dx[2];
 
-             if(z <= SC_hi){ //SC region
+             if(z <= SC_hi[2]){ //SC region
 
                   Real Phi = 0.5*(Ec + Ev); //eV
 //                hole_den_arr(i,j,k) = Nv*exp(-(Phi - Ev)*1.602e-19/(kb*T));

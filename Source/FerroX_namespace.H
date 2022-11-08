@@ -12,12 +12,12 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_hi; // physical hi coordinate
 
     // multimaterial stack geometry
-    extern AMREX_GPU_MANAGED amrex::Real DE_lo;
-    extern AMREX_GPU_MANAGED amrex::Real FE_lo;
-    extern AMREX_GPU_MANAGED amrex::Real SC_lo;
-    extern AMREX_GPU_MANAGED amrex::Real DE_hi;
-    extern AMREX_GPU_MANAGED amrex::Real FE_hi;
-    extern AMREX_GPU_MANAGED amrex::Real SC_hi;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> DE_lo;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FE_lo;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> SC_lo;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> DE_hi;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FE_hi;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> SC_hi;
 
     // material parameters
     extern AMREX_GPU_MANAGED amrex::Real epsilon_0;

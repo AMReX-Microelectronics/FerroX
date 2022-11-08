@@ -26,7 +26,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
         {
              Real z = prob_lo[2] + (k+0.5) * dx[2];
 
-             if(z <= SC_hi){ //SC region
+             if(z <= SC_hi[2]){ //SC region
 
                     //Maxwell-Boltzmann
 //                hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));

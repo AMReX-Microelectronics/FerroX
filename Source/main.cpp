@@ -128,7 +128,7 @@ void main_main ()
     MultiFab e_den(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
 
-    MultiFab Plt(ba, dm, 11, 0);
+    MultiFab Plt(ba, dm, 14, 0);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -214,7 +214,7 @@ void main_main ()
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
-        if (SC_hi <= 0.) {
+        if (SC_hi[2] <= 0.) {
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
         } else {
@@ -255,7 +255,10 @@ void main_main ()
         MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
         MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
         MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
-        WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, 0);
+        MultiFab::Copy(Plt, beta_face[0], 0, 11, 1, 0);
+        MultiFab::Copy(Plt, beta_face[1], 0, 12, 1, 0);
+        MultiFab::Copy(Plt, beta_face[2], 0, 13, 1, 0);
+        WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, 0);
     }
 
     amrex::Print() << "\n ========= Advance Steps  ========== \n"<< std::endl;
@@ -312,7 +315,7 @@ void main_main ()
             // Calculate rho from Phi in SC region
             ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
-            if (SC_hi <= 0.) {
+            if (SC_hi[2] <= 0.) {
                 // no semiconductor region; set error to zero so the while loop terminates
                 err = 0.;
             } else {
@@ -377,7 +380,7 @@ void main_main ()
                 // Calculate rho from Phi in SC region
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
-                if (SC_hi <= 0.) {
+                if (SC_hi[2] <= 0.) {
                     // no semiconductor region; set error to zero so the while loop terminates
                     err = 0.;
                 } else {
@@ -441,7 +444,7 @@ void main_main ()
                 // Calculate rho from Phi in SC region
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
-                if (SC_hi <= 0.) {
+                if (SC_hi[2] <= 0.) {
                     // no semiconductor region; set error to zero so the while loop terminates
                     err = 0.;
                 } else {
@@ -489,7 +492,10 @@ void main_main ()
             MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
             MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
             MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
-            WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge"}, geom, time, step);
+            MultiFab::Copy(Plt, beta_face[0], 0, 11, 1, 0);
+            MultiFab::Copy(Plt, beta_face[1], 0, 12, 1, 0);
+            MultiFab::Copy(Plt, beta_face[2], 0, 13, 1, 0);
+            WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, step);
         }
 
     }
