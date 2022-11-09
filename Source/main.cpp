@@ -409,6 +409,15 @@ void main_main ()
         // Calculate E from Phi
 	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom);
 
+	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
+        ParallelDescriptor::ReduceRealMax(step_stop_time);
+
+        amrex::Print() << "Advanced step " << step << " in " << step_stop_time << " seconds\n";
+        amrex::Print() << " \n";
+
+        // update time
+        time = time + dt;
+
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
         if (plot_int > 0 && step%plot_int == 0)
         {
@@ -490,15 +499,6 @@ void main_main ()
                 }
             }
         }
-
-	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
-        ParallelDescriptor::ReduceRealMax(step_stop_time);
-
-        amrex::Print() << "Advanced step " << step << " in " << step_stop_time << " seconds\n";
-        amrex::Print() << " \n";
-
-        // update time
-        time = time + dt;
 
 
     }
