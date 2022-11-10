@@ -56,6 +56,7 @@ AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_lo;
 AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_hi;
 AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_inc;
 AMREX_GPU_MANAGED int FerroX::inc_step;
+AMREX_GPU_MANAGED int FerroX::inc_step_sign_change;
 
 //problem type : initialization of P for 2D/3D/convergence problems
 AMREX_GPU_MANAGED int FerroX::prob_type;
@@ -94,6 +95,9 @@ void InitializeFerroXNamespace() {
 
      inc_step = -1;
      pp.query("inc_step",inc_step);
+
+     inc_step_sign_change = -1;
+     pp.query("inc_step_sign_change",inc_step_sign_change);
 
      pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 
