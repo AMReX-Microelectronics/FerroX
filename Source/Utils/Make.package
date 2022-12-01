@@ -1,0 +1,6 @@
+VPATH_LOCATIONS   += $(CODE_HOME)/Source/Utils
+INCLUDE_LOCATIONS   += $(CODE_HOME)/Source/Utils
+
+include $(CODE_HOME)/Source/Utils/ablastr/Make.package
+include $(CODE_HOME)/Source/Utils/CodeUtils/Make.package
+include $(CODE_HOME)/Source/Utils/SelectWarpXUtils/Make.package

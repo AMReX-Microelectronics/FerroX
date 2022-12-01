@@ -2,6 +2,7 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MLABecLaplacian.H>
+#include <AMReX_MLEBABecLap.H>
 #include <AMReX_MLMG.H> 
 #include <AMReX_MultiFab.H> 
 #include <AMReX_VisMF.H>
@@ -10,6 +11,15 @@
 #include "Initialization.H"
 #include "ChargeDensity.H"
 #include "TotalEnergyDensity.H"
+#include "Input/BoundaryConditions/BoundaryConditions.H"
+#include "Input/GeometryProperties/GeometryProperties.H"
+#include "Code.H"
+#include "Utils/SelectWarpXUtils/WarpXUtil.H"
+#include "Utils/SelectWarpXUtils/WarpXProfilerWrapper.H"
+#include "Utils/CodeUtils/CodeUtil.H"
+
+
+
 
 using namespace amrex;
 
@@ -19,6 +29,10 @@ int main (int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
 
+    c_Code pCode;
+
+    pCode.InitData();
+    
     main_main();
 
     amrex::Finalize();
@@ -33,41 +47,46 @@ void main_main ()
     // read in inputs file
     InitializeFerroXNamespace();
 
-    // **********************************
-    // SIMULATION SETUP
+//    c_Code pCode;
+//
+//    pCode.InitData();
 
-    // make BoxArray and Geometry
-    // ba will contain a list of boxes that cover the domain
-    // geom contains information such as the physical domain size,
-    //               number of points in the domain, and periodicity
-    BoxArray ba;
-    Geometry geom;
 
-    // AMREX_D_DECL means "do the first X of these, where X is the dimensionality of the simulation"
-    IntVect dom_lo(AMREX_D_DECL(       0,        0,        0));
-    IntVect dom_hi(AMREX_D_DECL(n_cell[0]-1, n_cell[1]-1, n_cell[2]-1));
-
-    // Make a single box that is the entire domain
-    Box domain(dom_lo, dom_hi);
-
-    // Initialize the boxarray "ba" from the single box "domain"
-    ba.define(domain);
-
-    // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
-    ba.maxSize(max_grid_size);
-
-    // This defines the physical box in each direction.
-    RealBox real_box({AMREX_D_DECL( prob_lo[0], prob_lo[1], prob_lo[2])},
-                     {AMREX_D_DECL( prob_hi[0], prob_hi[1], prob_hi[2])});
-
-    // periodic in x and y directions
-    Array<int,AMREX_SPACEDIM> is_periodic{AMREX_D_DECL(1,1,0)};
-
-    // This defines a Geometry object
-    geom.define(domain, real_box, CoordSys::cartesian, is_periodic);
-
-    // extract dx from the geometry object
-    GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+//    // **********************************
+//    // SIMULATION SETUP
+//
+//    // make BoxArray and Geometry
+//    // ba will contain a list of boxes that cover the domain
+//    // geom contains information such as the physical domain size,
+//    //               number of points in the domain, and periodicity
+//    BoxArray ba;
+//    Geometry geom;
+//
+//    // AMREX_D_DECL means "do the first X of these, where X is the dimensionality of the simulation"
+//    IntVect dom_lo(AMREX_D_DECL(       0,        0,        0));
+//    IntVect dom_hi(AMREX_D_DECL(n_cell[0]-1, n_cell[1]-1, n_cell[2]-1));
+//
+//    // Make a single box that is the entire domain
+//    Box domain(dom_lo, dom_hi);
+//
+//    // Initialize the boxarray "ba" from the single box "domain"
+//    ba.define(domain);
+//
+//    // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
+//    ba.maxSize(max_grid_size);
+//
+//    // This defines the physical box in each direction.
+//    RealBox real_box({AMREX_D_DECL( prob_lo[0], prob_lo[1], prob_lo[2])},
+//                     {AMREX_D_DECL( prob_hi[0], prob_hi[1], prob_hi[2])});
+//
+//    // periodic in x and y directions
+//    Array<int,AMREX_SPACEDIM> is_periodic{AMREX_D_DECL(1,1,0)};
+//
+//    // This defines a Geometry object
+//    geom.define(domain, real_box, CoordSys::cartesian, is_periodic);
+//
+//    // extract dx from the geometry object
+//    GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
     // Nghost = number of ghost cells for each array
     int Nghost = 1;
@@ -76,7 +95,8 @@ void main_main ()
     int Ncomp = 1;
 
     // How Boxes are distrubuted among MPI processes
-    DistributionMapping dm(ba);
+    //DistributionMapping dm(ba);
+
 
     MultiFab Gamma(ba, dm, Ncomp, Nghost);
 

@@ -4,8 +4,14 @@ CEXE_sources += Initialization.cpp
 CEXE_sources += ChargeDensity.cpp
 CEXE_sources += TotalEnergyDensity.cpp
 CEXE_sources += FerroX.cpp
+CEXE_sources += Code.cpp
+
 CEXE_headers += FerroX.H
+CEXE_headers += Code.H
 CEXE_headers += ElectrostaticSolver.H
 CEXE_headers += Initialization.H
 CEXE_headers += ChargeDensity.H
 CEXE_headers += TotalEnergyDensity.H
+
+VPATH_LOCATIONS   += $(CODE_HOME)/Source
+INCLUDE_LOCATIONS += $(CODE_HOME)/Source
