@@ -47,6 +47,12 @@ void main_main ()
     // read in inputs file
     InitializeFerroXNamespace();
 
+    auto& rCode = pCode.GetInstance();
+    auto& rGprop = rCode.get_GeometryProperties();
+    auto& geom = rGprop.geom;
+    auto& ba = rGprop.ba;
+    auto& dm = rGprop.dm;
+
 //    c_Code pCode;
 //
 //    pCode.InitData();
