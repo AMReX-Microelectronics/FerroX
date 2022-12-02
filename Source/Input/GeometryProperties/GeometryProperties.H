@@ -2,8 +2,9 @@
 #define GEOMETRY_PROPERTIES_H_
 
 #include "GeometryProperties_fwd.H"
+#ifdef AMREX_USE_EB
 #include "EmbeddedBoundaries.H"
-
+#endif
 #include <AMReX_REAL.H>
 #include <AMReX_GpuContainers.H>
 #include <AMReX_Vector.H>
@@ -12,9 +13,11 @@
 #include <AMReX_Geometry.H>
 
 #include <AMReX.H>
+#ifdef AMREX_USE_EB
 #include <AMReX_EB2.H>
 #include <AMReX_EB2_IF.H>
 #include <AMReX_EBSupport.H>
+#endif
 
 
 #include <string>
@@ -39,8 +42,9 @@ public:
     amrex::DistributionMapping dm;
 
     int embedded_boundary_flag;
+#ifdef AMREX_USE_EB
     std::unique_ptr<c_EmbeddedBoundaries> pEB;
-
+#endif
     void ReadData();
     void InitData();
 

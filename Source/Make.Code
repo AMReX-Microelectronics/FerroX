@@ -10,8 +10,14 @@ Code_dirs = Utils Input
 Code_pack   += $(foreach dir, $(Code_dirs), $(CODE_HOME)/Source/$(dir)/Make.package)
 include $(Code_pack)
 
+AMREX_dirs = Base Boundary LinearSolvers/MLMG AmrCore
+AMREX_pack   += $(foreach dir, $(AMREX_dirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
+include $(AMREX_pack)
+
+ifeq ($(USE_EB),TRUE)
 AMREX_dirs = Base Boundary LinearSolvers/MLMG AmrCore EB
 AMREX_pack   += $(foreach dir, $(AMREX_dirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
 include $(AMREX_pack)
+endif
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules

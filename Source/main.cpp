@@ -2,7 +2,9 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MLABecLaplacian.H>
+#ifdef AMREX_USE_EB
 #include <AMReX_MLEBABecLap.H>
+#endif
 #include <AMReX_MLMG.H> 
 #include <AMReX_MultiFab.H> 
 #include <AMReX_VisMF.H>
@@ -118,9 +120,9 @@ void main_main (c_Code& rCode)
     // order of stencil
     int linop_maxorder = 2;
     std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2> LinOpBCType_2d;
-    bool all_homogeneous_boundaries;
-    bool some_functionbased_inhomogeneous_boundaries;
-    bool some_constant_inhomogeneous_boundaries;
+    bool all_homogeneous_boundaries = true;
+    bool some_functionbased_inhomogeneous_boundaries = false;
+    bool some_constant_inhomogeneous_boundaries = false;
 
     SetPoissonBC(rCode, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
 
@@ -135,7 +137,6 @@ void main_main (c_Code& rCode)
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
     InitializePermittivity(beta_face, geom);
-
 
 #ifdef AMREX_USE_EB
 
@@ -180,7 +181,7 @@ void main_main (c_Code& rCode)
     p_mlebabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
 
     // set alpha, and beta_fc coefficients
-    p_mlebabec->setACoeffs(amrlev, alpha_cc);
+    //p_mlebabec->setACoeffs(amrlev, alpha_cc);
 
     //Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
     if(rGprop.pEB->specify_inhomogeneous_dirichlet == 0)
@@ -197,7 +198,7 @@ void main_main (c_Code& rCode)
     pMLMG = std::make_unique<MLMG>(*p_mlebabec);
 
     pMLMG->setVerbose(mlmg_verbosity);
-#endif
+#else
 
     std::unique_ptr<amrex::MLABecLaplacian> p_mlabec;
     p_mlabec = std::make_unique<amrex::MLABecLaplacian>();
@@ -207,6 +208,7 @@ void main_main (c_Code& rCode)
     p_mlabec->setEnforceSingularSolvable(false); 
 
     p_mlabec->setMaxOrder(linop_maxorder);  
+    //SetPoissonBC(rCode, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
 
     p_mlabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
 
@@ -223,6 +225,8 @@ void main_main (c_Code& rCode)
     //Declare MLMG object
     pMLMG = std::make_unique<MLMG>(*p_mlabec);
     pMLMG->setVerbose(mlmg_verbosity);
+
+#endif
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -246,8 +250,11 @@ void main_main (c_Code& rCode)
 
         ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
+#ifdef AMREX_USE_EB
+        p_mlebabec->setACoeffs(0, alpha_cc);
+#else 
         p_mlabec->setACoeffs(0, alpha_cc);
- 
+#endif
         //Initial guess for phi
         PoissonPhi.setVal(0.);
 
@@ -347,7 +354,11 @@ void main_main (c_Code& rCode)
 
             ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
+#ifdef AMREX_USE_EB
+            p_mlebabec->setACoeffs(0, alpha_cc);
+#else 
             p_mlabec->setACoeffs(0, alpha_cc);
+#endif
  
             //Initial guess for phi
             PoissonPhi.setVal(0.);
@@ -412,7 +423,11 @@ void main_main (c_Code& rCode)
 
                 ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
+#ifdef AMREX_USE_EB
+                p_mlebabec->setACoeffs(0, alpha_cc);
+#else 
                 p_mlabec->setACoeffs(0, alpha_cc);
+#endif
  
                 //Initial guess for phi
                 PoissonPhi.setVal(0.);
@@ -460,7 +475,11 @@ void main_main (c_Code& rCode)
             //SetPhiBC_z(PoissonPhi);
     
             // set Dirichlet BC by reading in the ghost cell values
+#ifdef AMREX_USE_EB
+            p_mlebabec->setLevelBC(0, &PoissonPhi);
+#else 
             p_mlabec->setLevelBC(0, &PoissonPhi);
+#endif
 
             err = 1.0;
             iter = 0;
@@ -476,7 +495,11 @@ void main_main (c_Code& rCode)
 
                 ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
+#ifdef AMREX_USE_EB
+                p_mlebabec->setACoeffs(0, alpha_cc);
+#else 
                 p_mlabec->setACoeffs(0, alpha_cc);
+#endif
  
                 //Initial guess for phi
                 PoissonPhi.setVal(0.);

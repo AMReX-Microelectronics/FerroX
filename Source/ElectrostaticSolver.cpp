@@ -214,7 +214,7 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
 
 }
 
-void SetPoissonBC(c_Code& rCode, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2> LinOpBCType_2d, bool all_homogeneous_boundaries, bool some_functionbased_inhomogeneous_boundaries, bool some_constant_inhomogeneous_boundaries)
+void SetPoissonBC(c_Code& rCode, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, bool& all_homogeneous_boundaries, bool& some_functionbased_inhomogeneous_boundaries, bool& some_constant_inhomogeneous_boundaries)
 {
     auto& rBC = rCode.get_BoundaryConditions();
     auto& map_boundary_type = rBC.map_boundary_type;
@@ -273,7 +273,6 @@ void SetPoissonBC(c_Code& rCode, std::array<std::array<amrex::LinOpBCType,AMREX_
 
         }
     }
-
 }
 
 void Fill_Constant_Inhomogeneous_Boundaries(c_Code& rCode, MultiFab& PoissonPhi)

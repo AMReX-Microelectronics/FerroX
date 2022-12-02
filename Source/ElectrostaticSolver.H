@@ -41,7 +41,7 @@ void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
                               MultiFab& PoissonPhi, 
                               MultiFab& alpha_cc);
 
-void SetPoissonBC(c_Code& rCode, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2> LinOpBCType_2d, bool all_homogeneous_boundaries, bool some_functionbased_inhomogeneous_boundaries, bool some_constant_inhomogeneous_boundaries);
+void SetPoissonBC(c_Code& rCode, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, bool& all_homogeneous_boundaries, bool& some_functionbased_inhomogeneous_boundaries, bool& some_constant_inhomogeneous_boundaries);
 
 void Fill_Constant_Inhomogeneous_Boundaries(c_Code& rCode, MultiFab& PoissonPhi);
 void Fill_FunctionBased_Inhomogeneous_Boundaries(c_Code& rCode, MultiFab& PoissonPhi);

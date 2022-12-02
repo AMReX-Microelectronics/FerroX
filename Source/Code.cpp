@@ -8,7 +8,7 @@
 
 #include "Input/GeometryProperties/GeometryProperties.H"
 #include "Input/BoundaryConditions/BoundaryConditions.H"
-#include "Input/MacroscopicProperties/MacroscopicProperties.H"
+//#include "Input/MacroscopicProperties/MacroscopicProperties.H"
 //#include "Solver/Electrostatics/MLMG.H"
 //#include "PostProcessor/PostProcessor.H"
 //#include "Diagnostics/Diagnostics.H"

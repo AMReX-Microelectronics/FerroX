@@ -7,10 +7,11 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_Parser.H>
 #include <AMReX_RealBox.H>
+#ifdef AMREX_USE_EB
 #include <AMReX_EB2.H>
 #include <AMReX_EB2_IF.H>
 #include <AMReX_EBSupport.H>
-
+#endif
 
 using namespace amrex;
 
@@ -67,7 +68,9 @@ c_GeometryProperties::InitData()
 
     InitializeBoxArrayAndDistributionMap();
 
+#ifdef AMREX_USE_EB
     if(embedded_boundary_flag) pEB->BuildGeometry(&geom, &ba, &dm);
+#endif
 
 #ifdef PRINT_NAME
     amrex::Print() << "\t\t}************************c_GeometryProperties::InitData()************************\n";
@@ -155,7 +158,9 @@ c_GeometryProperties::ParseBasicDomainInput()
     amrex::Print() << "##### coord_sys: " << coord_sys << "\n";
     amrex::Print() << "##### embedded_boundary_flag: " << embedded_boundary_flag << "\n";
 
+#ifdef AMREX_USE_EB
     if(embedded_boundary_flag) pEB = std::make_unique<c_EmbeddedBoundaries>();
+#endif
 
 #ifdef PRINT_NAME
     amrex::Print() << "\t\t\t\t}************************c_GeometryProperties::ParseBasicDomainInput()************************\n";
