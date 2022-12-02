@@ -1,6 +1,7 @@
 #include "ElectrostaticSolver.H"
 #include "DerivativeAlgorithm.H"
 #include "ChargeDensity.H"
+#include "Utils/CodeUtils/CodeUtil.H"
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
@@ -212,6 +213,128 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
     }
 
 }
+
+void SetPoissonBC(c_Code& rCode, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2> LinOpBCType_2d, bool all_homogeneous_boundaries, bool some_functionbased_inhomogeneous_boundaries, bool some_constant_inhomogeneous_boundaries)
+{
+    auto& rBC = rCode.get_BoundaryConditions();
+    auto& map_boundary_type = rBC.map_boundary_type;
+    auto& bcType_2d = rBC.bcType_2d;
+    auto& map_bcAny_2d = rBC.map_bcAny_2d;
+
+    for (std::size_t i = 0; i < 2; ++i)
+    {
+        for (std::size_t j = 0; j < AMREX_SPACEDIM; ++j)
+        {
+
+            switch(map_boundary_type[ bcType_2d[i][j] ])
+            {
+                case s_BoundaryConditions::dir :
+                {
+                     LinOpBCType_2d[i][j] = LinOpBCType::Dirichlet;
+
+                     if(map_bcAny_2d[i][j] == "inhomogeneous_constant")
+                     {
+                         all_homogeneous_boundaries = false;
+                         some_constant_inhomogeneous_boundaries = true;
+                     }
+                     if(map_bcAny_2d[i][j] == "inhomogeneous_function")
+                     {
+                         all_homogeneous_boundaries = false;
+                         some_functionbased_inhomogeneous_boundaries = true;
+                     }
+                     break;
+                }
+                case s_BoundaryConditions::neu :
+                {
+                     if(map_bcAny_2d[i][j] == "homogeneous")
+                     {
+                         LinOpBCType_2d[i][j] = LinOpBCType::Neumann;
+                     }
+                     else if(map_bcAny_2d[i][j] == "inhomogeneous_constant")
+                     {
+                         LinOpBCType_2d[i][j] = LinOpBCType::inhomogNeumann;
+                         all_homogeneous_boundaries = false;
+                         some_constant_inhomogeneous_boundaries = true;
+                     }
+                     else if(map_bcAny_2d[i][j] == "inhomogeneous_function")
+                     {
+                         LinOpBCType_2d[i][j] = LinOpBCType::inhomogNeumann;
+                         all_homogeneous_boundaries = false;
+                         some_functionbased_inhomogeneous_boundaries = true;
+                     }
+                     break;
+                }
+                case s_BoundaryConditions::per :
+                {
+                    LinOpBCType_2d[i][j] = LinOpBCType::Periodic;
+                    break;
+                }
+            }
+
+        }
+    }
+
+}
+
+void Fill_Constant_Inhomogeneous_Boundaries(c_Code& rCode, MultiFab& PoissonPhi)
+{
+    auto& rGprop = rCode.get_GeometryProperties();
+    Box const& domain = rGprop.geom.Domain();
+
+    auto& rBC = rCode.get_BoundaryConditions();
+    auto& bcAny_2d = rBC.bcAny_2d;
+    auto& map_bcAny_2d = rBC.map_bcAny_2d;
+
+    std::vector<int> dir_inhomo_const_lo;
+    std::string value = "inhomogeneous_constant";
+    bool found_lo = findByValue(dir_inhomo_const_lo, map_bcAny_2d[0], value);
+    std::vector<int> dir_inhomo_const_hi;
+    bool found_hi = findByValue(dir_inhomo_const_hi, map_bcAny_2d[1], value);
+
+    int len = 1;
+    for (MFIter mfi(PoissonPhi, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    {
+        const auto& phi_arr = PoissonPhi.array(mfi);
+
+        const auto& bx = mfi.tilebox();
+        
+        if(found_lo) {
+            for (auto dir : dir_inhomo_const_lo) 
+	    {
+                if (bx.smallEnd(dir) == domain.smallEnd(dir)) 
+		{
+	            auto value = std::any_cast<amrex::Real>(bcAny_2d[0][dir]);		
+                    Box const& bxlo = amrex::adjCellLo(bx, dir,len);
+                    amrex::ParallelFor(bxlo,
+                    [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                    {
+                        phi_arr(i,j,k) = value;
+                    });
+                }
+            }
+        }
+        if(found_hi) {
+            for (auto dir : dir_inhomo_const_hi) 
+	    {
+                if (bx.bigEnd(dir) == domain.bigEnd(dir)) 
+		{
+		    auto value = std::any_cast<amrex::Real>(bcAny_2d[1][dir]);	
+                    Box const& bxhi = amrex::adjCellHi(bx, dir,len);
+                    amrex::ParallelFor(bxhi,
+                    [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+                    {
+                        phi_arr(i,j,k) = value;
+                    });
+                }
+            }
+        }
+    } 
+
+}
+void Fill_FunctionBased_Inhomogeneous_Boundaries(c_Code& rCode, MultiFab& PoissonPhi)
+{
+}
+
 
 void SetPhiBC_z(MultiFab& PoissonPhi)
 {

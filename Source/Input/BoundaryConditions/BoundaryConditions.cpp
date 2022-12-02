@@ -185,8 +185,9 @@ c_BoundaryConditions::ReadBoundaryConditionsType()
              is_periodic_flag = false;
         }
          std::string warnMsg;
-	 amrex::Print() << "Both sides must be periodic, and 'domain.is_periodic', must be 1 for the periodic directions\
+         warnMsg = "Both sides must be periodic, and 'domain.is_periodic', must be 1 for the periodic directions\
                     user intends to set. Current setup violates this for direction: " + std::to_string(idim);
+         WARPX_ALWAYS_ASSERT_WITH_MESSAGE(is_periodic_flag == true, warnMsg);
     }
 
     /* loop over map_bcAny_2d and fill in the map of function parser names and set number of function parser names. */

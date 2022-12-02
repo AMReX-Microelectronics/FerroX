@@ -33,13 +33,13 @@ int main (int argc, char* argv[])
 
     pCode.InitData();
     
-    main_main();
+    main_main(pCode);
 
     amrex::Finalize();
     return 0;
 }
 
-void main_main ()
+void main_main (c_Code& rCode)
 {
 
     Real total_step_strt_time = ParallelDescriptor::second();
@@ -47,62 +47,18 @@ void main_main ()
     // read in inputs file
     InitializeFerroXNamespace();
 
-    auto& rCode = pCode.GetInstance();
     auto& rGprop = rCode.get_GeometryProperties();
     auto& geom = rGprop.geom;
     auto& ba = rGprop.ba;
     auto& dm = rGprop.dm;
+    auto& is_periodic = rGprop.is_periodic;
 
-//    c_Code pCode;
-//
-//    pCode.InitData();
-
-
-//    // **********************************
-//    // SIMULATION SETUP
-//
-//    // make BoxArray and Geometry
-//    // ba will contain a list of boxes that cover the domain
-//    // geom contains information such as the physical domain size,
-//    //               number of points in the domain, and periodicity
-//    BoxArray ba;
-//    Geometry geom;
-//
-//    // AMREX_D_DECL means "do the first X of these, where X is the dimensionality of the simulation"
-//    IntVect dom_lo(AMREX_D_DECL(       0,        0,        0));
-//    IntVect dom_hi(AMREX_D_DECL(n_cell[0]-1, n_cell[1]-1, n_cell[2]-1));
-//
-//    // Make a single box that is the entire domain
-//    Box domain(dom_lo, dom_hi);
-//
-//    // Initialize the boxarray "ba" from the single box "domain"
-//    ba.define(domain);
-//
-//    // Break up boxarray "ba" into chunks no larger than "max_grid_size" along a direction
-//    ba.maxSize(max_grid_size);
-//
-//    // This defines the physical box in each direction.
-//    RealBox real_box({AMREX_D_DECL( prob_lo[0], prob_lo[1], prob_lo[2])},
-//                     {AMREX_D_DECL( prob_hi[0], prob_hi[1], prob_hi[2])});
-//
-//    // periodic in x and y directions
-//    Array<int,AMREX_SPACEDIM> is_periodic{AMREX_D_DECL(1,1,0)};
-//
-//    // This defines a Geometry object
-//    geom.define(domain, real_box, CoordSys::cartesian, is_periodic);
-//
-//    // extract dx from the geometry object
-//    GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
     // Nghost = number of ghost cells for each array
     int Nghost = 1;
 
     // Ncomp = number of components for each array
     int Ncomp = 1;
-
-    // How Boxes are distrubuted among MPI processes
-    //DistributionMapping dm(ba);
-
 
     MultiFab Gamma(ba, dm, Ncomp, Nghost);
 
@@ -158,32 +114,19 @@ void main_main ()
 
     //Solver for Poisson equation
     LPInfo info;
-    MLABecLaplacian mlabec({geom}, {ba}, {dm}, info);
-
-    //Force singular system to be solvable
-    mlabec.setEnforceSingularSolvable(false); 
-
+    std::unique_ptr<amrex::MLMG> pMLMG;
     // order of stencil
     int linop_maxorder = 2;
-    mlabec.setMaxOrder(linop_maxorder);  
+    std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2> LinOpBCType_2d;
+    bool all_homogeneous_boundaries;
+    bool some_functionbased_inhomogeneous_boundaries;
+    bool some_constant_inhomogeneous_boundaries;
 
-    // build array of boundary conditions needed by MLABecLaplacian
-    std::array<LinOpBCType, AMREX_SPACEDIM> lo_mlmg_bc;
-    std::array<LinOpBCType, AMREX_SPACEDIM> hi_mlmg_bc; 
-
-    //Periodic 
-    for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-        if(is_periodic[idim]){
-          lo_mlmg_bc[idim] = hi_mlmg_bc[idim] = LinOpBCType::Periodic;
-        } else {
-          lo_mlmg_bc[idim] = hi_mlmg_bc[idim] = LinOpBCType::Dirichlet;
-        }
-    } 
-
-    mlabec.setDomainBC(lo_mlmg_bc,hi_mlmg_bc);
+    SetPoissonBC(rCode, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
 
     // coefficients for solver
     MultiFab alpha_cc(ba, dm, 1, 0);
+    MultiFab beta_cc(ba, dm, 1, 0);
     std::array< MultiFab, AMREX_SPACEDIM > beta_face;
     AMREX_D_TERM(beta_face[0].define(convert(ba,IntVect(AMREX_D_DECL(1,0,0))), dm, 1, 0);,
                  beta_face[1].define(convert(ba,IntVect(AMREX_D_DECL(0,1,0))), dm, 1, 0);,
@@ -193,19 +136,93 @@ void main_main ()
     // epsilon values in SC, FE, and DE layers
     InitializePermittivity(beta_face, geom);
 
+
+#ifdef AMREX_USE_EB
+
+    std::unique_ptr<amrex::MLEBABecLap> p_mlebabec;
+    p_mlebabec = std::make_unique<amrex::MLEBABecLap>();
+    p_mlebabec->define({geom}, {ba}, {dm}, info,{& *rGprop.pEB->p_factory_union});
+
+    // Force singular system to be solvable
+    p_mlebabec->setEnforceSingularSolvable(false);
+
+    // set order of stencil
+    p_mlebabec->setMaxOrder(linop_maxorder);
+
+    // assign domain boundary conditions to the solver
+    // see Src/Boundary/AMReX_LO_BCTYPES.H for supported types
+    p_mlebabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
+
+    auto& rBC = rCode.get_BoundaryConditions();
+    // Fill the ghost cells of each grid from the other grids
+    // includes periodic domain boundaries
+
+    int amrlev = 0; //refers to the setcoarsest level of the solve
+
+    if(some_constant_inhomogeneous_boundaries)
+    {
+        Fill_Constant_Inhomogeneous_Boundaries(rCode, PoissonPhi);
+    }
+    if(some_functionbased_inhomogeneous_boundaries)
+    {
+        Fill_FunctionBased_Inhomogeneous_Boundaries(rCode, PoissonPhi);
+        //Note that previously in c_BoundaryCondition constructor, it has been asserted
+        //that the use of robin is not supported with embedded boundaries.
+    }
+    PoissonPhi.FillBoundary(geom.periodicity());
+
     // Set Dirichlet BC for Phi in z
-    SetPhiBC_z(PoissonPhi); 
-    
-    // set Dirichlet BC by reading in the ghost cell values
-    mlabec.setLevelBC(0, &PoissonPhi);
+    //SetPhiBC_z(PoissonPhi); 
+    p_mlebabec->setLevelBC(amrlev, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
-    mlabec.setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
-    mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));
+    p_mlebabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
+    p_mlebabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
+
+    // set alpha, and beta_fc coefficients
+    p_mlebabec->setACoeffs(amrlev, alpha_cc);
+
+    //Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
+    if(rGprop.pEB->specify_inhomogeneous_dirichlet == 0)
+    {
+        //p_mlebabec->setEBHomogDirichlet(amrlev, *rGprop.pEB->p_surf_beta_union);
+        p_mlebabec->setEBHomogDirichlet(amrlev, beta_cc);
+    }
+    else
+    {
+        //p_mlebabec->setEBDirichlet(amrlev, *rGprop.pEB->p_surf_soln_union, *rGprop.pEB->p_surf_beta_union);
+        p_mlebabec->setEBDirichlet(amrlev, *rGprop.pEB->p_surf_soln_union, beta_cc);
+    }
+
+    pMLMG = std::make_unique<MLMG>(*p_mlebabec);
+
+    pMLMG->setVerbose(mlmg_verbosity);
+#endif
+
+    std::unique_ptr<amrex::MLABecLaplacian> p_mlabec;
+    p_mlabec = std::make_unique<amrex::MLABecLaplacian>();
+    p_mlabec->define({geom}, {ba}, {dm}, info);
+
+    //Force singular system to be solvable
+    p_mlabec->setEnforceSingularSolvable(false); 
+
+    p_mlabec->setMaxOrder(linop_maxorder);  
+
+    p_mlabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
+
+    // Set Dirichlet BC for Phi in z
+    //SetPhiBC_z(PoissonPhi); 
+    
+    // set Dirichlet BC by reading in the ghost cell values
+    p_mlabec->setLevelBC(0, &PoissonPhi);
+    
+    // (A*alpha_cc - B * div beta grad) phi = rhs
+    p_mlabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
+    p_mlabec->setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));
 
     //Declare MLMG object
-    MLMG mlmg(mlabec);
-    mlmg.setVerbose(mlmg_verbosity);
+    pMLMG = std::make_unique<MLMG>(*p_mlabec);
+    pMLMG->setVerbose(mlmg_verbosity);
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -229,13 +246,13 @@ void main_main ()
 
         ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-        mlabec.setACoeffs(0, alpha_cc);
+        p_mlabec->setACoeffs(0, alpha_cc);
  
         //Initial guess for phi
         PoissonPhi.setVal(0.);
 
         //Poisson Solve
-        mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+        pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
@@ -330,13 +347,13 @@ void main_main ()
 
             ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-            mlabec.setACoeffs(0, alpha_cc);
+            p_mlabec->setACoeffs(0, alpha_cc);
  
             //Initial guess for phi
             PoissonPhi.setVal(0.);
 
             //Poisson Solve
-            mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+            pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	
             // Calculate rho from Phi in SC region
             ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
@@ -395,13 +412,13 @@ void main_main ()
 
                 ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-                mlabec.setACoeffs(0, alpha_cc);
+                p_mlabec->setACoeffs(0, alpha_cc);
  
                 //Initial guess for phi
                 PoissonPhi.setVal(0.);
 
                 //Poisson Solve
-                mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+                pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	
                 // Calculate rho from Phi in SC region
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
@@ -440,10 +457,10 @@ void main_main ()
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
 
             // Set Dirichlet BC for Phi in z
-            SetPhiBC_z(PoissonPhi);
+            //SetPhiBC_z(PoissonPhi);
     
             // set Dirichlet BC by reading in the ghost cell values
-            mlabec.setLevelBC(0, &PoissonPhi);
+            p_mlabec->setLevelBC(0, &PoissonPhi);
 
             err = 1.0;
             iter = 0;
@@ -459,13 +476,13 @@ void main_main ()
 
                 ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-                mlabec.setACoeffs(0, alpha_cc);
+                p_mlabec->setACoeffs(0, alpha_cc);
  
                 //Initial guess for phi
                 PoissonPhi.setVal(0.);
 
                 //Poisson Solve
-                mlmg.solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+                pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	
                 // Calculate rho from Phi in SC region
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);

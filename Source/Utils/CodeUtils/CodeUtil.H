@@ -33,6 +33,9 @@ void AverageCellCenteredMultiFabToCellFaces(const amrex::MultiFab& cc_arr,
                                             std::array< amrex::MultiFab, 
                                             AMREX_SPACEDIM >& face_arr);
 
+void AverageFaceCenteredMultiFabToCellCenters(std::array< amrex::MultiFab,
+                                            AMREX_SPACEDIM >& fc_arr,
+                                            amrex::MultiFab& cc_arr);
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void ConvertParserIntoMultiFab_3vars(const int i, const int j, const int k, 
