@@ -11,8 +11,10 @@ Code_pack   += $(foreach dir, $(Code_dirs), $(CODE_HOME)/Source/$(dir)/Make.pack
 include $(Code_pack)
 
 AMREX_dirs = Base Boundary LinearSolvers/MLMG AmrCore
+
 ifeq ($(USE_EB),TRUE)
 AMREX_dirs += EB
+USERSuffix := $(USERSuffix).EB
 endif
 
 AMREX_pack   += $(foreach dir, $(AMREX_dirs), $(AMREX_HOME)/Src/$(dir)/Make.package)

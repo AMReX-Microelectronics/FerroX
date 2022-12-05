@@ -126,6 +126,44 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
 }
 
+/*
+void InitializePermittivity(MultiFab& beta_cc, const Geometry& geom)
+{
+    // extract dx from the geometry object
+    GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+
+    Real small = dx[2]*1.e-6;
+    
+    // set cell-centered beta coefficient to
+    // epsilon values in SC, FE, and DE layers
+    // loop over boxes
+    for (MFIter mfi(beta_cc); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real>& beta = beta_cc.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+          Real z = prob_lo[2] + k * dx[2];
+          //Real z = prob_lo[2] + (k+0.5) * dx[2];
+          if(z < SC_hi[2]-small) {
+             beta(i,j,k) = epsilon_si * epsilon_0; //SC layer
+	  } else if(z >= SC_hi[2]-small && z < SC_hi[2]+small){
+             beta(i,j,k) = 0.5*(epsilon_de + epsilon_si) * epsilon_0; //SC-DE interface
+          } else if(z < DE_hi[2]-small) {
+             beta(i,j,k) = epsilon_de * epsilon_0; //DE layer
+	  } else if(z >= DE_hi[2]-small && z < DE_hi[2]+small){
+             beta(i,j,k) = 0.5*(epsilon_de + epsilonX_fe) * epsilon_0; //DE-FE interface
+             //beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE-FE interface
+          } else {
+             beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
+          }
+        });
+    }
+}
+
+*/
 
 void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
                 const Geometry&                 geom)
@@ -213,6 +251,7 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
     }
 
 }
+
 
 void SetPoissonBC(c_Code& rCode, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, bool& all_homogeneous_boundaries, bool& some_functionbased_inhomogeneous_boundaries, bool& some_constant_inhomogeneous_boundaries)
 {

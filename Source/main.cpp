@@ -32,11 +32,9 @@ int main (int argc, char* argv[])
     amrex::Initialize(argc,argv);
     
     {
-
 	    c_Code pCode;
-    pCode.InitData();
-    main_main(pCode);
-
+            pCode.InitData();
+            main_main(pCode);
     }
     amrex::Finalize();
     return 0;
@@ -124,8 +122,12 @@ void main_main (c_Code& rCode)
     bool some_functionbased_inhomogeneous_boundaries = false;
     bool some_constant_inhomogeneous_boundaries = false;
 
+#ifdef AMREX_USE_EB
     MultiFab Plt(ba, dm, 14, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
-    
+#else    
+    MultiFab Plt(ba, dm, 14, 0);
+#endif
+
     SetPoissonBC(rCode, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
 
     // coefficients for solver
@@ -139,6 +141,11 @@ void main_main (c_Code& rCode)
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
     InitializePermittivity(beta_face, geom);
+    Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
+    //InitializePermittivity(beta_cc, geom);
+    //Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
+    int amrlev = 0; //refers to the setcoarsest level of the solve
+
 
 #ifdef AMREX_USE_EB
 
@@ -155,12 +162,6 @@ void main_main (c_Code& rCode)
     // assign domain boundary conditions to the solver
     // see Src/Boundary/AMReX_LO_BCTYPES.H for supported types
     p_mlebabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
-
-    auto& rBC = rCode.get_BoundaryConditions();
-    // Fill the ghost cells of each grid from the other grids
-    // includes periodic domain boundaries
-
-    int amrlev = 0; //refers to the setcoarsest level of the solve
 
     if(some_constant_inhomogeneous_boundaries)
     {
@@ -185,7 +186,8 @@ void main_main (c_Code& rCode)
     // set alpha, and beta_fc coefficients
     //p_mlebabec->setACoeffs(amrlev, alpha_cc);
 
-    Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
+    //Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
+    //Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
     if(rGprop.pEB->specify_inhomogeneous_dirichlet == 0)
     {
         //p_mlebabec->setEBHomogDirichlet(amrlev, *rGprop.pEB->p_surf_beta_union);
@@ -214,11 +216,23 @@ void main_main (c_Code& rCode)
 
     p_mlabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
 
+    if(some_constant_inhomogeneous_boundaries)
+    {
+        Fill_Constant_Inhomogeneous_Boundaries(rCode, PoissonPhi);
+    }
+    if(some_functionbased_inhomogeneous_boundaries)
+    {
+        Fill_FunctionBased_Inhomogeneous_Boundaries(rCode, PoissonPhi);
+        //Note that previously in c_BoundaryCondition constructor, it has been asserted
+        //that the use of robin is not supported with embedded boundaries.
+    }
+    PoissonPhi.FillBoundary(geom.periodicity());
+
     // Set Dirichlet BC for Phi in z
     //SetPhiBC_z(PoissonPhi); 
     
     // set Dirichlet BC by reading in the ghost cell values
-    p_mlabec->setLevelBC(0, &PoissonPhi);
+    p_mlabec->setLevelBC(amrlev, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
     p_mlabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS

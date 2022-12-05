@@ -17,5 +17,5 @@ PRINT_LOW   = FALSE
 PRINT_HIGH   = FALSE
 TIME_DEPENDENT = FALSE
 
-include $(CODE_HOME)/Source/Make.Code
+include $(CODE_HOME)/Source/Make.FerroX
 

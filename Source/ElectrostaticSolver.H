@@ -26,6 +26,8 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
                 const Geometry&                 geom);
 
+
+//void InitializePermittivity(MultiFab& beta_cc, const Geometry&  geom);
 //void SetPhiBC_z(MultiFab& PossonPhi);
 
 void dF_dPhi(MultiFab&            alpha_cc,
