@@ -139,7 +139,7 @@ Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(const amrex::Multi
 
 }
 
-void AverageFaceCenteredMultiFabToCellCenters(std::array< amrex::MultiFab,
+void Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(std::array< amrex::MultiFab,
                                             AMREX_SPACEDIM >& fc_arr,
                                             amrex::MultiFab& cc_arr)
 {
@@ -155,9 +155,9 @@ void AverageFaceCenteredMultiFabToCellCenters(std::array< amrex::MultiFab,
         amrex::ParallelFor(bx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            cc(i,j,k,0) = 0.5*(facex(i,j,k)+facex(i+1,j,k));
-            cc(i,j,k,1) = 0.5*(facey(i,j,k)+facey(i+1,j,k));
-            cc(i,j,k,2) = 0.5*(facez(i,j,k)+facez(i+1,j,k));
+            cc(i,j,k) = 0.5*(facex(i,j,k)+facex(i+1,j,k));
+            //cc(i,j,k) = 0.5*(facey(i,j,k)+facey(i,j+1,k));
+            //cc(i,j,k) = 0.5*(facez(i,j,k)+facez(i,j,k+1));
         });
     }
 

@@ -30,13 +30,14 @@ using namespace FerroX;
 int main (int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
-
-    c_Code pCode;
-
-    pCode.InitData();
     
+    {
+
+	    c_Code pCode;
+    pCode.InitData();
     main_main(pCode);
 
+    }
     amrex::Finalize();
     return 0;
 }
@@ -112,7 +113,6 @@ void main_main (c_Code& rCode)
     MultiFab e_den(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
 
-    MultiFab Plt(ba, dm, 14, 0);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -124,6 +124,8 @@ void main_main (c_Code& rCode)
     bool some_functionbased_inhomogeneous_boundaries = false;
     bool some_constant_inhomogeneous_boundaries = false;
 
+    MultiFab Plt(ba, dm, 14, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
+    
     SetPoissonBC(rCode, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
 
     // coefficients for solver
@@ -183,7 +185,7 @@ void main_main (c_Code& rCode)
     // set alpha, and beta_fc coefficients
     //p_mlebabec->setACoeffs(amrlev, alpha_cc);
 
-    //Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
+    Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
     if(rGprop.pEB->specify_inhomogeneous_dirichlet == 0)
     {
         //p_mlebabec->setEBHomogDirichlet(amrlev, *rGprop.pEB->p_surf_beta_union);
@@ -308,7 +310,11 @@ void main_main (c_Code& rCode)
         MultiFab::Copy(Plt, beta_face[0], 0, 11, 1, 0);
         MultiFab::Copy(Plt, beta_face[1], 0, 12, 1, 0);
         MultiFab::Copy(Plt, beta_face[2], 0, 13, 1, 0);
-        WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, 0);
+#ifdef AMREX_USE_EB
+	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, 0);
+#else
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, 0);
+#endif
     }
 
     amrex::Print() << "\n ========= Advance Steps  ========== \n"<< std::endl;
