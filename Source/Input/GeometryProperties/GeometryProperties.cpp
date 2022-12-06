@@ -1,7 +1,6 @@
 #include "GeometryProperties.H"
 
 #include "../../Utils/SelectWarpXUtils/WarpXUtil.H"
-//#include "Code.H"
 
 #include <AMReX.H>
 #include <AMReX_ParmParse.H>

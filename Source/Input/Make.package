@@ -3,4 +3,3 @@ INCLUDE_LOCATIONS += $(CODE_HOME)/Source/Input
 
 include $(CODE_HOME)/Source/Input/GeometryProperties/Make.package
 include $(CODE_HOME)/Source/Input/BoundaryConditions/Make.package
-#include $(CODE_HOME)/Source/Input/MacroscopicProperties/Make.package

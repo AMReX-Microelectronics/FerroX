@@ -1,7 +1,7 @@
 #include "GeometryProperties.H"
 
 #include "../../Utils/SelectWarpXUtils/WarpXUtil.H"
-#include "../../Utils/CodeUtils/CodeUtil.H"
+#include "../../Utils/FerroXUtils/FerroXUtil.H"
 
 #include <AMReX.H>
 #include <AMReX_ParmParse.H>

@@ -1,5 +1,0 @@
-CEXE_sources += CodeUtil.cpp
-CEXE_headers += CodeUtil.H
-
-VPATH_LOCATIONS   += $(CODE_HOME)/Source/Utils/CodeUtils
-INCLUDE_LOCATIONS   += $(CODE_HOME)/Source/Utils/CodeUtils

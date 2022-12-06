@@ -2,8 +2,8 @@
 
 #include "../../Utils/SelectWarpXUtils/WarpXUtil.H"
 #include "../../Utils/SelectWarpXUtils/TextMsg.H"
-#include "../../Utils/CodeUtils/CodeUtil.H"
-#include "Code.H"
+#include "../../Utils/FerroXUtils/FerroXUtil.H"
+#include "FerroX.H"
 #include "GeometryProperties.H"
 
 #include <AMReX_ParmParse.H>
@@ -68,7 +68,7 @@ c_BoundaryConditions::SortBoundaryTypeArrayString(const amrex::Vector<std::strin
                     std::stringstream warnMsg;
                     warnMsg << "In the input file, specification of '" << str  << "' is missing a closed bracket\")\".\n"
                     << "Interpreting it as \n" << str.insert(str.length(),")") << "\n";
-                    c_Code::GetInstance().RecordWarning("Boundary Conditions", warnMsg.str());
+                    c_FerroX::GetInstance().RecordWarning("Boundary Conditions", warnMsg.str());
 
                 }
                 else if(fourth_char != "(" and last_char == ")") //throw warning
@@ -76,7 +76,7 @@ c_BoundaryConditions::SortBoundaryTypeArrayString(const amrex::Vector<std::strin
                     std::stringstream warnMsg;
                     warnMsg << "In the input file, specification of '" << str  << "' is missing an open bracket\"(\".\n"
                     << "Interpreting it as \n" << str.insert(3,"(")  << "\n";
-                    c_Code::GetInstance().RecordWarning("Boundary Conditions", warnMsg.str());
+                    c_FerroX::GetInstance().RecordWarning("Boundary Conditions", warnMsg.str());
 
                 }
                 std::string bracketed_str = str.substr(4,str.length()-5);
@@ -155,8 +155,8 @@ c_BoundaryConditions::ReadBoundaryConditionsType()
 
     
     /* Make both boundaries periodic based on is_periodic */
-    auto& rCode = c_Code::GetInstance();
-    auto& rGprop = rCode.get_GeometryProperties();
+    auto& rFerroX = c_FerroX::GetInstance();
+    auto& rGprop = rFerroX.get_GeometryProperties();
     auto& is_periodic = rGprop.is_periodic;
 
     for (std::size_t idim = 0; idim < AMREX_SPACEDIM; ++idim) 

@@ -15,10 +15,10 @@
 #include "TotalEnergyDensity.H"
 #include "Input/BoundaryConditions/BoundaryConditions.H"
 #include "Input/GeometryProperties/GeometryProperties.H"
-#include "Code.H"
+//#include "Code.H"
 #include "Utils/SelectWarpXUtils/WarpXUtil.H"
 #include "Utils/SelectWarpXUtils/WarpXProfilerWrapper.H"
-#include "Utils/CodeUtils/CodeUtil.H"
+#include "Utils/FerroXUtils/FerroXUtil.H"
 
 
 
@@ -32,15 +32,15 @@ int main (int argc, char* argv[])
     amrex::Initialize(argc,argv);
     
     {
-	    c_Code pCode;
-            pCode.InitData();
-            main_main(pCode);
+	    c_FerroX pFerroX;
+            pFerroX.InitData();
+            main_main(pFerroX);
     }
     amrex::Finalize();
     return 0;
 }
 
-void main_main (c_Code& rCode)
+void main_main (c_FerroX& rFerroX)
 {
 
     Real total_step_strt_time = ParallelDescriptor::second();
@@ -48,7 +48,7 @@ void main_main (c_Code& rCode)
     // read in inputs file
     InitializeFerroXNamespace();
 
-    auto& rGprop = rCode.get_GeometryProperties();
+    auto& rGprop = rFerroX.get_GeometryProperties();
     auto& geom = rGprop.geom;
     auto& ba = rGprop.ba;
     auto& dm = rGprop.dm;
@@ -128,7 +128,7 @@ void main_main (c_Code& rCode)
     MultiFab Plt(ba, dm, 14, 0);
 #endif
 
-    SetPoissonBC(rCode, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
+    SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
 
     // coefficients for solver
     MultiFab alpha_cc(ba, dm, 1, 0);
@@ -165,11 +165,11 @@ void main_main (c_Code& rCode)
 
     if(some_constant_inhomogeneous_boundaries)
     {
-        Fill_Constant_Inhomogeneous_Boundaries(rCode, PoissonPhi);
+        Fill_Constant_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
     }
     if(some_functionbased_inhomogeneous_boundaries)
     {
-        Fill_FunctionBased_Inhomogeneous_Boundaries(rCode, PoissonPhi);
+        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
         //Note that previously in c_BoundaryCondition constructor, it has been asserted
         //that the use of robin is not supported with embedded boundaries.
     }
@@ -212,19 +212,16 @@ void main_main (c_Code& rCode)
     p_mlabec->setEnforceSingularSolvable(false); 
 
     p_mlabec->setMaxOrder(linop_maxorder);  
-    //SetPoissonBC(rCode, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
 
     p_mlabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
 
     if(some_constant_inhomogeneous_boundaries)
     {
-        Fill_Constant_Inhomogeneous_Boundaries(rCode, PoissonPhi);
+        Fill_Constant_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
     }
     if(some_functionbased_inhomogeneous_boundaries)
     {
-        Fill_FunctionBased_Inhomogeneous_Boundaries(rCode, PoissonPhi);
-        //Note that previously in c_BoundaryCondition constructor, it has been asserted
-        //that the use of robin is not supported with embedded boundaries.
+        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
     }
     PoissonPhi.FillBoundary(geom.periodicity());
 
@@ -276,6 +273,7 @@ void main_main (c_Code& rCode)
 
         //Poisson Solve
         pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+	PoissonPhi.FillBoundary(geom.periodicity());
 	
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
@@ -385,8 +383,10 @@ void main_main (c_Code& rCode)
 
             //Poisson Solve
             pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-	
-            // Calculate rho from Phi in SC region
+	    
+	    PoissonPhi.FillBoundary(geom.periodicity());
+            
+	    // Calculate rho from Phi in SC region
             ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
 
             if (SC_hi[2] <= 0.) {
@@ -454,6 +454,7 @@ void main_main (c_Code& rCode)
 
                 //Poisson Solve
                 pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+	        PoissonPhi.FillBoundary(geom.periodicity());
 	
                 // Calculate rho from Phi in SC region
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
@@ -526,6 +527,7 @@ void main_main (c_Code& rCode)
 
                 //Poisson Solve
                 pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+	        PoissonPhi.FillBoundary(geom.periodicity());
 	
                 // Calculate rho from Phi in SC region
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);

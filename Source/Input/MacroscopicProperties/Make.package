@@ -1,6 +1,0 @@
-CEXE_sources += MacroscopicProperties.cpp
-CEXE_headers += MacroscopicProperties.H
-CEXE_headers += MacroscopicProperties_fwd.H
-
-VPATH_LOCATIONS += $(CODE_HOME)/Source/Input/MacroscopicProperties
-INCLUDE_LOCATIONS += $(CODE_HOME)/Source/Input/MacroscopicProperties

@@ -1,6 +1,162 @@
 #include "FerroX.H"
 
+#include "Utils/SelectWarpXUtils/MsgLogger/MsgLogger.H"
+#include "Utils/SelectWarpXUtils/WarnManager.H"
+#include "Utils/SelectWarpXUtils/WarpXUtil.H"
+#include "Utils/SelectWarpXUtils/WarpXProfilerWrapper.H"
+#include "../../Utils/SelectWarpXUtils/WarpXUtil.H"
+
+#include "Input/GeometryProperties/GeometryProperties.H"
+#include "Input/BoundaryConditions/BoundaryConditions.H"
 #include <AMReX_ParmParse.H>
+
+c_FerroX* c_FerroX::m_instance = nullptr;
+#ifdef AMREX_USE_GPU
+bool c_FerroX::do_device_synchronize = true;
+#else
+bool c_FerroX::do_device_synchronize = false;
+#endif
+
+c_FerroX& c_FerroX::GetInstance() 
+{
+
+    if (!m_instance) {
+        m_instance = new c_FerroX();
+    }
+    return *m_instance;
+
+}
+
+
+void
+c_FerroX::ResetInstance ()
+{
+    delete m_instance;
+    m_instance = nullptr;
+}
+
+
+c_FerroX::c_FerroX ()
+{
+#ifdef PRINT_NAME
+    amrex::Print() << "\n\n\t{************************c_FerroX Constructor()************************\n";
+#endif
+    m_instance = this;
+    m_p_warn_manager = std::make_unique<Utils::WarnManager>();
+
+    ReadData();
+
+#ifdef PRINT_NAME
+    amrex::Print() << "\t}************************c_FerroX Constructor()************************\n";
+#endif
+}
+
+
+c_FerroX::~c_FerroX ()
+{
+#ifdef PRINT_NAME
+    amrex::Print() << "\n\n\t{************************c_FerroX Destructor()************************\n";
+#endif
+
+#ifdef PRINT_NAME
+    amrex::Print() << "\t}************************c_FerroX Destructor()************************\n";
+#endif
+}
+
+
+void
+c_FerroX::RecordWarning(
+        std::string topic,
+        std::string text,
+        WarnPriority priority)
+{
+    WARPX_PROFILE("WarpX::RecordWarning");
+
+    auto msg_priority = Utils::MsgLogger::Priority::high;
+    if(priority == WarnPriority::low)
+        msg_priority = Utils::MsgLogger::Priority::low;
+    else if(priority == WarnPriority::medium)
+        msg_priority = Utils::MsgLogger::Priority::medium;
+
+    if(m_always_warn_immediately){
+        amrex::Warning(
+            "!!!!!! WARNING: ["
+            + std::string(Utils::MsgLogger::PriorityToString(msg_priority))
+            + "][" + topic + "] " + text);
+    }
+
+#ifdef AMREX_USE_OMP
+    #pragma omp critical
+#endif
+    {
+        m_p_warn_manager->record_warning(topic, text, msg_priority);
+    }
+}
+
+
+void
+c_FerroX::PrintLocalWarnings(const std::string& when)
+{
+
+    WARPX_PROFILE("WarpX::PrintLocalWarnings");
+    const std::string warn_string = m_p_warn_manager->print_local_warnings(when);
+    amrex::AllPrint() << warn_string;
+
+}
+
+
+void
+c_FerroX::PrintGlobalWarnings(const std::string& when)
+{
+
+    WARPX_PROFILE("WarpX::PrintGlobalWarnings");
+    const std::string warn_string = m_p_warn_manager->print_global_warnings(when);
+    amrex::Print() << warn_string;
+
+}
+
+
+void 
+c_FerroX::ReadData ()
+{
+#ifdef PRINT_NAME
+    amrex::Print() << "\n\n\t\t{************************c_FerroX::ReadData()************************\n";
+    amrex::Print() << "\t\tin file: " << __FILE__ << " at line: " << __LINE__ << "\n";
+#endif
+
+    m_timestep = 0;
+    m_total_steps = 1;
+    amrex::ParmParse pp;
+
+    #ifdef TIME_DEPENDENT
+        queryWithParser(pp,"timestep", m_timestep);
+        queryWithParser(pp,"steps", m_total_steps);
+    #endif
+
+    m_pGeometryProperties = std::make_unique<c_GeometryProperties>();
+
+    m_pBoundaryConditions = std::make_unique<c_BoundaryConditions>();
+    
+#ifdef PRINT_NAME
+    amrex::Print() << "\t\t}************************c_FerroX::ReadData()************************\n";
+#endif
+}
+
+
+void 
+c_FerroX::InitData ()
+{
+#ifdef PRINT_NAME
+    amrex::Print() << "\n\n\t{************************c_FerroX::InitData()************************\n";
+    amrex::Print() << "\tin file: " << __FILE__ << " at line: " << __LINE__ << "\n";
+#endif
+ 
+    m_pGeometryProperties->InitData();
+
+#ifdef PRINT_NAME
+    amrex::Print() << "\t}************************c_FerroX::InitData()************************\n";
+#endif
+}
 
 AMREX_GPU_MANAGED int FerroX::max_grid_size;
 AMREX_GPU_MANAGED int FerroX::nsteps;
@@ -203,3 +359,5 @@ void InitializeFerroXNamespace() {
      T = 300; // Room Temp
 
 }
+
+

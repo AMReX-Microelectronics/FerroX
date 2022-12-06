@@ -1,7 +1,7 @@
 #include "ElectrostaticSolver.H"
 #include "DerivativeAlgorithm.H"
 #include "ChargeDensity.H"
-#include "Utils/CodeUtils/CodeUtil.H"
+#include "Utils/FerroXUtils/FerroXUtil.H"
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
@@ -253,9 +253,9 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
 }
 
 
-void SetPoissonBC(c_Code& rCode, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, bool& all_homogeneous_boundaries, bool& some_functionbased_inhomogeneous_boundaries, bool& some_constant_inhomogeneous_boundaries)
+void SetPoissonBC(c_FerroX& rFerroX, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, bool& all_homogeneous_boundaries, bool& some_functionbased_inhomogeneous_boundaries, bool& some_constant_inhomogeneous_boundaries)
 {
-    auto& rBC = rCode.get_BoundaryConditions();
+    auto& rBC = rFerroX.get_BoundaryConditions();
     auto& map_boundary_type = rBC.map_boundary_type;
     auto& bcType_2d = rBC.bcType_2d;
     auto& map_bcAny_2d = rBC.map_bcAny_2d;
@@ -314,12 +314,12 @@ void SetPoissonBC(c_Code& rCode, std::array<std::array<amrex::LinOpBCType,AMREX_
     }
 }
 
-void Fill_Constant_Inhomogeneous_Boundaries(c_Code& rCode, MultiFab& PoissonPhi)
+void Fill_Constant_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi)
 {
-    auto& rGprop = rCode.get_GeometryProperties();
+    auto& rGprop = rFerroX.get_GeometryProperties();
     Box const& domain = rGprop.geom.Domain();
 
-    auto& rBC = rCode.get_BoundaryConditions();
+    auto& rBC = rFerroX.get_BoundaryConditions();
     auto& bcAny_2d = rBC.bcAny_2d;
     auto& map_bcAny_2d = rBC.map_bcAny_2d;
 
@@ -369,7 +369,7 @@ void Fill_Constant_Inhomogeneous_Boundaries(c_Code& rCode, MultiFab& PoissonPhi)
     } 
 
 }
-void Fill_FunctionBased_Inhomogeneous_Boundaries(c_Code& rCode, MultiFab& PoissonPhi)
+void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi)
 {
 }
 
