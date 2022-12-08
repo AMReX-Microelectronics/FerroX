@@ -140,11 +140,7 @@ void main_main (c_FerroX& rFerroX)
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
     InitializePermittivity(beta_face, geom);
-    //beta_face[0].setVal(10.0);
-    //beta_face[1].setVal(10.0);
-    //beta_face[2].setVal(10.0);
-    //InitializePermittivity(beta_cc, geom);
-    //Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
+
     int amrlev = 0; //refers to the setcoarsest level of the solve
 
 
@@ -184,19 +180,13 @@ void main_main (c_FerroX& rFerroX)
     p_mlebabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
     p_mlebabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
 
-    // set alpha, and beta_fc coefficients
-    //p_mlebabec->setACoeffs(amrlev, alpha_cc);
-
-    //Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
     Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
     if(rGprop.pEB->specify_inhomogeneous_dirichlet == 0)
     {
-        //p_mlebabec->setEBHomogDirichlet(amrlev, *rGprop.pEB->p_surf_beta_union);
         p_mlebabec->setEBHomogDirichlet(amrlev, beta_cc);
     }
     else
     {
-        //p_mlebabec->setEBDirichlet(amrlev, *rGprop.pEB->p_surf_soln_union, *rGprop.pEB->p_surf_beta_union);
         p_mlebabec->setEBDirichlet(amrlev, *rGprop.pEB->p_surf_soln_union, beta_cc);
     }
 
@@ -250,7 +240,6 @@ void main_main (c_FerroX& rFerroX)
     Real err = 1.0;
     int iter = 0;
     
-    //while(iter < 2){
     while(err > tol){
    
 	//Compute RHS of Poisson equation
@@ -360,7 +349,6 @@ void main_main (c_FerroX& rFerroX)
         iter = 0;
 
         // iterate to compute Phi^{n+1,*}
-        //while(iter < 2){
         while(err > tol){
    
             // Compute RHS of Poisson equation
@@ -430,7 +418,6 @@ void main_main (c_FerroX& rFerroX)
             iter = 0;
 
             // iterate to compute Phi^{n+1}
-            //while(iter < 2){
             while(err > tol){
    
                 // Compute RHS of Poisson equation
@@ -502,7 +489,6 @@ void main_main (c_FerroX& rFerroX)
             iter = 0;
 
             // iterate to compute Phi^{n+1} with new Dirichlet value
-            //while(iter < 10){
             while(err > tol){
    
                 // Compute RHS of Poisson equation
