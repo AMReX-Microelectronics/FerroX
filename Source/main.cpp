@@ -9,10 +9,10 @@
 #include <AMReX_MultiFab.H> 
 #include <AMReX_VisMF.H>
 #include "FerroX.H"
-#include "ElectrostaticSolver.H"
-#include "Initialization.H"
-#include "ChargeDensity.H"
-#include "TotalEnergyDensity.H"
+#include "Solver/ElectrostaticSolver.H"
+#include "Solver/Initialization.H"
+#include "Solver/ChargeDensity.H"
+#include "Solver/TotalEnergyDensity.H"
 #include "Input/BoundaryConditions/BoundaryConditions.H"
 #include "Input/GeometryProperties/GeometryProperties.H"
 #include "Utils/SelectWarpXUtils/WarpXUtil.H"

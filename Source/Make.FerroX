@@ -6,7 +6,7 @@ CXXSTD       = c++17
 
 include $(CODE_HOME)/Source/Make.package
 
-Code_dirs = Utils Input
+Code_dirs = Utils Input Solver
 Code_pack   += $(foreach dir, $(Code_dirs), $(CODE_HOME)/Source/$(dir)/Make.package)
 include $(Code_pack)
 
