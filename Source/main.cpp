@@ -15,7 +15,6 @@
 #include "TotalEnergyDensity.H"
 #include "Input/BoundaryConditions/BoundaryConditions.H"
 #include "Input/GeometryProperties/GeometryProperties.H"
-//#include "Code.H"
 #include "Utils/SelectWarpXUtils/WarpXUtil.H"
 #include "Utils/SelectWarpXUtils/WarpXProfilerWrapper.H"
 #include "Utils/FerroXUtils/FerroXUtil.H"
@@ -125,7 +124,7 @@ void main_main (c_FerroX& rFerroX)
 #ifdef AMREX_USE_EB
     MultiFab Plt(ba, dm, 14, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
 #else    
-    MultiFab Plt(ba, dm, 14, 0);
+    MultiFab Plt(ba, dm, 15, 0);
 #endif
 
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
@@ -141,7 +140,9 @@ void main_main (c_FerroX& rFerroX)
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
     InitializePermittivity(beta_face, geom);
-    Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
+    //beta_face[0].setVal(10.0);
+    //beta_face[1].setVal(10.0);
+    //beta_face[2].setVal(10.0);
     //InitializePermittivity(beta_cc, geom);
     //Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
     int amrlev = 0; //refers to the setcoarsest level of the solve
@@ -187,7 +188,7 @@ void main_main (c_FerroX& rFerroX)
     //p_mlebabec->setACoeffs(amrlev, alpha_cc);
 
     //Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
-    //Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
+    Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
     if(rGprop.pEB->specify_inhomogeneous_dirichlet == 0)
     {
         //p_mlebabec->setEBHomogDirichlet(amrlev, *rGprop.pEB->p_surf_beta_union);
@@ -203,7 +204,6 @@ void main_main (c_FerroX& rFerroX)
 
     pMLMG->setVerbose(mlmg_verbosity);
 #else
-
     std::unique_ptr<amrex::MLABecLaplacian> p_mlabec;
     p_mlabec = std::make_unique<amrex::MLABecLaplacian>();
     p_mlabec->define({geom}, {ba}, {dm}, info);
@@ -225,21 +225,18 @@ void main_main (c_FerroX& rFerroX)
     }
     PoissonPhi.FillBoundary(geom.periodicity());
 
-    // Set Dirichlet BC for Phi in z
-    //SetPhiBC_z(PoissonPhi); 
-    
     // set Dirichlet BC by reading in the ghost cell values
     p_mlabec->setLevelBC(amrlev, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
     p_mlabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
-    p_mlabec->setBCoeffs(0, amrex::GetArrOfConstPtrs(beta_face));
+    p_mlabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
 
     //Declare MLMG object
     pMLMG = std::make_unique<MLMG>(*p_mlabec);
     pMLMG->setVerbose(mlmg_verbosity);
-
 #endif
+
 
     // time = starting time in the simulation
     Real time = 0.0;
@@ -265,7 +262,7 @@ void main_main (c_FerroX& rFerroX)
 
 #ifdef AMREX_USE_EB
         p_mlebabec->setACoeffs(0, alpha_cc);
-#else 
+#else
         p_mlabec->setACoeffs(0, alpha_cc);
 #endif
         //Initial guess for phi
@@ -277,8 +274,8 @@ void main_main (c_FerroX& rFerroX)
 	
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
-
-        if (SC_hi[2] <= 0.) {
+        
+	if (SC_hi[2] <= 0.) {
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
         } else {
@@ -322,10 +319,11 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, beta_face[0], 0, 11, 1, 0);
         MultiFab::Copy(Plt, beta_face[1], 0, 12, 1, 0);
         MultiFab::Copy(Plt, beta_face[2], 0, 13, 1, 0);
+        MultiFab::Copy(Plt, GL_rhs[2], 0, 14, 1, 0);
 #ifdef AMREX_USE_EB
 	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, 0);
 #else
-	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, 0);
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface", "GL_rhs_z"}, geom, time, 0);
 #endif
     }
 
@@ -338,7 +336,7 @@ void main_main (c_FerroX& rFerroX)
         // compute f^n = f(P^n,Phi^n)
         CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, geom);
 
-        // P^{n+1,*} = P^n = dt * f^n
+        // P^{n+1,*} = P^n + dt * f^n
         for (int i = 0; i < 3; i++){
             MultiFab::LinComb(P_new_pre[i], 1.0, P_old[i], 0, dt, GL_rhs[i], 0, 0, 1, Nghost);
             P_new_pre[i].FillBoundary(geom.periodicity()); 
@@ -377,7 +375,6 @@ void main_main (c_FerroX& rFerroX)
 #else 
             p_mlabec->setACoeffs(0, alpha_cc);
 #endif
- 
             //Initial guess for phi
             PoissonPhi.setVal(0.);
 
@@ -485,7 +482,6 @@ void main_main (c_FerroX& rFerroX)
                 // fill periodic ghost cells
                 P_old[i].FillBoundary(geom.periodicity());
             }
-
         }
 
         if (inc_step > 0 && step%inc_step == 0) {
@@ -583,7 +579,12 @@ void main_main (c_FerroX& rFerroX)
             MultiFab::Copy(Plt, beta_face[0], 0, 11, 1, 0);
             MultiFab::Copy(Plt, beta_face[1], 0, 12, 1, 0);
             MultiFab::Copy(Plt, beta_face[2], 0, 13, 1, 0);
-            WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, step);
+            MultiFab::Copy(Plt, GL_rhs[2], 0, 14, 1, 0);
+#ifdef AMREX_USE_EB
+	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, step);
+#else
+	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface", "GL_rhs_z"}, geom, time, step);
+#endif
         }
 
     }

@@ -50,16 +50,15 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
         Real pi = 3.141592653589793238;
 
+	Real small = dx[2]*1.e-6;
+
         // set P
         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
             Real x = prob_lo[0] + (i+0.5) * dx[0];
             Real y = prob_lo[1] + (j+0.5) * dx[1];
             Real z = prob_lo[2] + (k+0.5) * dx[2];
-            if (z <= DE_hi[2]) {
-               pOld_z(i,j,k) = 0.0;
-               Gam(i,j,k) = 0.0;
-            } else {
+            if (z <= FE_hi[2] + small && z >= FE_lo[2] - small) {
                if (prob_type == 1) {  //2D : Initialize uniform P in y direction
 
                   double tmp = (i%3 + k%4)/5.;
@@ -80,6 +79,9 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                }
 
                Gam(i,j,k) = BigGamma;
+            } else {
+               pOld_z(i,j,k) = 0.0;
+               Gam(i,j,k) = 0.0;
             }
             pOld_x(i,j,k) = 0.0;
             pOld_y(i,j,k) = 0.0;

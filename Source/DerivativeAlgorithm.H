@@ -12,11 +12,11 @@ using namespace FerroX;
 
     if (z_lo < prob_lo[2]){ // bottom metal
         // return (1./3.) * inv_dz * (-4.*Phi_Bc_lo + 3.*F(i,j,k) + F(i,j,k+1));
-        return (-4.*Phi_Bc_lo + 3.*F(i,j,k) + F(i,j,k+1)) / (3. * dx[2]);
-        
+        //return (-4.*Phi_Bc_lo + 3.*F(i,j,k) + F(i,j,k+1)) / (3. * dx[2]);
+        return (-4.*F(i,j,k-1) + 3.*F(i,j,k) + F(i,j,k+1)) / (3. * dx[2]);
     } else if (z_hi > prob_hi[2]){ // top metal
-        return (4.*Phi_Bc_hi - 3.*F(i,j,k) - F(i,j,k-1)) / (3. * dx[2]);
-
+        //return (4.*Phi_Bc_hi - 3.*F(i,j,k) - F(i,j,k-1)) / (3. * dx[2]);
+        return (4.*F(i,j,k+1) - 3.*F(i,j,k) - F(i,j,k-1)) / (3. * dx[2]);
     } else { // inside stack
         return (F(i,j,k+1) - F(i,j,k-1)) / (2. * dx[2]);
     }

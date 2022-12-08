@@ -25,7 +25,7 @@ void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
 
 
 //void InitializePermittivity(MultiFab& beta_cc, const Geometry&  geom);
-//void SetPhiBC_z(MultiFab& PossonPhi);
+void SetPhiBC_z(MultiFab& PossonPhi);
 
 void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS, 
