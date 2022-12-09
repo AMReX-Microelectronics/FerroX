@@ -7,7 +7,7 @@ domain.prob_hi =  16.e-9  16.e-9 17.e-9
 
 domain.n_cell = 64 64 34
 
-max_grid_size = 64 64 34
+domain.max_grid_size = 64 64 34
 #domain.blocking_factor = 16 16 16
 
 domain.coord_sys = cartesian 

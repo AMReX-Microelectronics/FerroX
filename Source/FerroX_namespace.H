@@ -1,6 +1,5 @@
 namespace FerroX {
 
-    extern AMREX_GPU_MANAGED int max_grid_size;
     extern AMREX_GPU_MANAGED int nsteps;
     extern AMREX_GPU_MANAGED int plot_int;
 
@@ -50,10 +49,6 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int P_BC_flag_lo;
     extern AMREX_GPU_MANAGED int P_BC_flag_hi;
     extern AMREX_GPU_MANAGED amrex::Real lambda;
-    extern AMREX_GPU_MANAGED amrex::Real Phi_Bc_lo;
-    extern AMREX_GPU_MANAGED amrex::Real Phi_Bc_hi;
-    extern AMREX_GPU_MANAGED amrex::Real Phi_Bc_inc;
-    extern AMREX_GPU_MANAGED int inc_step;
 
     //problem type : initialization of P for 2D/3D/convergence problems
     extern AMREX_GPU_MANAGED int prob_type;

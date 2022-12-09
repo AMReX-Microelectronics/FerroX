@@ -4,7 +4,6 @@
 #include "FerroX.H"
 #include "Input/BoundaryConditions/BoundaryConditions.H"
 #include "Input/GeometryProperties/GeometryProperties.H"
-//#include "Code.H"
 
 using namespace amrex;
 using namespace FerroX;
@@ -20,12 +19,7 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                 MultiFab&                      Ez,
                 const Geometry&                 geom);
 
-void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
-                const Geometry&                 geom);
-
-
-//void InitializePermittivity(MultiFab& beta_cc, const Geometry&  geom);
-void SetPhiBC_z(MultiFab& PossonPhi);
+void InitializePermittivity(MultiFab& beta_cc, const Geometry&  geom);
 
 void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS, 

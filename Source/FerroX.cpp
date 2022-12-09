@@ -158,7 +158,6 @@ c_FerroX::InitData ()
 #endif
 }
 
-AMREX_GPU_MANAGED int FerroX::max_grid_size;
 AMREX_GPU_MANAGED int FerroX::nsteps;
 AMREX_GPU_MANAGED int FerroX::plot_int;
 
@@ -208,10 +207,6 @@ AMREX_GPU_MANAGED amrex::Real FerroX::T;
 AMREX_GPU_MANAGED int FerroX::P_BC_flag_lo;
 AMREX_GPU_MANAGED int FerroX::P_BC_flag_hi;
 AMREX_GPU_MANAGED amrex::Real FerroX::lambda;
-AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_lo;
-AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_hi;
-AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_inc;
-AMREX_GPU_MANAGED int FerroX::inc_step;
 
 //problem type : initialization of P for 2D/3D/convergence problems
 AMREX_GPU_MANAGED int FerroX::prob_type;
@@ -237,19 +232,8 @@ void InitializeFerroXNamespace() {
          }
      }
 
-     // The domain is broken into boxes of size max_grid_size
-     pp.get("max_grid_size",max_grid_size);
-
      pp.get("P_BC_flag_hi",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
      pp.get("P_BC_flag_lo",P_BC_flag_lo); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
-     pp.get("Phi_Bc_hi",Phi_Bc_hi);
-     pp.get("Phi_Bc_lo",Phi_Bc_lo);
-
-     Phi_Bc_inc = 0.;
-     pp.query("Phi_Bc_inc",Phi_Bc_inc);
-
-     inc_step = -1;
-     pp.query("inc_step",inc_step);
 
      pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 

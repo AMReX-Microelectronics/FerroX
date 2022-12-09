@@ -139,7 +139,9 @@ void main_main (c_FerroX& rFerroX)
 
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
-    InitializePermittivity(beta_face, geom);
+    //InitializePermittivity(beta_face, geom);
+    InitializePermittivity(beta_cc, geom);
+    Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
 
     int amrlev = 0; //refers to the setcoarsest level of the solve
 
@@ -157,7 +159,6 @@ void main_main (c_FerroX& rFerroX)
     p_mlebabec->setMaxOrder(linop_maxorder);
 
     // assign domain boundary conditions to the solver
-    // see Src/Boundary/AMReX_LO_BCTYPES.H for supported types
     p_mlebabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
 
     if(some_constant_inhomogeneous_boundaries)
@@ -167,8 +168,6 @@ void main_main (c_FerroX& rFerroX)
     if(some_functionbased_inhomogeneous_boundaries)
     {
         Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
-        //Note that previously in c_BoundaryCondition constructor, it has been asserted
-        //that the use of robin is not supported with embedded boundaries.
     }
     PoissonPhi.FillBoundary(geom.periodicity());
 
@@ -180,7 +179,7 @@ void main_main (c_FerroX& rFerroX)
     p_mlebabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
     p_mlebabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
 
-    Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
+    //Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
     if(rGprop.pEB->specify_inhomogeneous_dirichlet == 0)
     {
         p_mlebabec->setEBHomogDirichlet(amrlev, beta_cc);
@@ -308,10 +307,10 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, beta_face[0], 0, 11, 1, 0);
         MultiFab::Copy(Plt, beta_face[1], 0, 12, 1, 0);
         MultiFab::Copy(Plt, beta_face[2], 0, 13, 1, 0);
-        MultiFab::Copy(Plt, GL_rhs[2], 0, 14, 1, 0);
 #ifdef AMREX_USE_EB
 	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, 0);
 #else
+        MultiFab::Copy(Plt, GL_rhs[2], 0, 14, 1, 0);
 	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface", "GL_rhs_z"}, geom, time, 0);
 #endif
     }
@@ -471,6 +470,9 @@ void main_main (c_FerroX& rFerroX)
             }
         }
 
+	//TODO: Fix gate voltage incremet : Use time dependent dirichlet BC for non-eb simulations
+	//                                  Use time dependent EB potential for eb simulations
+	/*
         if (inc_step > 0 && step%inc_step == 0) {
             Phi_Bc_hi = Phi_Bc_hi + Phi_Bc_inc;
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
@@ -534,7 +536,7 @@ void main_main (c_FerroX& rFerroX)
                 }
             }
         }
-
+*/
         // Calculate E from Phi
 	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom);
 
@@ -565,10 +567,10 @@ void main_main (c_FerroX& rFerroX)
             MultiFab::Copy(Plt, beta_face[0], 0, 11, 1, 0);
             MultiFab::Copy(Plt, beta_face[1], 0, 12, 1, 0);
             MultiFab::Copy(Plt, beta_face[2], 0, 13, 1, 0);
-            MultiFab::Copy(Plt, GL_rhs[2], 0, 14, 1, 0);
 #ifdef AMREX_USE_EB
 	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, step);
 #else
+            MultiFab::Copy(Plt, GL_rhs[2], 0, 14, 1, 0);
 	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface", "GL_rhs_z"}, geom, time, step);
 #endif
         }
