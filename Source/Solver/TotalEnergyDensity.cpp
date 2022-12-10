@@ -5,7 +5,9 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 MultiFab&                       PoissonPhi,
                 MultiFab&                       Gamma,
-                const Geometry& geom)
+                const Geometry& geom,
+		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
         // loop over boxes
         for ( MFIter mfi(P_old[0]); mfi.isValid(); ++mfi )
@@ -94,7 +96,7 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 GL_RHS_z(i,j,k)  = -1.0 * Gam(i,j,k) *
                     (  dFdPz_Landau
                      + dFdPz_grad
-                     + DphiDz(phi, z, z_hi, z_lo, i, j, k, dx)
+                     + DphiDz(phi, z, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi)
                     );
 
             });

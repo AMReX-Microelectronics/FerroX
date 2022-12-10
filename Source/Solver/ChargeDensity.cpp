@@ -5,7 +5,9 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 MultiFab&      rho,
                 MultiFab&      e_den,
                 MultiFab&      p_den,
-                const          Geometry& geom)
+                const          Geometry& geom,
+		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
     // loop over boxes
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)

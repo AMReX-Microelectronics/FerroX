@@ -8,7 +8,9 @@ using namespace FerroX;
  static amrex::Real DphiDz (
     amrex::Array4<amrex::Real> const& F,
     amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
-    int const i, int const j, int const k,  amrex::GpuArray<amrex::Real, 3> dx) {
+    int const i, int const j, int const k,  amrex::GpuArray<amrex::Real, 3> dx, 
+    amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>const& prob_lo,
+    amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>const& prob_hi) {
 
     if (z_lo < prob_lo[2]){ // bottom metal
         return (-4.*F(i,j,k-1) + 3.*F(i,j,k) + F(i,j,k+1)) / (3. * dx[2]);

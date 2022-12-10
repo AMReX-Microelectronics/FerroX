@@ -47,11 +47,14 @@ void main_main (c_FerroX& rFerroX)
     // read in inputs file
     InitializeFerroXNamespace();
 
+
     auto& rGprop = rFerroX.get_GeometryProperties();
     auto& geom = rGprop.geom;
     auto& ba = rGprop.ba;
     auto& dm = rGprop.dm;
     auto& is_periodic = rGprop.is_periodic;
+    auto& prob_lo = rGprop.prob_lo;
+    auto& prob_hi = rGprop.prob_hi;
 
 
     // Nghost = number of ghost cells for each array
@@ -122,9 +125,9 @@ void main_main (c_FerroX& rFerroX)
     bool some_constant_inhomogeneous_boundaries = false;
 
 #ifdef AMREX_USE_EB
-    MultiFab Plt(ba, dm, 14, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
+    MultiFab Plt(ba, dm, 12, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
 #else    
-    MultiFab Plt(ba, dm, 15, 0);
+    MultiFab Plt(ba, dm, 12, 0);
 #endif
 
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
@@ -140,7 +143,7 @@ void main_main (c_FerroX& rFerroX)
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
     //InitializePermittivity(beta_face, geom);
-    InitializePermittivity(beta_cc, geom);
+    InitializePermittivity(beta_cc, geom, prob_lo, prob_hi);
     Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
 
     int amrlev = 0; //refers to the setcoarsest level of the solve
@@ -232,7 +235,7 @@ void main_main (c_FerroX& rFerroX)
 
     // INITIALIZE P in FE and rho in SC regions
 
-    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom);
+    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
 
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
@@ -242,9 +245,9 @@ void main_main (c_FerroX& rFerroX)
     while(err > tol){
    
 	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, charge_den, geom);
+	ComputePoissonRHS(PoissonRHS, P_old, charge_den, geom, prob_lo, prob_hi);
 
-        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, geom);
+        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
 
         ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -261,7 +264,7 @@ void main_main (c_FerroX& rFerroX)
 	PoissonPhi.FillBoundary(geom.periodicity());
 	
         // Calculate rho from Phi in SC region
-        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
+        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
         
 	if (SC_hi[2] <= 0.) {
             // no semiconductor region; set error to zero so the while loop terminates
@@ -286,7 +289,7 @@ void main_main (c_FerroX& rFerroX)
     amrex::Print() << "\n ========= Self-Consistent Initialization of P and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
 
     // Calculate E from Phi
-    ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom);
+    ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom, prob_lo, prob_hi);
 
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
@@ -304,14 +307,11 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
         MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
         MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
-        MultiFab::Copy(Plt, beta_face[0], 0, 11, 1, 0);
-        MultiFab::Copy(Plt, beta_face[1], 0, 12, 1, 0);
-        MultiFab::Copy(Plt, beta_face[2], 0, 13, 1, 0);
+        MultiFab::Copy(Plt, beta_cc, 0, 11, 1, 0);
 #ifdef AMREX_USE_EB
-	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, 0);
+	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon"}, geom, time, 0);
 #else
-        MultiFab::Copy(Plt, GL_rhs[2], 0, 14, 1, 0);
-	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface", "GL_rhs_z"}, geom, time, 0);
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon"}, geom, time, 0);
 #endif
     }
 
@@ -322,7 +322,7 @@ void main_main (c_FerroX& rFerroX)
         Real step_strt_time = ParallelDescriptor::second();
 
         // compute f^n = f(P^n,Phi^n)
-        CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, geom);
+        CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, geom, prob_lo, prob_hi);
 
         // P^{n+1,*} = P^n + dt * f^n
         for (int i = 0; i < 3; i++){
@@ -351,9 +351,9 @@ void main_main (c_FerroX& rFerroX)
         while(err > tol){
    
             // Compute RHS of Poisson equation
-            ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, geom);
+            ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, geom, prob_lo, prob_hi);
 
-            dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, geom);
+            dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
 
             ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -371,7 +371,7 @@ void main_main (c_FerroX& rFerroX)
 	    PoissonPhi.FillBoundary(geom.periodicity());
             
 	    // Calculate rho from Phi in SC region
-            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
+            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
 
             if (SC_hi[2] <= 0.) {
                 // no semiconductor region; set error to zero so the while loop terminates
@@ -405,7 +405,7 @@ void main_main (c_FerroX& rFerroX)
         } else {
         
             // compute f^{n+1,*} = f(P^{n+1,*},Phi^{n+1,*})
-            CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, geom);
+            CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, geom, prob_lo, prob_hi);
 
             // P^{n+1} = P^n + dt/2 * f^n + dt/2 * f^{n+1,*}
             for (int i = 0; i < 3; i++){
@@ -420,9 +420,9 @@ void main_main (c_FerroX& rFerroX)
             while(err > tol){
    
                 // Compute RHS of Poisson equation
-                ComputePoissonRHS(PoissonRHS, P_new, charge_den, geom);
+                ComputePoissonRHS(PoissonRHS, P_new, charge_den, geom, prob_lo, prob_hi);
 
-                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, geom);
+                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
 
                 ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -440,7 +440,7 @@ void main_main (c_FerroX& rFerroX)
 	        PoissonPhi.FillBoundary(geom.periodicity());
 	
                 // Calculate rho from Phi in SC region
-                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
+                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
 
                 if (SC_hi[2] <= 0.) {
                     // no semiconductor region; set error to zero so the while loop terminates
@@ -538,7 +538,7 @@ void main_main (c_FerroX& rFerroX)
         }
 */
         // Calculate E from Phi
-	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom);
+	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom, prob_lo, prob_hi);
 
 	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
         ParallelDescriptor::ReduceRealMax(step_stop_time);
@@ -564,14 +564,11 @@ void main_main (c_FerroX& rFerroX)
             MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
             MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
             MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
-            MultiFab::Copy(Plt, beta_face[0], 0, 11, 1, 0);
-            MultiFab::Copy(Plt, beta_face[1], 0, 12, 1, 0);
-            MultiFab::Copy(Plt, beta_face[2], 0, 13, 1, 0);
+            MultiFab::Copy(Plt, beta_cc, 0, 11, 1, 0);
 #ifdef AMREX_USE_EB
-	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface"}, geom, time, step);
+	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon"}, geom, time, step);
 #else
-            MultiFab::Copy(Plt, GL_rhs[2], 0, 14, 1, 0);
-	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon_xface","epsilon_yface","epsilon_zface", "GL_rhs_z"}, geom, time, step);
+	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon"}, geom, time, step);
 #endif
         }
 

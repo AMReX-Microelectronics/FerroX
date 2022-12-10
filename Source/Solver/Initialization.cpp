@@ -6,7 +6,9 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                    MultiFab&   rho,
                    MultiFab&   e_den,
                    MultiFab&   p_den,
-                   const       Geometry& geom)
+                   const       Geometry& geom,
+		   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
 
     if (prob_type == 1) {  //2D : Initialize uniform P in y direction
@@ -58,7 +60,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
             Real x = prob_lo[0] + (i+0.5) * dx[0];
             Real y = prob_lo[1] + (j+0.5) * dx[1];
             Real z = prob_lo[2] + (k+0.5) * dx[2];
-            if (z <= FE_hi[2] + small && z >= FE_lo[2] - small) {
+            if (x <= FE_hi[0] + small && x >= FE_lo[0] - small && y <= FE_hi[1] + small && y >= FE_lo[1] - small && z <= FE_hi[2] + small && z >= FE_lo[2] - small) {
                if (prob_type == 1) {  //2D : Initialize uniform P in y direction
 
                   double tmp = (i%3 + k%4)/5.;

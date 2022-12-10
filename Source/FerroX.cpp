@@ -164,10 +164,6 @@ AMREX_GPU_MANAGED int FerroX::plot_int;
 // time step
 AMREX_GPU_MANAGED amrex::Real FerroX::dt;
 
-AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::n_cell; // number of cells in each direction
-AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::prob_lo; // physical lo coordinate
-AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::prob_hi; // physical hi coordinate
-
 // multimaterial stack geometry
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::DE_lo;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::FE_lo;
@@ -224,14 +220,6 @@ void InitializeFerroXNamespace() {
      // pp.query means we optionally need the inputs file to have it - but we must supply a default here
      ParmParse pp;
 
-     // We need to get n_cell from the inputs file - this is the number of cells on each side of
-     amrex::Vector<int> temp_int(AMREX_SPACEDIM);
-     if (pp.queryarr("n_cell",temp_int)) {
-         for (int i=0; i<AMREX_SPACEDIM; ++i) {
-             n_cell[i] = temp_int[i];
-         }
-     }
-
      pp.get("P_BC_flag_hi",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
      pp.get("P_BC_flag_lo",P_BC_flag_lo); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
 
@@ -278,19 +266,9 @@ void InitializeFerroXNamespace() {
      delta = 1.e-6;
      pp.query("delta",delta);
 
-     amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
-     if (pp.queryarr("prob_lo",temp)) {
-         for (int i=0; i<AMREX_SPACEDIM; ++i) {
-             prob_lo[i] = temp[i];
-         }
-     }
-     if (pp.queryarr("prob_hi",temp)) {
-         for (int i=0; i<AMREX_SPACEDIM; ++i) {
-             prob_hi[i] = temp[i];
-         }
-     }
-
      //stack dimensions in 3D
+
+     amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
 
      if (pp.queryarr("DE_lo",temp)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {

@@ -6,7 +6,9 @@
 void ComputePoissonRHS(MultiFab&               PoissonRHS,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 MultiFab&                      rho,
-                const Geometry&                 geom)
+                const Geometry&                 geom,
+		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
     for ( MFIter mfi(PoissonRHS); mfi.isValid(); ++mfi )
         {
@@ -53,7 +55,9 @@ void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-             const          Geometry& geom)
+             const          Geometry& geom,
+	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 
 {
    
@@ -64,10 +68,10 @@ void dF_dPhi(MultiFab&            alpha_cc,
         PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
 
         // Calculate rho from Phi in SC region
-        ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, geom);
+        ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, geom, prob_lo, prob_hi);
 
         //Compute RHS of Poisson equation
-        ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, geom);
+        ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, geom, prob_lo, prob_hi);
 
         MultiFab::LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 0);
 }
@@ -95,7 +99,9 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                 MultiFab&                      Ex,
                 MultiFab&                      Ey,
                 MultiFab&                      Ez,
-                const Geometry&                 geom)
+                const Geometry&                 geom,
+		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, 
+		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
        // Calculate E from Phi
 
@@ -119,7 +125,7 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
                      Ex_arr(i,j,k) = - DFDx(phi, i, j, k, dx);
                      Ey_arr(i,j,k) = - DFDy(phi, i, j, k, dx);
-                     Ez_arr(i,j,k) = - DphiDz(phi, z, z_hi, z_lo, i, j, k, dx);
+                     Ez_arr(i,j,k) = - DphiDz(phi, z, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi);
 
              });
         }
@@ -127,7 +133,7 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 }
 
 
-void InitializePermittivity(MultiFab& beta_cc, const Geometry& geom)
+void InitializePermittivity(MultiFab& beta_cc, const Geometry& geom, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
     // extract dx from the geometry object
     GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
@@ -144,14 +150,20 @@ void InitializePermittivity(MultiFab& beta_cc, const Geometry& geom)
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
+          Real x = prob_lo[0] + (i+0.5) * dx[0];
+          Real y = prob_lo[1] + (j+0.5) * dx[1];
           Real z = prob_lo[2] + (k+0.5) * dx[2];
-          if(z < SC_hi[2]) {
+
+          if((x >= SC_lo[0] && x < SC_hi[0]) && (y >= SC_lo[1] && y < SC_hi[1]) && (z >= SC_lo[2] && z < SC_hi[2])) {
              beta(i,j,k) = epsilon_si * epsilon_0; //SC layer
-          } else if(z < DE_hi[2]) {
+          } else if((x >= DE_lo[0] && x < DE_hi[0]) && (y >= DE_lo[1] && y < DE_hi[1]) && (z >= DE_lo[2] && z < DE_hi[2])) {
              beta(i,j,k) = epsilon_de * epsilon_0; //DE layer
-          } else {
+          } else if ((x >= FE_lo[0] && x < FE_hi[0]) && (y >= FE_lo[1] && y < FE_hi[1]) && (z >= FE_lo[2] && z < FE_hi[2])){
              beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
-          }
+          } else {
+             beta(i,j,k) = epsilon_0; //vacuum
+	  }
+
         });
     }
 }

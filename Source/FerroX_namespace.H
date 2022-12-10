@@ -6,10 +6,6 @@ namespace FerroX {
     // time step
     extern AMREX_GPU_MANAGED amrex::Real dt;
 
-    extern AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> n_cell; // number of cells in each direction
-    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_lo; // physical lo coordinate
-    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_hi; // physical hi coordinate
-
     // multimaterial stack geometry
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> DE_lo;
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FE_lo;

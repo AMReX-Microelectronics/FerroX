@@ -11,5 +11,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                    MultiFab&   rho,
                    MultiFab&   e_den,
                    MultiFab&   p_den,
-                   const       Geometry& geom);
+                   const       Geometry& geom,
+		   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 

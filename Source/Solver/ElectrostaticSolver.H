@@ -11,15 +11,25 @@ using namespace FerroX;
 void ComputePoissonRHS(MultiFab&               PoissonRHS, 
 		Array<MultiFab, AMREX_SPACEDIM> &P_old,
 		MultiFab&                      rho, 
-		const Geometry&                 geom);
+		const Geometry&                 geom,
+		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
+//void ComputeEfromPhi(MultiFab&                 PoissonPhi,
+//                MultiFab&                      Ex,
+//                MultiFab&                      Ey,
+//                MultiFab&                      Ez,
+//                const Geometry&                 geom);
+//
 void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                 MultiFab&                      Ex,
                 MultiFab&                      Ey,
                 MultiFab&                      Ez,
-                const Geometry&                 geom);
-
-void InitializePermittivity(MultiFab& beta_cc, const Geometry&  geom);
+                const Geometry&                 geom,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
+	
+void InitializePermittivity(MultiFab& beta_cc, const Geometry&  geom, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS, 
@@ -28,7 +38,9 @@ void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-             const          Geometry& geom);
+             const          Geometry& geom,
+	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 void ComputePoissonRHS_Newton(MultiFab& PoissonRHS, 
                               MultiFab& PoissonPhi, 
