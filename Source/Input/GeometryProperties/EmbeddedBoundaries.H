@@ -134,6 +134,9 @@ private:
     template<typename ObjectType1, typename ObjectType2>
     void BuildUnionObject(std::string name1, std::string name2);
 
+    template<typename ObjectType1, typename ObjectType2, typename ObjectType3>
+    void BuildUnionOfUnionObject(std::string name1, std::string name2, std::string name3);
+
     template<typename ObjectType1, typename ObjectType2>
     void BuildUnionParserObject(std::string name1, std::string name2);
 
