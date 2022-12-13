@@ -24,8 +24,8 @@ dt = 2.0e-13
 ###### POLARIZATION BOUNDARY CONDITIONS ####
 ############################################
 
-P_BC_flag_lo = 0
-P_BC_flag_hi = 1
+P_BC_flag_lo = 2 2 0
+P_BC_flag_hi = 2 2 1
 lambda = 3.0e-9
 
 ############################################

@@ -200,9 +200,9 @@ AMREX_GPU_MANAGED amrex::Real FerroX::kb;
 AMREX_GPU_MANAGED amrex::Real FerroX::T;
 
 // P and Phi Bc
-AMREX_GPU_MANAGED int FerroX::P_BC_flag_lo;
-AMREX_GPU_MANAGED int FerroX::P_BC_flag_hi;
 AMREX_GPU_MANAGED amrex::Real FerroX::lambda;
+AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::P_BC_flag_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::P_BC_flag_hi;
 
 //problem type : initialization of P for 2D/3D/convergence problems
 AMREX_GPU_MANAGED int FerroX::prob_type;
@@ -220,8 +220,20 @@ void InitializeFerroXNamespace() {
      // pp.query means we optionally need the inputs file to have it - but we must supply a default here
      ParmParse pp;
 
-     pp.get("P_BC_flag_hi",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
-     pp.get("P_BC_flag_lo",P_BC_flag_lo); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
+     // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
+     // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
+     amrex::Vector<int> temp_int(AMREX_SPACEDIM);
+
+     if (pp.queryarr("P_BC_flag_lo",temp_int)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             P_BC_flag_lo[i] = temp_int[i];
+         }
+     }
+     if (pp.queryarr("P_BC_flag_hi",temp_int)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             P_BC_flag_hi[i] = temp_int[i];
+         }
+     }
 
      pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 

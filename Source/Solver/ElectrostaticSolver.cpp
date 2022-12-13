@@ -161,7 +161,8 @@ void InitializePermittivity(MultiFab& beta_cc, const Geometry& geom, const amrex
           } else if ((x >= FE_lo[0] && x < FE_hi[0]) && (y >= FE_lo[1] && y < FE_hi[1]) && (z >= FE_lo[2] && z < FE_hi[2])){
              beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
           } else {
-             beta(i,j,k) = epsilon_0; //vacuum
+             //beta(i,j,k) = epsilon_0; //vacuum
+             beta(i,j,k) = epsilon_de * epsilon_0; //Spacer
 	  }
 
         });
