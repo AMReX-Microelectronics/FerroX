@@ -1,0 +1,5 @@
+CEXE_sources += FerroXUtil.cpp
+CEXE_headers += FerroXUtil.H
+
+VPATH_LOCATIONS   += $(CODE_HOME)/Source/Utils/FerroXUtils
+INCLUDE_LOCATIONS   += $(CODE_HOME)/Source/Utils/FerroXUtils

@@ -1,0 +1,4 @@
+include $(CODE_HOME)/Source/Utils/ablastr/utils/Make.package
+include $(CODE_HOME)/Source/Utils/ablastr/profiler/Make.package
+
+VPATH_LOCATIONS   += $(CODE_HOME)/Source/Utils/ablastr

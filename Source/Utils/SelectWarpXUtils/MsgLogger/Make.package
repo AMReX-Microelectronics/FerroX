@@ -1,0 +1,3 @@
+CEXE_sources += MsgLogger.cpp
+
+VPATH_LOCATIONS   += $(CODE_HOME)/Source/Utils/SelectWarpXUtils/MsgLogger

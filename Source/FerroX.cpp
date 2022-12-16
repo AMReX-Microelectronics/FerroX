@@ -1,25 +1,179 @@
+/* Contributors: Prabhat Kumar, Saurabh Sawant
+ *
+ */
 #include "FerroX.H"
 
+#include "Utils/SelectWarpXUtils/MsgLogger/MsgLogger.H"
+#include "Utils/SelectWarpXUtils/WarnManager.H"
+#include "Utils/SelectWarpXUtils/WarpXUtil.H"
+#include "Utils/SelectWarpXUtils/WarpXProfilerWrapper.H"
+#include "../../Utils/SelectWarpXUtils/WarpXUtil.H"
+
+#include "Input/GeometryProperties/GeometryProperties.H"
+#include "Input/BoundaryConditions/BoundaryConditions.H"
 #include <AMReX_ParmParse.H>
 
-AMREX_GPU_MANAGED int FerroX::max_grid_size;
+c_FerroX* c_FerroX::m_instance = nullptr;
+#ifdef AMREX_USE_GPU
+bool c_FerroX::do_device_synchronize = true;
+#else
+bool c_FerroX::do_device_synchronize = false;
+#endif
+
+c_FerroX& c_FerroX::GetInstance() 
+{
+
+    if (!m_instance) {
+        m_instance = new c_FerroX();
+    }
+    return *m_instance;
+
+}
+
+
+void
+c_FerroX::ResetInstance ()
+{
+    delete m_instance;
+    m_instance = nullptr;
+}
+
+
+c_FerroX::c_FerroX ()
+{
+#ifdef PRINT_NAME
+    amrex::Print() << "\n\n\t{************************c_FerroX Constructor()************************\n";
+#endif
+    m_instance = this;
+    m_p_warn_manager = std::make_unique<Utils::WarnManager>();
+
+    ReadData();
+
+#ifdef PRINT_NAME
+    amrex::Print() << "\t}************************c_FerroX Constructor()************************\n";
+#endif
+}
+
+
+c_FerroX::~c_FerroX ()
+{
+#ifdef PRINT_NAME
+    amrex::Print() << "\n\n\t{************************c_FerroX Destructor()************************\n";
+#endif
+
+#ifdef PRINT_NAME
+    amrex::Print() << "\t}************************c_FerroX Destructor()************************\n";
+#endif
+}
+
+
+void
+c_FerroX::RecordWarning(
+        std::string topic,
+        std::string text,
+        WarnPriority priority)
+{
+    WARPX_PROFILE("WarpX::RecordWarning");
+
+    auto msg_priority = Utils::MsgLogger::Priority::high;
+    if(priority == WarnPriority::low)
+        msg_priority = Utils::MsgLogger::Priority::low;
+    else if(priority == WarnPriority::medium)
+        msg_priority = Utils::MsgLogger::Priority::medium;
+
+    if(m_always_warn_immediately){
+        amrex::Warning(
+            "!!!!!! WARNING: ["
+            + std::string(Utils::MsgLogger::PriorityToString(msg_priority))
+            + "][" + topic + "] " + text);
+    }
+
+#ifdef AMREX_USE_OMP
+    #pragma omp critical
+#endif
+    {
+        m_p_warn_manager->record_warning(topic, text, msg_priority);
+    }
+}
+
+
+void
+c_FerroX::PrintLocalWarnings(const std::string& when)
+{
+
+    WARPX_PROFILE("WarpX::PrintLocalWarnings");
+    const std::string warn_string = m_p_warn_manager->print_local_warnings(when);
+    amrex::AllPrint() << warn_string;
+
+}
+
+
+void
+c_FerroX::PrintGlobalWarnings(const std::string& when)
+{
+
+    WARPX_PROFILE("WarpX::PrintGlobalWarnings");
+    const std::string warn_string = m_p_warn_manager->print_global_warnings(when);
+    amrex::Print() << warn_string;
+
+}
+
+
+void 
+c_FerroX::ReadData ()
+{
+#ifdef PRINT_NAME
+    amrex::Print() << "\n\n\t\t{************************c_FerroX::ReadData()************************\n";
+    amrex::Print() << "\t\tin file: " << __FILE__ << " at line: " << __LINE__ << "\n";
+#endif
+
+    m_timestep = 0;
+    m_total_steps = 1;
+    amrex::ParmParse pp;
+
+    #ifdef TIME_DEPENDENT
+        queryWithParser(pp,"timestep", m_timestep);
+        queryWithParser(pp,"steps", m_total_steps);
+    #endif
+
+    m_pGeometryProperties = std::make_unique<c_GeometryProperties>();
+
+    m_pBoundaryConditions = std::make_unique<c_BoundaryConditions>();
+    
+#ifdef PRINT_NAME
+    amrex::Print() << "\t\t}************************c_FerroX::ReadData()************************\n";
+#endif
+}
+
+
+void 
+c_FerroX::InitData ()
+{
+#ifdef PRINT_NAME
+    amrex::Print() << "\n\n\t{************************c_FerroX::InitData()************************\n";
+    amrex::Print() << "\tin file: " << __FILE__ << " at line: " << __LINE__ << "\n";
+#endif
+ 
+    m_pGeometryProperties->InitData();
+
+#ifdef PRINT_NAME
+    amrex::Print() << "\t}************************c_FerroX::InitData()************************\n";
+#endif
+}
+
 AMREX_GPU_MANAGED int FerroX::nsteps;
 AMREX_GPU_MANAGED int FerroX::plot_int;
 
 // time step
 AMREX_GPU_MANAGED amrex::Real FerroX::dt;
 
-AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::n_cell; // number of cells in each direction
-AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::prob_lo; // physical lo coordinate
-AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::prob_hi; // physical hi coordinate
-
 // multimaterial stack geometry
-AMREX_GPU_MANAGED amrex::Real FerroX::DE_lo;
-AMREX_GPU_MANAGED amrex::Real FerroX::FE_lo;
-AMREX_GPU_MANAGED amrex::Real FerroX::SC_lo;
-AMREX_GPU_MANAGED amrex::Real FerroX::DE_hi;
-AMREX_GPU_MANAGED amrex::Real FerroX::FE_hi;
-AMREX_GPU_MANAGED amrex::Real FerroX::SC_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::DE_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::FE_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::SC_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::DE_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::FE_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::SC_hi;
 
 // material parameters
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_0;
@@ -49,14 +203,9 @@ AMREX_GPU_MANAGED amrex::Real FerroX::kb;
 AMREX_GPU_MANAGED amrex::Real FerroX::T;
 
 // P and Phi Bc
-AMREX_GPU_MANAGED int FerroX::P_BC_flag_lo;
-AMREX_GPU_MANAGED int FerroX::P_BC_flag_hi;
 AMREX_GPU_MANAGED amrex::Real FerroX::lambda;
-AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_lo;
-AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_hi;
-AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_inc;
-AMREX_GPU_MANAGED int FerroX::inc_step;
-AMREX_GPU_MANAGED int FerroX::inc_step_sign_change;
+AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::P_BC_flag_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::P_BC_flag_hi;
 
 //problem type : initialization of P for 2D/3D/convergence problems
 AMREX_GPU_MANAGED int FerroX::prob_type;
@@ -74,30 +223,20 @@ void InitializeFerroXNamespace() {
      // pp.query means we optionally need the inputs file to have it - but we must supply a default here
      ParmParse pp;
 
-     // We need to get n_cell from the inputs file - this is the number of cells on each side of
+     // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
+     // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
      amrex::Vector<int> temp_int(AMREX_SPACEDIM);
-     if (pp.queryarr("n_cell",temp_int)) {
+
+     if (pp.queryarr("P_BC_flag_lo",temp_int)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
-             n_cell[i] = temp_int[i];
+             P_BC_flag_lo[i] = temp_int[i];
          }
      }
-
-     // The domain is broken into boxes of size max_grid_size
-     pp.get("max_grid_size",max_grid_size);
-
-     pp.get("P_BC_flag_hi",P_BC_flag_hi); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
-     pp.get("P_BC_flag_lo",P_BC_flag_lo); // 0 : P = 0, 1 : dp/dz = p/lambda, 2 : dp/dz = 0
-     pp.get("Phi_Bc_hi",Phi_Bc_hi);
-     pp.get("Phi_Bc_lo",Phi_Bc_lo);
-
-     Phi_Bc_inc = 0.;
-     pp.query("Phi_Bc_inc",Phi_Bc_inc);
-
-     inc_step = -1;
-     pp.query("inc_step",inc_step);
-
-     inc_step_sign_change = -1;
-     pp.query("inc_step_sign_change",inc_step_sign_change);
+     if (pp.queryarr("P_BC_flag_hi",temp_int)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             P_BC_flag_hi[i] = temp_int[i];
+         }
+     }
 
      pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 
@@ -125,15 +264,6 @@ void InitializeFerroXNamespace() {
      pp.get("g12",g12);
      pp.get("g44_p",g44_p);
 
-     //stack thickness is assumed to be along z
-
-     pp.get("DE_lo",DE_lo);
-     pp.get("DE_hi",DE_hi);
-     pp.get("FE_lo",FE_lo);
-     pp.get("FE_hi",FE_hi);
-     pp.get("SC_lo",SC_lo);
-     pp.get("SC_hi",SC_hi);
-
      pp.get("lambda",lambda);
 
      // Default nsteps to 10, allow us to set it to something else in the inputs file
@@ -151,15 +281,43 @@ void InitializeFerroXNamespace() {
      delta = 1.e-6;
      pp.query("delta",delta);
 
+     //stack dimensions in 3D
+
      amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
-     if (pp.queryarr("prob_lo",temp)) {
+
+     if (pp.queryarr("DE_lo",temp)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
-             prob_lo[i] = temp[i];
+             DE_lo[i] = temp[i];
          }
      }
-     if (pp.queryarr("prob_hi",temp)) {
+
+     if (pp.queryarr("DE_hi",temp)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
-             prob_hi[i] = temp[i];
+             DE_hi[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("FE_lo",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             FE_lo[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("FE_hi",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             FE_hi[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("SC_lo",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             SC_lo[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("SC_hi",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             SC_hi[i] = temp[i];
          }
      }
 
@@ -178,3 +336,5 @@ void InitializeFerroXNamespace() {
      T = 300; // Room Temp
 
 }
+
+

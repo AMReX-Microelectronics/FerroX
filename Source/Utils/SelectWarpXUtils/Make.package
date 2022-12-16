@@ -1,0 +1,14 @@
+CEXE_sources += WarpXUtil.cpp
+CEXE_sources += WarnManager.cpp
+
+CEXE_headers += TextMsg.H
+CEXE_headers += WarpXUtil.H
+CEXE_headers += WarpXConst.H
+
+CEXE_headers += WarnManager_fwd.H
+CEXE_headers += WarnManager.H
+
+VPATH_LOCATIONS   += $(CODE_HOME)/Source/Utils/SelectWarpXUtils
+INCLUDE_LOCATIONS   += $(CODE_HOME)/Source/Utils/SelectWarpXUtils
+
+include $(CODE_HOME)/Source/Utils/SelectWarpXUtils/MsgLogger/Make.package

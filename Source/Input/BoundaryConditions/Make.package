@@ -1,0 +1,6 @@
+CEXE_sources += BoundaryConditions.cpp
+CEXE_headers += BoundaryConditions.H
+CEXE_headers += BoundaryConditions_fwd.H
+
+VPATH_LOCATIONS += $(CODE_HOME)/Source/Input/BoundaryConditions
+INCLUDE_LOCATIONS += $(CODE_HOME)/Source/Input/BoundaryConditions
