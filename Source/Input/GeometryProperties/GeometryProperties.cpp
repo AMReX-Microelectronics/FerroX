@@ -1,3 +1,6 @@
+/* Contributors: Saurabh Sawant
+ *
+ */
 #include "GeometryProperties.H"
 
 #include "../../Utils/SelectWarpXUtils/WarpXUtil.H"

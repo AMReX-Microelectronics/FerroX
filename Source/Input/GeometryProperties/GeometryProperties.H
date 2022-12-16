@@ -1,3 +1,6 @@
+/* Contributors: Saurabh Sawant
+ *
+ */
 #ifndef GEOMETRY_PROPERTIES_H_
 #define GEOMETRY_PROPERTIES_H_
 

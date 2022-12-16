@@ -1,3 +1,6 @@
+/* Contributors: Prabhat Kumar, Saurabh Sawant
+ *
+ */
 #include "FerroX.H"
 
 #include "Utils/SelectWarpXUtils/MsgLogger/MsgLogger.H"
