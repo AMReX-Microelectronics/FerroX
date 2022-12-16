@@ -55,7 +55,9 @@ void main_main (c_FerroX& rFerroX)
     auto& is_periodic = rGprop.is_periodic;
     auto& prob_lo = rGprop.prob_lo;
     auto& prob_hi = rGprop.prob_hi;
+    auto& n_cell = rGprop.n_cell;
 
+    int inc_step = 1000;
 
     // Nghost = number of ghost cells for each array
     int Nghost = 1;
@@ -134,7 +136,7 @@ void main_main (c_FerroX& rFerroX)
 
     // coefficients for solver
     MultiFab alpha_cc(ba, dm, 1, 0);
-    MultiFab beta_cc(ba, dm, 1, 0);
+    MultiFab beta_cc(ba, dm, 1, 1);
     std::array< MultiFab, AMREX_SPACEDIM > beta_face;
     AMREX_D_TERM(beta_face[0].define(convert(ba,IntVect(AMREX_D_DECL(1,0,0))), dm, 1, 0);,
                  beta_face[1].define(convert(ba,IntVect(AMREX_D_DECL(0,1,0))), dm, 1, 0);,
@@ -142,12 +144,13 @@ void main_main (c_FerroX& rFerroX)
 
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
-    //InitializePermittivity(beta_face, geom);
-    InitializePermittivity(beta_cc, geom, prob_lo, prob_hi);
+    //InitializePermittivity(beta_face, geom, prob_lo, prob_hi);
+    InitializePermittivity(beta_cc, geom, prob_lo, prob_hi, n_cell);
     Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
 
     int amrlev = 0; //refers to the setcoarsest level of the solve
-
+    // time = starting time in the simulation
+    Real time = 0.0;
 
 #ifdef AMREX_USE_EB
 
@@ -170,7 +173,7 @@ void main_main (c_FerroX& rFerroX)
     }
     if(some_functionbased_inhomogeneous_boundaries)
     {
-        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
+        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
     }
     PoissonPhi.FillBoundary(geom.periodicity());
 
@@ -182,7 +185,6 @@ void main_main (c_FerroX& rFerroX)
     p_mlebabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
     p_mlebabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
 
-    //Multifab_Manipulation::AverageFaceCenteredMultiFabToCellCenters(beta_face, beta_cc);
     if(rGprop.pEB->specify_inhomogeneous_dirichlet == 0)
     {
         p_mlebabec->setEBHomogDirichlet(amrlev, beta_cc);
@@ -213,7 +215,7 @@ void main_main (c_FerroX& rFerroX)
     }
     if(some_functionbased_inhomogeneous_boundaries)
     {
-        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
+        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
     }
     PoissonPhi.FillBoundary(geom.periodicity());
 
@@ -229,9 +231,6 @@ void main_main (c_FerroX& rFerroX)
     pMLMG->setVerbose(mlmg_verbosity);
 #endif
 
-
-    // time = starting time in the simulation
-    Real time = 0.0;
 
     // INITIALIZE P in FE and rho in SC regions
 
@@ -468,76 +467,9 @@ void main_main (c_FerroX& rFerroX)
                 // fill periodic ghost cells
                 P_old[i].FillBoundary(geom.periodicity());
             }
-        }
+    	}
 
-	//TODO: Fix gate voltage incremet : Use time dependent dirichlet BC for non-eb simulations
-	//                                  Use time dependent EB potential for eb simulations
-	/*
-        if (inc_step > 0 && step%inc_step == 0) {
-            Phi_Bc_hi = Phi_Bc_hi + Phi_Bc_inc;
-            amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
-
-            // Set Dirichlet BC for Phi in z
-            //SetPhiBC_z(PoissonPhi);
-    
-            // set Dirichlet BC by reading in the ghost cell values
-#ifdef AMREX_USE_EB
-            p_mlebabec->setLevelBC(0, &PoissonPhi);
-#else 
-            p_mlabec->setLevelBC(0, &PoissonPhi);
-#endif
-
-            err = 1.0;
-            iter = 0;
-
-            // iterate to compute Phi^{n+1} with new Dirichlet value
-            while(err > tol){
-   
-                // Compute RHS of Poisson equation
-                ComputePoissonRHS(PoissonRHS, P_new, charge_den, geom);
-
-                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, geom);
-
-                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
-
-#ifdef AMREX_USE_EB
-                p_mlebabec->setACoeffs(0, alpha_cc);
-#else 
-                p_mlabec->setACoeffs(0, alpha_cc);
-#endif
- 
-                //Initial guess for phi
-                PoissonPhi.setVal(0.);
-
-                //Poisson Solve
-                pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-	        PoissonPhi.FillBoundary(geom.periodicity());
-	
-                // Calculate rho from Phi in SC region
-                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom);
-
-                if (SC_hi[2] <= 0.) {
-                    // no semiconductor region; set error to zero so the while loop terminates
-                    err = 0.;
-                } else {
-                
-                    // Calculate Error
-                    if (iter > 0){
-                        MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
-                        MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
-                        err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
-                    }
-
-                    //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
-                    MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
-
-                    iter = iter + 1;
-                    amrex::Print() << iter << " iterations :: err = " << err << std::endl;
-                }
-            }
-        }
-*/
-        // Calculate E from Phi
+	// Calculate E from Phi
 	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom, prob_lo, prob_hi);
 
 	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
@@ -548,6 +480,7 @@ void main_main (c_FerroX& rFerroX)
 
         // update time
         time = time + dt;
+
 
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
         if (plot_int > 0 && step%plot_int == 0)
@@ -572,7 +505,77 @@ void main_main (c_FerroX& rFerroX)
 #endif
         }
 
-    }
+        if(inc_step > 0 && step%inc_step == 0)
+        {
+           //Update time-dependen Boundary Condition of Poisson's equation
+
+	   amrex::Print() << "Applied voltage updated at time " << time << ", step = " << step << "\n";
+           
+	   if(some_functionbased_inhomogeneous_boundaries)
+           {
+               Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
+           }
+           PoissonPhi.FillBoundary(geom.periodicity());
+
+           // set Dirichlet BC by reading in the ghost cell values
+#ifdef AMREX_USE_EB
+           p_mlebabec->setLevelBC(amrlev, &PoissonPhi);
+#else 
+           p_mlabec->setLevelBC(amrlev, &PoissonPhi);
+#endif
+
+           err = 1.0;
+           iter = 0;
+
+           // iterate to compute Phi^{n+1} with new Dirichlet value
+           while(err > tol){
+   
+               // Compute RHS of Poisson equation
+               ComputePoissonRHS(PoissonRHS, P_old, charge_den, geom, prob_lo, prob_hi);
+
+               dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
+
+               ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+
+#ifdef AMREX_USE_EB
+               p_mlebabec->setACoeffs(0, alpha_cc);
+#else 
+               p_mlabec->setACoeffs(0, alpha_cc);
+#endif
+ 
+               //Initial guess for phi
+               PoissonPhi.setVal(0.);
+
+               //Poisson Solve
+               pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+	       PoissonPhi.FillBoundary(geom.periodicity());
+	
+               // Calculate rho from Phi in SC region
+               ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
+
+               if (SC_hi[2] <= 0.) {
+                   // no semiconductor region; set error to zero so the while loop terminates
+                   err = 0.;
+               } else {
+               
+                   // Calculate Error
+                   if (iter > 0){
+                       MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
+                       MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
+                       err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+                   }
+
+                   //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
+                   MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
+
+                   iter = iter + 1;
+                   amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+               }
+           }
+       
+        }//end inc_step	
+
+    } // end step
 
     // MultiFab memory usage
     const int IOProc = ParallelDescriptor::IOProcessorNumber();

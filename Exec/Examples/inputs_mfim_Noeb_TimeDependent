@@ -8,6 +8,7 @@ domain.prob_hi =  16.e-9  16.e-9 9.e-9
 domain.n_cell = 64 64 18
 
 domain.max_grid_size = 64 64 18
+domain.blocking_factor = 64 64 18
 
 domain.coord_sys = cartesian 
 
@@ -15,8 +16,8 @@ prob_type = 1
 
 TimeIntegratorOrder = 1
 
-nsteps = 1000
-plot_int = 100
+nsteps = 41000
+plot_int = 1000
 
 dt = 2.0e-13
 
@@ -34,14 +35,27 @@ lambda = 3.0e-9
 
 domain.is_periodic = 1 1 0
 
-boundary.hi = per per dir(0.0)
-boundary.lo = per per dir(0.0)
+boundary.hi = per per dir(Zmax)
+boundary.lo = per per dir(Zmin)
 
-Phi_Bc_lo = 0.0
-Phi_Bc_hi = 0.0
+#nsteps = 41000
+#plot_int = 1000
+#Phi_Bc_inc = 0.5
+#inc_step = 1000
+#inc_step_sign_change = 20000
+#
+#TimeIntegratorOrder = 1
+#
+#dt = 2.0e-13
 
-inc_step = 5000
-Phi_Bc_inc = 0.0
+my_constants.Vmin = -5.0
+my_constants.Vmax = 5.0
+my_constants.t_Vmax = 4.e-9 #20000 timesteps 
+my_constants.t_final = 8.e-9 # 40000 timestep
+
+boundary.Zmax_function = "(t <= t_Vmax) * (Vmin + (Vmax - Vmin)*(t/t_Vmax)) + (t > t_Vmax)*(Vmax - (Vmax - Vmin)*(t-t_Vmax)/(t_final - t_Vmax))"
+#boundary.Zmax_function = "0.0"
+boundary.Zmin_function = "0"
 
 #################################
 ###### STACK GEOMETRY ###########

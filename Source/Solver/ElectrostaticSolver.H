@@ -29,7 +29,8 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 	
-void InitializePermittivity(MultiFab& beta_cc, const Geometry&  geom, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
+void InitializePermittivity(MultiFab& beta_cc, const Geometry&  geom, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell);
+void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face, const Geometry&  geom, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS, 
@@ -49,5 +50,5 @@ void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
 void SetPoissonBC(c_FerroX& rFerroX, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, bool& all_homogeneous_boundaries, bool& some_functionbased_inhomogeneous_boundaries, bool& some_constant_inhomogeneous_boundaries);
 
 void Fill_Constant_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi);
-void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi);
+void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi, amrex::Real& time);
 

@@ -92,15 +92,16 @@ public:
     c_GeometryProperties& get_GeometryProperties () { return *m_pGeometryProperties;}
     c_BoundaryConditions& get_BoundaryConditions () { return *m_pBoundaryConditions;}
     const amrex::Real get_time() { return m_time_instant;}
+    const amrex::Real set_time(int n) { m_time_instant = n*m_timestep; return m_time_instant;}
 
 private:
-    const amrex::Real set_time(int n) { m_time_instant = n*m_timestep; return m_time_instant;}
 
     static c_FerroX* m_instance;
 
-    amrex::Real m_time_instant = 0;
     amrex::Real m_timestep;
     int m_total_steps;
+
+    amrex::Real m_time_instant = 0;
 
     std::unique_ptr<c_GeometryProperties> m_pGeometryProperties;
     std::unique_ptr<c_BoundaryConditions> m_pBoundaryConditions;
