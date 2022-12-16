@@ -469,8 +469,10 @@ void main_main (c_FerroX& rFerroX)
             }
     	}
 
+
 	// Calculate E from Phi
 	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom, prob_lo, prob_hi);
+
 
 	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
         ParallelDescriptor::ReduceRealMax(step_stop_time);
@@ -497,6 +499,7 @@ void main_main (c_FerroX& rFerroX)
             MultiFab::Copy(Plt, hole_den, 0, 8, 1, 0);
             MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
             MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
+
             MultiFab::Copy(Plt, beta_cc, 0, 11, 1, 0);
 #ifdef AMREX_USE_EB
 	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon"}, geom, time, step);

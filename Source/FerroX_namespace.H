@@ -43,6 +43,7 @@ namespace FerroX {
 
     // P and Phi Bc
     extern AMREX_GPU_MANAGED amrex::Real lambda;
+
     extern AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> P_BC_flag_lo;
     extern AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> P_BC_flag_hi;
 

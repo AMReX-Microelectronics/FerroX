@@ -235,6 +235,9 @@ void InitializeFerroXNamespace() {
          }
      }
 
+     inc_step_sign_change = -1;
+     pp.query("inc_step_sign_change",inc_step_sign_change);
+
      pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 
      pp.get("prob_type", prob_type);
