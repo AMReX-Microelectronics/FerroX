@@ -1,10 +1,13 @@
-/* Contributors: Saurabh Sawant, Prabhat Kumar
+/*
+ * This file is taken from eXstatic and has been modified for FerroX.
+ *
+ * Contributors: Saurabh S. Sawant, Prabhat Kumar
  *
  */
 #include "GeometryProperties.H"
 
 #include "../../Utils/SelectWarpXUtils/WarpXUtil.H"
-#include "../../Utils/FerroXUtils/FerroXUtil.H"
+#include "../../Utils/eXstaticUtils/eXstaticUtil.H"
 
 #include <AMReX.H>
 #include <AMReX_ParmParse.H>
@@ -321,7 +324,7 @@ c_EmbeddedBoundaries::BuildGeometry(const amrex::Geometry* GEOM, const amrex::Bo
             {
                 m_p_soln_mf[c] = std::make_unique<amrex::MultiFab>(*ba, *dm, 1, 0, MFInfo(), *m_p_factory[c]); 
                 (*m_p_soln_mf[c]).setVal(0.); 
-                Multifab_Manipulation::SpecifyValueOnlyOnCutcells(*m_p_soln_mf[c], map_basic_objects_soln[name]);
+                eXstatic_MFab_Util::SpecifyValueOnlyOnCutcells(*m_p_soln_mf[c], map_basic_objects_soln[name]);
 
                 #ifdef PRINT_LOW
                 amrex::Print() << prt << "Index space size : " << amrex::EB2::IndexSpace::size() << "\n";

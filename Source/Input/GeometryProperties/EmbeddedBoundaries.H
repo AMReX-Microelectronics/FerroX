@@ -1,4 +1,7 @@
-/* Contributors: Saurabh Sawant, Prabhat Kumar
+/*
+ * This file is taken of eXstatic and has been modified for FerroX.
+ *
+ * Contributors: Saurabh S. Sawant, Prabhat Kumar
  *
  */
 #ifndef EMBEDDED_BOUNDARIES_H_

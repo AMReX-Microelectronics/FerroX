@@ -1,0 +1,5 @@
+CEXE_sources += eXstaticUtil.cpp
+CEXE_headers += eXstaticUtil.H
+
+VPATH_LOCATIONS   += $(CODE_HOME)/Source/Utils/eXstaticUtils
+INCLUDE_LOCATIONS   += $(CODE_HOME)/Source/Utils/eXstaticUtils

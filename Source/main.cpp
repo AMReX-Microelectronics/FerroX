@@ -17,7 +17,7 @@
 #include "Input/GeometryProperties/GeometryProperties.H"
 #include "Utils/SelectWarpXUtils/WarpXUtil.H"
 #include "Utils/SelectWarpXUtils/WarpXProfilerWrapper.H"
-#include "Utils/FerroXUtils/FerroXUtil.H"
+#include "Utils/eXstaticUtils/eXstaticUtil.H"
 
 
 
@@ -146,7 +146,7 @@ void main_main (c_FerroX& rFerroX)
     // epsilon values in SC, FE, and DE layers
     //InitializePermittivity(beta_face, geom, prob_lo, prob_hi);
     InitializePermittivity(beta_cc, geom, prob_lo, prob_hi, n_cell);
-    Multifab_Manipulation::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
+    eXstatic_MFab_Util::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
 
     int amrlev = 0; //refers to the setcoarsest level of the solve
     // time = starting time in the simulation
