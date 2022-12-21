@@ -114,6 +114,7 @@ void main_main (c_FerroX& rFerroX)
     MultiFab hole_den(ba, dm, 1, 0);
     MultiFab e_den(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
+    MultiFab MaterialMask(ba, dm, 1, 0);
 
 
     //Solver for Poisson equation
@@ -127,9 +128,9 @@ void main_main (c_FerroX& rFerroX)
     bool some_constant_inhomogeneous_boundaries = false;
 
 #ifdef AMREX_USE_EB
-    MultiFab Plt(ba, dm, 12, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
+    MultiFab Plt(ba, dm, 13, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
 #else    
-    MultiFab Plt(ba, dm, 12, 0);
+    MultiFab Plt(ba, dm, 13, 0);
 #endif
 
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
@@ -235,6 +236,9 @@ void main_main (c_FerroX& rFerroX)
     // INITIALIZE P in FE and rho in SC regions
 
     InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
+    
+    //Initialize material mask
+    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
 
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
@@ -307,10 +311,11 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, e_den, 0, 9, 1, 0);
         MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
         MultiFab::Copy(Plt, beta_cc, 0, 11, 1, 0);
+        MultiFab::Copy(Plt, MaterialMask, 0, 12, 1, 0);
 #ifdef AMREX_USE_EB
-	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon"}, geom, time, 0);
+	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
 #else
-	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon"}, geom, time, 0);
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
 #endif
     }
 
@@ -501,10 +506,11 @@ void main_main (c_FerroX& rFerroX)
             MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
 
             MultiFab::Copy(Plt, beta_cc, 0, 11, 1, 0);
+            MultiFab::Copy(Plt, MaterialMask, 0, 12, 1, 0);
 #ifdef AMREX_USE_EB
-	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon"}, geom, time, step);
+	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
 #else
-	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon"}, geom, time, step);
+	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
 #endif
         }
 

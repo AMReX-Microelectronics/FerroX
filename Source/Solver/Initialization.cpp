@@ -153,3 +153,45 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
  }
 
+// create a mask filled with integers to idetify different material types
+void InitializeMaterialMask(MultiFab& MaterialMask, 
+		            const Geometry& geom, 
+			    const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+{
+    // loop over boxes
+    for (MFIter mfi(MaterialMask); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        // extract dx from the geometry object
+        GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+        Real small = dx[2]*1.e-6;
+
+        const Array4<Real>& mask = MaterialMask.array(mfi);
+
+
+        amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+             Real x = prob_lo[0] + (i+0.5) * dx[0];
+             Real y = prob_lo[1] + (j+0.5) * dx[1];
+             Real z = prob_lo[2] + (k+0.5) * dx[2];
+
+             //FE:0, DE:1, Source/Drain:2, Channel:3
+             if (x <= FE_hi[0] + small && x >= FE_lo[0] - small && y <= FE_hi[1] + small && y >= FE_lo[1] - small && z <= FE_hi[2] + small && z >= FE_lo[2] - small) {
+                 mask(i,j,k) = 0;
+             } else if (x <= DE_hi[0] + small && x >= DE_lo[0] - small && y <= DE_hi[1] + small && y >= DE_lo[1] - small && z <= DE_hi[2] + small && z >= DE_lo[2] - small) {
+                 mask(i,j,k) = 1;
+             } else if (x <= SC_hi[0] + small && x >= SC_lo[0] - small && y <= SC_hi[1] + small && y >= SC_lo[1] - small && z <= SC_hi[2] + small && z >= SC_lo[2] - small) {
+                 mask(i,j,k) = 2;
+                if (x <= Channel_hi[0] + small && x >= Channel_lo[0] - small && y <= Channel_hi[1] + small && y >= Channel_lo[1] - small && z <= Channel_hi[2] + small && z >= Channel_lo[2] - small){
+                    mask(i,j,k) = 3;
+                }
+             } else {
+	         mask(i,j,k) = 1; //spacer is DE
+	     }
+        });
+    }
+}
+
+
