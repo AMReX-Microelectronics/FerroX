@@ -140,6 +140,70 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
 }
 
+void InitializePermittivity(MultiFab& beta_cc, const MultiFab& MaterialMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
+{
+
+    beta_cc.setVal(0.0);
+
+    // set cell-centered beta coefficient to
+    // epsilon values in SC, FE, and DE layers
+    // loop over boxes
+    for (MFIter mfi(beta_cc); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real>& beta = beta_cc.array(mfi);
+        const Array4<Real const>& mask = MaterialMask.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+
+          if(mask(i,j,k) == 0.0) {
+             beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
+          } else if(mask(i,j,k) == 1.0) {
+             beta(i,j,k) = epsilon_de * epsilon_0; //DE layer
+          } else if (mask(i,j,k) >= 2.0){
+             beta(i,j,k) = epsilon_si * epsilon_0; //SC layer
+          } else {
+             //beta(i,j,k) = epsilon_0; //vacuum
+             beta(i,j,k) = epsilon_de * epsilon_0; //Spacer is same as DE
+	  }
+
+        });
+    }
+//    beta_cc.FillBoundary(geom.periodicity());
+
+
+    for (MFIter mfi(beta_cc); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.growntilebox(1);
+
+        const Array4<Real>& beta = beta_cc.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+  		if(i < 0) {
+		  beta(i,j,k) = beta(i+1,j,k);
+		}
+		else if(i > n_cell[0] - 1) {
+		  beta(i,j,k) = beta(i-1,j,k);
+		}
+  		if(j < 0) {
+		  beta(i,j,k) = beta(i,j+1,k);
+		}
+		else if(j > n_cell[1] - 1) {
+		  beta(i,j,k) = beta(i,j-1,k);
+		}
+  		if(k < 0) {
+		  beta(i,j,k) = beta(i,j,k+1);
+		}
+		else if(k > n_cell[2] - 1) {
+		  beta(i,j,k) = beta(i,j,k-1);
+		}
+        });
+    }
+}
+
 
 void InitializePermittivity(MultiFab& beta_cc, const Geometry& geom, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
 {

@@ -116,6 +116,8 @@ void main_main (c_FerroX& rFerroX)
     MultiFab charge_den(ba, dm, 1, 0);
     MultiFab MaterialMask(ba, dm, 1, 0);
 
+    //Initialize material mask
+    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -145,8 +147,9 @@ void main_main (c_FerroX& rFerroX)
 
     // set face-centered beta coefficient to 
     // epsilon values in SC, FE, and DE layers
-    //InitializePermittivity(beta_face, geom, prob_lo, prob_hi);
-    InitializePermittivity(beta_cc, geom, prob_lo, prob_hi, n_cell);
+    //InitializePermittivity(beta_face, geom, prob_lo, prob_hi); //face-centered
+    //InitializePermittivity(beta_cc, geom, prob_lo, prob_hi, n_cell); // cell-centered
+    InitializePermittivity(beta_cc, MaterialMask, n_cell); //mask based
     eXstatic_MFab_Util::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
 
     int amrlev = 0; //refers to the setcoarsest level of the solve
@@ -237,8 +240,6 @@ void main_main (c_FerroX& rFerroX)
 
     InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);
     
-    //Initialize material mask
-    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
 
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
