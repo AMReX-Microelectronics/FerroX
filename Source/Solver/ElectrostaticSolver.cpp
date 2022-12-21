@@ -1,7 +1,7 @@
 #include "ElectrostaticSolver.H"
 #include "DerivativeAlgorithm.H"
 #include "ChargeDensity.H"
-#include "Utils/FerroXUtils/FerroXUtil.H"
+#include "Utils/eXstaticUtils/eXstaticUtil.H"
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
@@ -457,9 +457,9 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
 		        #ifdef TIME_DEPENDENT
-                            Multifab_Manipulation::ConvertParserIntoMultiFab_4vars(i,j,k,time,dx,real_box,iv,macro_parser,soln_arr);  
+                            eXstatic_MFab_Util::ConvertParserIntoMultiFab_4vars(i,j,k,time,dx,real_box,iv,macro_parser,soln_arr);  
 		        #else
-                            Multifab_Manipulation::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,soln_arr);  
+                            eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,soln_arr);  
                         #endif
                     });
                 }
@@ -485,11 +485,10 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
                         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                         {
 		            #ifdef TIME_DEPENDENT
-                                Multifab_Manipulation::ConvertParserIntoMultiFab_4vars(i,j,k,time,dx,real_box,iv,macro_parser,soln_arr);
+                                eXstatic_MFab_Util::ConvertParserIntoMultiFab_4vars(i,j,k,time,dx,real_box,iv,macro_parser,soln_arr);
 		            #else
-                                Multifab_Manipulation::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,soln_arr);
+                                eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,soln_arr);
                             #endif
-                            if(i == 5 && j == 5 && k == 65) amrex::Print() << "time = " << time << ", phi = " << soln_arr(i,j,k) << "\n";
                         });
 	        }
             }
