@@ -489,7 +489,6 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
 		            #else
                                 eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,soln_arr);
                             #endif
-                            if(i == 5 && j == 5 && k == 65) amrex::Print() << "time = " << time << ", phi = " << soln_arr(i,j,k) << "\n";
                         });
 	        }
             }
