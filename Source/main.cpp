@@ -18,6 +18,7 @@
 #include "Utils/SelectWarpXUtils/WarpXUtil.H"
 #include "Utils/SelectWarpXUtils/WarpXProfilerWrapper.H"
 #include "Utils/eXstaticUtils/eXstaticUtil.H"
+#include "Utils/FerroXUtils/FerroXUtil.H"
 
 
 
@@ -128,6 +129,11 @@ void main_main (c_FerroX& rFerroX)
     bool all_homogeneous_boundaries = true;
     bool some_functionbased_inhomogeneous_boundaries = false;
     bool some_constant_inhomogeneous_boundaries = false;
+ 
+    bool contains_SC = false;
+
+    FerroX_Util::Contains_sc(MaterialMask, contains_SC);
+    amrex::Print() << "contains_SC = " << contains_SC << "\n";
 
 #ifdef AMREX_USE_EB
     MultiFab Plt(ba, dm, 13, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
@@ -271,7 +277,7 @@ void main_main (c_FerroX& rFerroX)
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
         
-	if (SC_hi[2] <= 0.) {
+	if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
         } else {
@@ -379,7 +385,7 @@ void main_main (c_FerroX& rFerroX)
 	    // Calculate rho from Phi in SC region
             ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
 
-            if (SC_hi[2] <= 0.) {
+            if (contains_SC == 0) {
                 // no semiconductor region; set error to zero so the while loop terminates
                 err = 0.;
             } else {
@@ -448,7 +454,7 @@ void main_main (c_FerroX& rFerroX)
                 // Calculate rho from Phi in SC region
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
 
-                if (SC_hi[2] <= 0.) {
+                if (contains_SC == 0) {
                     // no semiconductor region; set error to zero so the while loop terminates
                     err = 0.;
                 } else {
@@ -564,7 +570,7 @@ void main_main (c_FerroX& rFerroX)
                // Calculate rho from Phi in SC region
                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
 
-               if (SC_hi[2] <= 0.) {
+               if (contains_SC == 0) {
                    // no semiconductor region; set error to zero so the while loop terminates
                    err = 0.;
                } else {
