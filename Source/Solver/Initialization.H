@@ -2,6 +2,7 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_MultiFabUtil.H>
 #include "FerroX.H"
+#include "Input/GeometryProperties/GeometryProperties.H"
 
 using namespace amrex;
 using namespace FerroX;
@@ -21,3 +22,4 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
                             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
+void InitializeMaterialMask(c_FerroX& rFerroX, MultiFab& MaterialMask);

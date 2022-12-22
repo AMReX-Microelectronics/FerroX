@@ -1,4 +1,6 @@
 #include "Initialization.H"
+#include "Utils/eXstaticUtils/eXstaticUtil.H"
+#include "../../Utils/SelectWarpXUtils/WarpXUtil.H"
 
 // INITIALIZE rho in SC region
 void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
@@ -176,19 +178,63 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
 
              //FE:0, DE:1, Source/Drain:2, Channel:3
              if (x <= FE_hi[0] + small && x >= FE_lo[0] - small && y <= FE_hi[1] + small && y >= FE_lo[1] - small && z <= FE_hi[2] + small && z >= FE_lo[2] - small) {
-                 mask(i,j,k) = 0;
+                 mask(i,j,k) = 0.;
              } else if (x <= DE_hi[0] + small && x >= DE_lo[0] - small && y <= DE_hi[1] + small && y >= DE_lo[1] - small && z <= DE_hi[2] + small && z >= DE_lo[2] - small) {
-                 mask(i,j,k) = 1;
+                 mask(i,j,k) = 1.;
              } else if (x <= SC_hi[0] + small && x >= SC_lo[0] - small && y <= SC_hi[1] + small && y >= SC_lo[1] - small && z <= SC_hi[2] + small && z >= SC_lo[2] - small) {
-                 mask(i,j,k) = 2;
+                 mask(i,j,k) = 2.;
                 if (x <= Channel_hi[0] + small && x >= Channel_lo[0] - small && y <= Channel_hi[1] + small && y >= Channel_lo[1] - small && z <= Channel_hi[2] + small && z >= Channel_lo[2] - small){
-                    mask(i,j,k) = 3;
+                    mask(i,j,k) = 3.;
                 }
              } else {
-	         mask(i,j,k) = 1; //spacer is DE
+	         mask(i,j,k) = 1.; //spacer is DE
 	     }
         });
     }
 }
 
+// initialization of mask (device geometry) with parser
+void InitializeMaterialMask(c_FerroX& rFerroX, MultiFab& MaterialMask)
+{ 
+    auto& rGprop = rFerroX.get_GeometryProperties();
+    Box const& domain = rGprop.geom.Domain();
+
+    const auto dx = rGprop.geom.CellSizeArray();
+    const auto& real_box = rGprop.geom.ProbDomain();
+    const auto iv = MaterialMask.ixType().toIntVect();
+
+    for (MFIter mfi(MaterialMask, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    {
+        const auto& mask_arr = MaterialMask.array(mfi);
+        const auto& bx = mfi.tilebox();
+
+	std::string m_mask_s;
+	std::unique_ptr<amrex::Parser> m_mask_parser;
+        std::string m_str_device_geom_function;
+
+	ParmParse pp_mask("device_geom");
+
+	bool mask_specified = false;
+
+	if (pp_mask.query("device_geom_function(x,y,z)", m_str_device_geom_function) ) {
+            m_mask_s = "parse_device_geom_function";
+            mask_specified = true;
+        }
+
+        if (m_mask_s == "parse_device_geom_function") {
+            Store_parserString(pp_mask, "device_geom_function(x,y,z)", m_str_device_geom_function);
+            m_mask_parser = std::make_unique<amrex::Parser>(
+                                     makeParser(m_str_device_geom_function,{"x","y","z"}));
+        }
+
+        const auto& macro_parser = m_mask_parser->compile<3>();
+
+        amrex::ParallelFor(bx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,mask_arr);
+	    //printf("mask(i,j,k) = %f\n",mask_arr(i,j,k));
+        });
+    }
+}
 

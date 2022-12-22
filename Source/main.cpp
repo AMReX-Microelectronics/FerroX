@@ -118,7 +118,8 @@ void main_main (c_FerroX& rFerroX)
     MultiFab MaterialMask(ba, dm, 1, 0);
 
     //Initialize material mask
-    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
+    //InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
+    InitializeMaterialMask(rFerroX, MaterialMask);
 
     //Solver for Poisson equation
     LPInfo info;
