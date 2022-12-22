@@ -5,10 +5,9 @@
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
-                MultiFab&                      rho,
-                const Geometry&                 geom,
-		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+                MultiFab&                       rho,
+                MultiFab&                 MaterialMask,
+                const Geometry&                 geom)
 {
     for ( MFIter mfi(PoissonRHS); mfi.isValid(); ++mfi )
         {
@@ -21,33 +20,23 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
             const Array4<Real> &pOld_z = P_old[2].array(mfi);
             const Array4<Real>& RHS = PoissonRHS.array(mfi);
             const Array4<Real>& charge_den_arr = rho.array(mfi);
+            const Array4<Real>& mask = MaterialMask.array(mfi);
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                 Real x    = prob_lo[0] + (i+0.5) * dx[0];
-                 Real x_hi = prob_lo[0] + (i+1.5) * dx[0];
-                 Real x_lo = prob_lo[0] + (i-0.5) * dx[0];
 
-                 Real y    = prob_lo[1] + (j+0.5) * dx[1];
-                 Real y_hi = prob_lo[1] + (j+1.5) * dx[1];
-                 Real y_lo = prob_lo[1] + (j-0.5) * dx[1];
-
-                 Real z    = prob_lo[2] + (k+0.5) * dx[2];
-                 Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
-                 Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
-
-                 if(z <= SC_hi[2]){ //SC region
+                 if(mask(i,j,k) >= 2.0){ //SC region
 
                    RHS(i,j,k) = charge_den_arr(i,j,k);
 
-                 } else if(z < DE_hi[2]){ //DE region
+                 } else if(mask(i,j,k) == 1.0){ //DE region
 
                    RHS(i,j,k) = 0.;
 
-                 } else {
-                   RHS(i,j,k) = - DPDz(pOld_z, z, z_hi, z_lo, i, j, k, dx)
-                                - DPDx(pOld_x, x, x_hi, x_lo, i, j, k, dx)
-                                - DPDy(pOld_y, y, y_hi, y_lo, i, j, k, dx);
+                 } else { //mask(i,j,k) == 0.0 FE region
+                   RHS(i,j,k) = - DPDz(pOld_z, mask, i, j, k, dx)
+                                - DPDx(pOld_x, mask, i, j, k, dx)
+                                - DPDy(pOld_y, mask, i, j, k, dx);
 
                  }
 
@@ -63,7 +52,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	     const MultiFab&      MaterialMask,
+	     MultiFab&            MaterialMask,
              const          Geometry& geom,
 	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
@@ -80,7 +69,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
         ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
 
         //Compute RHS of Poisson equation
-        ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, geom, prob_lo, prob_hi);
+        ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, geom);
 
         MultiFab::LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 0);
 }
@@ -128,13 +117,12 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                     Real z    = prob_lo[2] + (k+0.5) * dx[2];
                      Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
                      Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
                      Ex_arr(i,j,k) = - DFDx(phi, i, j, k, dx);
                      Ey_arr(i,j,k) = - DFDy(phi, i, j, k, dx);
-                     Ez_arr(i,j,k) = - DphiDz(phi, z, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi);
+                     Ez_arr(i,j,k) = - DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi);
 
              });
         }

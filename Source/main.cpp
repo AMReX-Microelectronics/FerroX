@@ -250,7 +250,7 @@ void main_main (c_FerroX& rFerroX)
     while(err > tol){
    
 	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, charge_den, geom, prob_lo, prob_hi);
+	ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, geom);
 
         dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
 
@@ -328,7 +328,7 @@ void main_main (c_FerroX& rFerroX)
         Real step_strt_time = ParallelDescriptor::second();
 
         // compute f^n = f(P^n,Phi^n)
-        CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, geom, prob_lo, prob_hi);
+        CalculateTDGL_RHS(GL_rhs, P_old, PoissonPhi, Gamma, MaterialMask, geom, prob_lo, prob_hi);
 
         // P^{n+1,*} = P^n + dt * f^n
         for (int i = 0; i < 3; i++){
@@ -357,7 +357,7 @@ void main_main (c_FerroX& rFerroX)
         while(err > tol){
    
             // Compute RHS of Poisson equation
-            ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, geom, prob_lo, prob_hi);
+            ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, MaterialMask, geom);
 
             dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
 
@@ -411,7 +411,7 @@ void main_main (c_FerroX& rFerroX)
         } else {
         
             // compute f^{n+1,*} = f(P^{n+1,*},Phi^{n+1,*})
-            CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, geom, prob_lo, prob_hi);
+            CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, PoissonPhi, Gamma, MaterialMask, geom, prob_lo, prob_hi);
 
             // P^{n+1} = P^n + dt/2 * f^n + dt/2 * f^{n+1,*}
             for (int i = 0; i < 3; i++){
@@ -426,7 +426,7 @@ void main_main (c_FerroX& rFerroX)
             while(err > tol){
    
                 // Compute RHS of Poisson equation
-                ComputePoissonRHS(PoissonRHS, P_new, charge_den, geom, prob_lo, prob_hi);
+                ComputePoissonRHS(PoissonRHS, P_new, charge_den, MaterialMask, geom);
 
                 dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
 
@@ -542,7 +542,7 @@ void main_main (c_FerroX& rFerroX)
            while(err > tol){
    
                // Compute RHS of Poisson equation
-               ComputePoissonRHS(PoissonRHS, P_old, charge_den, geom, prob_lo, prob_hi);
+               ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, geom);
 
                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
 
