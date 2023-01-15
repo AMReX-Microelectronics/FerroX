@@ -165,7 +165,6 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
 
         // extract dx from the geometry object
         GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
-        Real small = dx[2]*1.e-6;
 
         const Array4<Real>& mask = MaterialMask.array(mfi);
 
@@ -177,13 +176,13 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
              Real z = prob_lo[2] + (k+0.5) * dx[2];
 
              //FE:0, DE:1, Source/Drain:2, Channel:3
-             if (x <= FE_hi[0] + small && x >= FE_lo[0] - small && y <= FE_hi[1] + small && y >= FE_lo[1] - small && z <= FE_hi[2] + small && z >= FE_lo[2] - small) {
+             if (x <= FE_hi[0] && x >= FE_lo[0] && y <= FE_hi[1] && y >= FE_lo[1] && z <= FE_hi[2] && z >= FE_lo[2]) {
                  mask(i,j,k) = 0.;
-             } else if (x <= DE_hi[0] + small && x >= DE_lo[0] - small && y <= DE_hi[1] + small && y >= DE_lo[1] - small && z <= DE_hi[2] + small && z >= DE_lo[2] - small) {
+             } else if (x <= DE_hi[0] && x >= DE_lo[0] && y <= DE_hi[1] && y >= DE_lo[1] && z <= DE_hi[2] && z >= DE_lo[2]) {
                  mask(i,j,k) = 1.;
-             } else if (x <= SC_hi[0] + small && x >= SC_lo[0] - small && y <= SC_hi[1] + small && y >= SC_lo[1] - small && z <= SC_hi[2] + small && z >= SC_lo[2] - small) {
+             } else if (x <= SC_hi[0] && x >= SC_lo[0] && y <= SC_hi[1] && y >= SC_lo[1] && z <= SC_hi[2] && z >= SC_lo[2]) {
                  mask(i,j,k) = 2.;
-                if (x <= Channel_hi[0] + small && x >= Channel_lo[0] - small && y <= Channel_hi[1] + small && y >= Channel_lo[1] - small && z <= Channel_hi[2] + small && z >= Channel_lo[2] - small){
+                if (x <= Channel_hi[0] && x >= Channel_lo[0] && y <= Channel_hi[1] && y >= Channel_lo[1] && z <= Channel_hi[2] && z >= Channel_lo[2]){
                     mask(i,j,k) = 3.;
                 }
              } else {
