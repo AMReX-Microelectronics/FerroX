@@ -220,7 +220,8 @@ AMREX_GPU_MANAGED int FerroX::TimeIntegratorOrder;
 
 AMREX_GPU_MANAGED amrex::Real FerroX::delta;
 
-void InitializeFerroXNamespace() {
+void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                               const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi) {
 
      // ParmParse is way of reading inputs from the inputs file
      // pp.get means we require the inputs file to have it
@@ -285,9 +286,33 @@ void InitializeFerroXNamespace() {
      delta = 1.e-6;
      pp.query("delta",delta);
 
-     //stack dimensions in 3D
+     //stack dimensions in 3D. This is an alternate way of initializing the device geometry, which works in simpler scenarios.
+     //A more general way of initializing device geometry is accomplished through masks which use function parsers
+
+     //Require FE_lo/hi to be specified in the input file (simplest device possible : MFM).
+     //Make all other material hi/lo optional. By default they will be outside of the problem domain   
+
+     for (int i=0; i<AMREX_SPACEDIM; ++i) {
+         DE_lo[i] = prob_lo[i] - 1.0;
+         SC_lo[i] = prob_lo[i] - 1.0;
+         Channel_lo[i] = prob_lo[i] - 1.0;
+
+         DE_hi[i] = prob_hi[i] + 1.0;
+         SC_hi[i] = prob_hi[i] + 1.0;
+         Channel_hi[i] = prob_hi[i] + 1.0;
+     }
 
      amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
+
+     pp.getarr("FE_lo",temp);
+     for (int i=0; i<AMREX_SPACEDIM; ++i) {
+         FE_lo[i] = temp[i];
+     }
+
+     pp.getarr("FE_hi",temp);
+     for (int i=0; i<AMREX_SPACEDIM; ++i) {
+         FE_hi[i] = temp[i];
+     }
 
      if (pp.queryarr("DE_lo",temp)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
@@ -298,18 +323,6 @@ void InitializeFerroXNamespace() {
      if (pp.queryarr("DE_hi",temp)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
              DE_hi[i] = temp[i];
-         }
-     }
-
-     if (pp.queryarr("FE_lo",temp)) {
-         for (int i=0; i<AMREX_SPACEDIM; ++i) {
-             FE_lo[i] = temp[i];
-         }
-     }
-
-     if (pp.queryarr("FE_hi",temp)) {
-         for (int i=0; i<AMREX_SPACEDIM; ++i) {
-             FE_hi[i] = temp[i];
          }
      }
 

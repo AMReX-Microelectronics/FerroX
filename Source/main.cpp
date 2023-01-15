@@ -45,10 +45,6 @@ void main_main (c_FerroX& rFerroX)
 
     Real total_step_strt_time = ParallelDescriptor::second();
 
-    // read in inputs file
-    InitializeFerroXNamespace();
-
-
     auto& rGprop = rFerroX.get_GeometryProperties();
     auto& geom = rGprop.geom;
     auto& ba = rGprop.ba;
@@ -57,6 +53,9 @@ void main_main (c_FerroX& rFerroX)
     auto& prob_lo = rGprop.prob_lo;
     auto& prob_hi = rGprop.prob_hi;
     auto& n_cell = rGprop.n_cell;
+
+    // read in inputs file
+    InitializeFerroXNamespace(prob_lo, prob_hi);
 
     int inc_step = 1000;
 
@@ -152,11 +151,8 @@ void main_main (c_FerroX& rFerroX)
                  beta_face[1].define(convert(ba,IntVect(AMREX_D_DECL(0,1,0))), dm, 1, 0);,
                  beta_face[2].define(convert(ba,IntVect(AMREX_D_DECL(0,0,1))), dm, 1, 0););
 
-    // set face-centered beta coefficient to 
-    // epsilon values in SC, FE, and DE layers
-    //InitializePermittivity(beta_face, geom, prob_lo, prob_hi); //face-centered
-    //InitializePermittivity(beta_cc, geom, prob_lo, prob_hi, n_cell); // cell-centered
-    InitializePermittivity(beta_cc, MaterialMask, n_cell); //mask based
+    // set cell-centered beta coefficient to permittivity based on mask
+    InitializePermittivity(LinOpBCType_2d, beta_cc, MaterialMask, n_cell, geom);
     eXstatic_MFab_Util::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
 
     int amrlev = 0; //refers to the setcoarsest level of the solve

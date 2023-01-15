@@ -129,7 +129,7 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
 }
 
-void InitializePermittivity(MultiFab& beta_cc, const MultiFab& MaterialMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
+void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, MultiFab& beta_cc, const MultiFab& MaterialMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom)
 {
 
     beta_cc.setVal(0.0);
@@ -154,15 +154,14 @@ void InitializePermittivity(MultiFab& beta_cc, const MultiFab& MaterialMask, con
           } else if (mask(i,j,k) >= 2.0){
              beta(i,j,k) = epsilon_si * epsilon_0; //SC layer
           } else {
-             //beta(i,j,k) = epsilon_0; //vacuum
              beta(i,j,k) = epsilon_de * epsilon_0; //Spacer is same as DE
 	  }
 
         });
     }
-//    beta_cc.FillBoundary(geom.periodicity());
+    beta_cc.FillBoundary(geom.periodicity()); //For Periodic BC and internal domain decomposition
 
-
+    //For Non-periodic Poisson BC, fill the ghost cells with the value in the adjacent cell in valid domain
     for (MFIter mfi(beta_cc); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox(1);
@@ -171,183 +170,40 @@ void InitializePermittivity(MultiFab& beta_cc, const MultiFab& MaterialMask, con
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-  		if(i < 0) {
-		  beta(i,j,k) = beta(i+1,j,k);
+	        if (LinOpBCType_2d[0][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][0] == amrex::LinOpBCType::Neumann ){
+           	   if(i < 0) {
+		     beta(i,j,k) = beta(i+1,j,k);
+		   }
 		}
-		else if(i > n_cell[0] - 1) {
-		  beta(i,j,k) = beta(i-1,j,k);
+
+	        if (LinOpBCType_2d[1][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][0] == amrex::LinOpBCType::Neumann ){
+		   if(i > n_cell[0] - 1) {
+		     beta(i,j,k) = beta(i-1,j,k);
+		   }
 		}
-  		if(j < 0) {
-		  beta(i,j,k) = beta(i,j+1,k);
+	        if (LinOpBCType_2d[0][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][1] == amrex::LinOpBCType::Neumann ){
+  		   if(j < 0) {
+		     beta(i,j,k) = beta(i,j+1,k);
+		   }
 		}
-		else if(j > n_cell[1] - 1) {
-		  beta(i,j,k) = beta(i,j-1,k);
+	        if (LinOpBCType_2d[1][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][1] == amrex::LinOpBCType::Neumann ){
+		   if(j > n_cell[1] - 1) {
+		     beta(i,j,k) = beta(i,j-1,k);
+		   }
 		}
-  		if(k < 0) {
-		  beta(i,j,k) = beta(i,j,k+1);
+	        if (LinOpBCType_2d[0][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][2] == amrex::LinOpBCType::Neumann ){
+  		   if(k < 0) {
+		     beta(i,j,k) = beta(i,j,k+1);
+		   }
 		}
-		else if(k > n_cell[2] - 1) {
-		  beta(i,j,k) = beta(i,j,k-1);
-		}
-        });
-    }
-}
-
-
-void InitializePermittivity(MultiFab& beta_cc, const Geometry& geom, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
-{
-    // extract dx from the geometry object
-    GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
-
-    beta_cc.setVal(0.0);
-
-    // set cell-centered beta coefficient to
-    // epsilon values in SC, FE, and DE layers
-    // loop over boxes
-    for (MFIter mfi(beta_cc); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.validbox();
-
-        const Array4<Real>& beta = beta_cc.array(mfi);
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
-        {
-          Real x = prob_lo[0] + (i+0.5) * dx[0];
-          Real y = prob_lo[1] + (j+0.5) * dx[1];
-          Real z = prob_lo[2] + (k+0.5) * dx[2];
-
-          if((x >= SC_lo[0] && x < SC_hi[0]) && (y >= SC_lo[1] && y < SC_hi[1]) && (z >= SC_lo[2] && z < SC_hi[2])) {
-             beta(i,j,k) = epsilon_si * epsilon_0; //SC layer
-          } else if((x >= DE_lo[0] && x < DE_hi[0]) && (y >= DE_lo[1] && y < DE_hi[1]) && (z >= DE_lo[2] && z < DE_hi[2])) {
-             beta(i,j,k) = epsilon_de * epsilon_0; //DE layer
-          } else if ((x >= FE_lo[0] && x < FE_hi[0]) && (y >= FE_lo[1] && y < FE_hi[1]) && (z >= FE_lo[2] && z < FE_hi[2])){
-             beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
-          } else {
-             //beta(i,j,k) = epsilon_0; //vacuum
-             beta(i,j,k) = epsilon_de * epsilon_0; //Spacer
-	  }
-
-        });
-    }
-//    beta_cc.FillBoundary(geom.periodicity());
-
-
-    for (MFIter mfi(beta_cc); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.growntilebox(1);
-
-        const Array4<Real>& beta = beta_cc.array(mfi);
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
-        {
-  		if(i < 0) {
-		  beta(i,j,k) = beta(i+1,j,k);
-		}
-		else if(i > n_cell[0] - 1) {
-		  beta(i,j,k) = beta(i-1,j,k);
-		}
-  		if(j < 0) {
-		  beta(i,j,k) = beta(i,j+1,k);
-		}
-		else if(j > n_cell[1] - 1) {
-		  beta(i,j,k) = beta(i,j-1,k);
-		}
-  		if(k < 0) {
-		  beta(i,j,k) = beta(i,j,k+1);
-		}
-		else if(k > n_cell[2] - 1) {
-		  beta(i,j,k) = beta(i,j,k-1);
+	        if (LinOpBCType_2d[1][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][2] == amrex::LinOpBCType::Neumann ){
+		   if(k > n_cell[2] - 1) {
+		     beta(i,j,k) = beta(i,j,k-1);
+		   }
 		}
         });
     }
 }
-
-void InitializePermittivity(std::array< MultiFab, AMREX_SPACEDIM >& beta_face, const Geometry& geom, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
-{
-    // extract dx from the geometry object
-    GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
-
-    
-    // set cell-centered beta coefficient to
-    // epsilon values in SC, FE, and DE layers
-    // loop over boxes
-    for (MFIter mfi(beta_face[0]); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.validbox();
-
-        const Array4<Real>& beta_f0 = beta_face[0].array(mfi);
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
-        {
-          Real x = prob_lo[0] + (i+0.0) * dx[0];
-          Real y = prob_lo[1] + (j+0.5) * dx[1];
-          Real z = prob_lo[2] + (k+0.5) * dx[2];
-
-          if((x >= SC_lo[0] && x < SC_hi[0]) && (y >= SC_lo[1] && y < SC_hi[1]) && (z >= SC_lo[2] && z < SC_hi[2])) {
-             beta_f0(i,j,k) = epsilon_si * epsilon_0; //SC layer
-          } else if((x >= DE_lo[0] && x < DE_hi[0]) && (y >= DE_lo[1] && y < DE_hi[1]) && (z >= DE_lo[2] && z < DE_hi[2])) {
-             beta_f0(i,j,k) = epsilon_de * epsilon_0; //DE layer
-          } else if ((x >= FE_lo[0] && x < FE_hi[0]) && (y >= FE_lo[1] && y < FE_hi[1]) && (z >= FE_lo[2] && z < FE_hi[2])){
-             beta_f0(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
-          } else {
-             //beta(i,j,k) = epsilon_0; //vacuum
-             beta_f0(i,j,k) = epsilon_de * epsilon_0; //Spacer
-	  }
-
-        });
-    }
-    for (MFIter mfi(beta_face[1]); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.validbox();
-
-        const Array4<Real>& beta_f1 = beta_face[1].array(mfi);
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
-        {
-          Real x = prob_lo[0] + (i+0.5) * dx[0];
-          Real y = prob_lo[1] + (j+0.0) * dx[1];
-          Real z = prob_lo[2] + (k+0.5) * dx[2];
-
-          if((x >= SC_lo[0] && x < SC_hi[0]) && (y >= SC_lo[1] && y < SC_hi[1]) && (z >= SC_lo[2] && z < SC_hi[2])) {
-             beta_f1(i,j,k) = epsilon_si * epsilon_0; //SC layer
-          } else if((x >= DE_lo[0] && x < DE_hi[0]) && (y >= DE_lo[1] && y < DE_hi[1]) && (z >= DE_lo[2] && z < DE_hi[2])) {
-             beta_f1(i,j,k) = epsilon_de * epsilon_0; //DE layer
-          } else if ((x >= FE_lo[0] && x < FE_hi[0]) && (y >= FE_lo[1] && y < FE_hi[1]) && (z >= FE_lo[2] && z < FE_hi[2])){
-             beta_f1(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
-          } else {
-             //beta(i,j,k) = epsilon_0; //vacuum
-             beta_f1(i,j,k) = epsilon_de * epsilon_0; //Spacer
-	  }
-
-        });
-    }
-    for (MFIter mfi(beta_face[2]); mfi.isValid(); ++mfi)
-    {
-        const Box& bx = mfi.validbox();
-
-        const Array4<Real>& beta_f2 = beta_face[2].array(mfi);
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
-        {
-          Real x = prob_lo[0] + (i+0.5) * dx[0];
-          Real y = prob_lo[1] + (j+0.5) * dx[1];
-          Real z = prob_lo[2] + (k+0.0) * dx[2];
-
-          if((x >= SC_lo[0] && x < SC_hi[0]) && (y >= SC_lo[1] && y < SC_hi[1]) && (z >= SC_lo[2] && z < SC_hi[2])) {
-             beta_f2(i,j,k) = epsilon_si * epsilon_0; //SC layer
-          } else if((x >= DE_lo[0] && x < DE_hi[0]) && (y >= DE_lo[1] && y < DE_hi[1]) && (z >= DE_lo[2] && z < DE_hi[2])) {
-             beta_f2(i,j,k) = epsilon_de * epsilon_0; //DE layer
-          } else if ((x >= FE_lo[0] && x < FE_hi[0]) && (y >= FE_lo[1] && y < FE_hi[1]) && (z >= FE_lo[2] && z < FE_hi[2])){
-             beta_f2(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
-          } else {
-             //beta(i,j,k) = epsilon_0; //vacuum
-             beta_f2(i,j,k) = epsilon_de * epsilon_0; //Spacer
-	  }
-
-        });
-    }
-}
-
 
 void SetPoissonBC(c_FerroX& rFerroX, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, bool& all_homogeneous_boundaries, bool& some_functionbased_inhomogeneous_boundaries, bool& some_constant_inhomogeneous_boundaries)
 {
