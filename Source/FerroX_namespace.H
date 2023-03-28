@@ -13,6 +13,8 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> DE_hi;
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FE_hi;
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> SC_hi;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> Channel_hi;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> Channel_lo;
 
     // material parameters
     extern AMREX_GPU_MANAGED amrex::Real epsilon_0;
@@ -40,6 +42,8 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED amrex::Real q;
     extern AMREX_GPU_MANAGED amrex::Real kb;
     extern AMREX_GPU_MANAGED amrex::Real T;
+    extern AMREX_GPU_MANAGED amrex::Real acceptor_doping;
+    extern AMREX_GPU_MANAGED amrex::Real donor_doping;
 
     // P and Phi Bc
     extern AMREX_GPU_MANAGED amrex::Real lambda;

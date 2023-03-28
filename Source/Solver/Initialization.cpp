@@ -90,15 +90,24 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
         });
         // Calculate charge density from Phi, Nc, Nv, Ec, and Ev
 
+	MultiFab acceptor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
+	MultiFab donor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
+
         const Array4<Real>& hole_den_arr = p_den.array(mfi);
         const Array4<Real>& e_den_arr = e_den.array(mfi);
         const Array4<Real>& charge_den_arr = rho.array(mfi);
+        const Array4<Real>& acceptor_den_arr = acceptor_den.array(mfi);
+        const Array4<Real>& donor_den_arr = donor_den.array(mfi);
+
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
+             Real x = prob_lo[0] + (i+0.5) * dx[0];
+             Real y = prob_lo[1] + (j+0.5) * dx[1];
              Real z = prob_lo[2] + (k+0.5) * dx[2];
 
-             if(z <= SC_hi[2]){ //SC region
+             //SC region
+             if (x <= SC_hi[0] + small && x >= SC_lo[0] - small && y <= SC_hi[1] + small && y >= SC_lo[1] - small && z <= SC_hi[2] + small && z >= SC_lo[2] - small) {
 
                   Real Phi = 0.5*(Ec + Ev); //eV
 //                hole_den_arr(i,j,k) = Nv*exp(-(Phi - Ev)*1.602e-19/(kb*T));
@@ -119,7 +128,16 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                   Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
 
                   hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
-                  charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+
+		  //If in channel, set acceptor doping, else (Source/Drain) set donor doping
+                  if (x <= Channel_hi[0] + small && x >= Channel_lo[0] - small && y <= Channel_hi[1] + small && y >= Channel_lo[1] - small && z <= Channel_hi[2] + small && z >= Channel_lo[2] - small) {
+		     acceptor_den_arr(i,j,k) = acceptor_doping; 
+	             donor_den_arr(i,j,k) = 0.0;
+		  } else { // Source / Drain
+		     acceptor_den_arr(i,j,k) = 0.0; 
+	             donor_den_arr(i,j,k) = donor_doping;
+		  }
+                  charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
 
              } else {
 

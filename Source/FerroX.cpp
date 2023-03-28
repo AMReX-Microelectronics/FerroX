@@ -174,6 +174,8 @@ AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::SC_lo;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::DE_hi;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::FE_hi;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::SC_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::Channel_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::Channel_lo;
 
 // material parameters
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_0;
@@ -201,6 +203,8 @@ AMREX_GPU_MANAGED amrex::Real FerroX::Ev;
 AMREX_GPU_MANAGED amrex::Real FerroX::q;
 AMREX_GPU_MANAGED amrex::Real FerroX::kb;
 AMREX_GPU_MANAGED amrex::Real FerroX::T;
+AMREX_GPU_MANAGED amrex::Real FerroX::acceptor_doping;
+AMREX_GPU_MANAGED amrex::Real FerroX::donor_doping;
 
 // P and Phi Bc
 AMREX_GPU_MANAGED amrex::Real FerroX::lambda;
@@ -321,6 +325,18 @@ void InitializeFerroXNamespace() {
          }
      }
 
+     if (pp.queryarr("Channel_lo",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             Channel_lo[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("Channel_hi",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             Channel_hi[i] = temp[i];
+         }
+     }
+
      // For Silicon:
      // Nc = 2.8e25 m^-3
      // Nv = 1.04e25 m^-3
@@ -335,6 +351,10 @@ void InitializeFerroXNamespace() {
      kb = 1.38e-23; // Boltzmann constant
      T = 300; // Room Temp
 
+     acceptor_doping = 0.0;
+     pp.query("acceptor_doping",acceptor_doping);
+     donor_doping = 0.0;
+     pp.query("donor_doping",donor_doping);
 }
 
 
