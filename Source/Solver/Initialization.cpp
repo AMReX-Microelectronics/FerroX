@@ -190,10 +190,11 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
 	     }
         });
     }
+    MaterialMask.FillBoundary(geom.periodicity());
 }
 
 // initialization of mask (device geometry) with parser
-void InitializeMaterialMask(c_FerroX& rFerroX, MultiFab& MaterialMask)
+void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& MaterialMask)
 { 
     auto& rGprop = rFerroX.get_GeometryProperties();
     Box const& domain = rGprop.geom.Domain();
@@ -232,8 +233,9 @@ void InitializeMaterialMask(c_FerroX& rFerroX, MultiFab& MaterialMask)
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,mask_arr);
-	    //printf("mask(i,j,k) = %f\n",mask_arr(i,j,k));
         });
+
     }
+	MaterialMask.FillBoundary(geom.periodicity());
 }
 
