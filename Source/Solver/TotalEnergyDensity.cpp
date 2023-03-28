@@ -5,6 +5,7 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 MultiFab&                       PoissonPhi,
                 MultiFab&                       Gamma,
+                MultiFab&                 MaterialMask,
                 const Geometry& geom,
 		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
@@ -25,6 +26,7 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
             const Array4<Real> &pOld_z = P_old[2].array(mfi);
             const Array4<Real>& phi = PoissonPhi.array(mfi);
             const Array4<Real>& Gam = Gamma.array(mfi);
+            const Array4<Real>& mask = MaterialMask.array(mfi);
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
@@ -65,29 +67,29 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                                     + 2. * alpha_112 * pOld_z(i,j,k) * std::pow(pOld_y(i,j,k),4.)
                                     + 2. * alpha_123 * pOld_z(i,j,k) * std::pow(pOld_x(i,j,k),2.) * std::pow(pOld_y(i,j,k),2.);
 
-                Real dFdPx_grad = - g11 * DoubleDPDx(pOld_x, x, x_hi, x_lo, i, j, k, dx)
-                                  - (g44 + g44_p) * DoubleDPDy(pOld_x, y, y_hi, y_lo, i, j, k, dx)
-                                  - (g44 + g44_p) * DoubleDPDz(pOld_x, z, z_hi, z_lo, i, j, k, dx)
-                                  - (g12 + g44 - g44_p) * (DPDy(pOld_y, y, y_hi, y_lo, i+1, j, k, dx) 
-						         - DPDy(pOld_y, y, y_hi, y_lo, i-1, j, k, dx)) / 2. /dx[0]
-                                  - (g12 + g44 - g44_p) * (DPDz(pOld_z, z, z_hi, z_lo, i+1, j, k, dx)
-                                                         - DPDz(pOld_z, z, z_hi, z_lo, i-1, j, k, dx)) / 2. /dx[0]; // d2P/dxdz
+                Real dFdPx_grad = - g11 * DoubleDPDx(pOld_x, mask, i, j, k, dx)
+                                  - (g44 + g44_p) * DoubleDPDy(pOld_x, mask, i, j, k, dx)
+                                  - (g44 + g44_p) * DoubleDPDz(pOld_x, mask, i, j, k, dx)
+                                  - (g12 + g44 - g44_p) * (DPDy(pOld_y, mask, i+1, j, k, dx) 
+						         - DPDy(pOld_y, mask, i-1, j, k, dx)) / 2. /dx[0]
+                                  - (g12 + g44 - g44_p) * (DPDz(pOld_z, mask, i+1, j, k, dx)
+                                                         - DPDz(pOld_z, mask, i-1, j, k, dx)) / 2. /dx[0]; // d2P/dxdz
                 
-                Real dFdPy_grad = - g11 * DoubleDPDy(pOld_y, y, y_hi, y_lo, i, j, k, dx)
-                                  - (g44 - g44_p) * DoubleDPDx(pOld_y, x, x_hi, x_lo, i, j, k, dx)
-                                  - (g44 - g44_p) * DoubleDPDz(pOld_y, z, z_hi, z_lo, i, j, k, dx)
-                                  - (g12 + g44 + g44_p) * (DPDx(pOld_x, x, x_hi, x_lo, i, j+1, k, dx) 
-						         - DPDx(pOld_x, x, x_hi, x_lo, i, j-1, k, dx)) / 2. / dx[1]
-                                  - (g12 + g44 - g44_p) * (DPDz(pOld_z, z, z_hi, z_lo, i, j+1, k, dx) 
-                                                         - DPDz(pOld_z, z, z_hi, z_lo, i, j-1, k, dx)) / 2. /dx[1];
+                Real dFdPy_grad = - g11 * DoubleDPDy(pOld_y, mask, i, j, k, dx)
+                                  - (g44 - g44_p) * DoubleDPDx(pOld_y, mask, i, j, k, dx)
+                                  - (g44 - g44_p) * DoubleDPDz(pOld_y, mask, i, j, k, dx)
+                                  - (g12 + g44 + g44_p) * (DPDx(pOld_x, mask, i, j+1, k, dx) 
+						         - DPDx(pOld_x, mask, i, j-1, k, dx)) / 2. / dx[1]
+                                  - (g12 + g44 - g44_p) * (DPDz(pOld_z, mask, i, j+1, k, dx) 
+                                                         - DPDz(pOld_z, mask, i, j-1, k, dx)) / 2. /dx[1];
 
-                Real dFdPz_grad = - g11 * DoubleDPDz(pOld_z, z, z_hi, z_lo, i, j, k, dx)
-                                  - (g44 - g44_p) * DoubleDPDx(pOld_z, x, x_hi, x_lo, i, j, k, dx)
-                                  - (g44 - g44_p) * DoubleDPDy(pOld_z, y, y_hi, y_lo, i, j, k, dx)
-                                  - (g44 + g44_p + g12) * (DPDz(pOld_y, z, z_hi, z_lo, i, j+1, k, dx) 
-                                                         - DPDz(pOld_y, z, z_hi, z_lo, i, j-1, k, dx)) / 2. /dx[1] // d2P/dydz
-                                  - (g44 + g44_p + g12) * (DPDz(pOld_x, z, z_hi, z_lo, i+1, j, k, dx) 
-                                                         - DPDz(pOld_x, z, z_hi, z_lo, i-1, j, k, dx)) / 2. /dx[0]; // d2P/dxdz
+                Real dFdPz_grad = - g11 * DoubleDPDz(pOld_z, mask, i, j, k, dx)
+                                  - (g44 - g44_p) * DoubleDPDx(pOld_z, mask, i, j, k, dx)
+                                  - (g44 - g44_p) * DoubleDPDy(pOld_z, mask, i, j, k, dx)
+                                  - (g44 + g44_p + g12) * (DPDz(pOld_y, mask, i, j+1, k, dx) 
+                                                         - DPDz(pOld_y, mask, i, j-1, k, dx)) / 2. /dx[1] // d2P/dydz
+                                  - (g44 + g44_p + g12) * (DPDz(pOld_x, mask, i+1, j, k, dx) 
+                                                         - DPDz(pOld_x, mask, i-1, j, k, dx)) / 2. /dx[0]; // d2P/dxdz
 
                 GL_RHS_x(i,j,k)  = -1.0 * Gam(i,j,k) *
                     (  dFdPx_Landau
@@ -106,7 +108,7 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 GL_RHS_z(i,j,k)  = -1.0 * Gam(i,j,k) *
                     (  dFdPz_Landau
                      + dFdPz_grad
-                     + DphiDz(phi, z, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi)
+                     + DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi)
                     );
 
             });
