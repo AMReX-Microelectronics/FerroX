@@ -7,7 +7,7 @@ using namespace FerroX;
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
  static amrex::Real DphiDz (
     amrex::Array4<amrex::Real> const& F,
-    amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
+    amrex::Real const z_hi, amrex::Real const z_lo, 
     int const i, int const j, int const k,  amrex::GpuArray<amrex::Real, 3> dx, 
     amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>const& prob_lo,
     amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>const& prob_hi) {
@@ -44,10 +44,10 @@ using namespace FerroX;
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
  static amrex::Real DPDx (
     amrex::Array4<amrex::Real> const& F,
-    amrex::Real const x, amrex::Real const x_hi, amrex::Real const x_lo, 
+    amrex::Array4<amrex::Real> const& mask,
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
 ) {
-    if (FE_lo[0] > x_lo && FE_lo[0] <= x) { //FE lower boundary
+    if (mask(i-1,j,k) != 0.0 && mask(i,j,k) == 0.0) { //FE lower boundary
       
         if(P_BC_flag_lo[0] == 0){
             Real F_lo = 0.0;
@@ -72,7 +72,7 @@ using namespace FerroX;
             return 0.0;
         }     
 
-    } else if (x_hi > FE_hi[0] && x <= FE_hi[0] ){ // FE higher boundary
+    } else if (mask(i+1,j,k) != 0.0 && mask(i,j,k) == 0.0){ // FE higher boundary
 
         if(P_BC_flag_hi[0] == 0){
             Real F_hi = 0.0;
@@ -97,7 +97,7 @@ using namespace FerroX;
             return 0.0;
         }
                   
-    } else if (x_hi <= FE_hi[0] && x_lo >= FE_lo[0]) { // inside FE
+    } else if (mask(i,j,k) == 0.0) { // inside FE
         return (F(i+1,j,k) - F(i-1,j,k))/(2.*dx[0]);
 
     } else {
@@ -110,11 +110,11 @@ using namespace FerroX;
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
  static amrex::Real DPDy (
     amrex::Array4<amrex::Real> const& F,
-    amrex::Real const y, amrex::Real const y_hi, amrex::Real const y_lo, 
+    amrex::Array4<amrex::Real> const& mask,
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
 ) {
 
-    if (FE_lo[1] > y_lo && FE_lo[1] <= y) { //FE lower boundary
+    if (mask(i,j-1,k) != 0.0 && mask(i,j,k) == 0.0) { //FE lower boundary
       
         if(P_BC_flag_lo[1] == 0){
             Real F_lo = 0.0;
@@ -139,7 +139,7 @@ using namespace FerroX;
             return 0.0;
         }     
 
-    } else if (y_hi > FE_hi[1] && y <= FE_hi[1] ){ // FE higher boundary
+    } else if (mask(i,j+1,k) != 0.0 && mask(i,j,k) == 0.0){ // FE higher boundary
 
         if(P_BC_flag_hi[1] == 0){
             Real F_hi = 0.0;
@@ -164,7 +164,7 @@ using namespace FerroX;
             return 0.0;
         }
                   
-    } else if (y_hi <= FE_hi[1] && y_lo >= FE_lo[1]) { // inside FE
+    } else if (mask(i,j,k) == 0.0) { // inside FE
         return (F(i,j+1,k) - F(i,j-1,k))/(2.*dx[1]);
 
     } else {
@@ -177,11 +177,11 @@ using namespace FerroX;
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
  static amrex::Real DPDz (
     amrex::Array4<amrex::Real> const& F,
-    amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
+    amrex::Array4<amrex::Real> const& mask,
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
 ) {
 
-    if (FE_lo[2] > z_lo && FE_lo[2] <= z) { //FE lower boundary
+    if (mask(i,j,k-1) != 0.0 && mask(i,j,k) == 0.0) { //FE lower boundary
       
         if(P_BC_flag_lo[2] == 0){
             Real F_lo = 0.0;
@@ -203,7 +203,7 @@ using namespace FerroX;
             return 0.0;
         }     
 
-    } else if (z_hi > FE_hi[2] && z <= FE_hi[2] ){ // FE higher boundary
+    } else if ( mask(i,j,k+1) != 0.0 && mask(i,j,k) == 0.0 ){ // FE higher boundary
 
         if(P_BC_flag_hi[2] == 0){
             Real F_hi = 0.0;
@@ -225,7 +225,7 @@ using namespace FerroX;
             return 0.0;
         }
                   
-    } else if (z_hi <= FE_hi[2] && z_lo >= FE_lo[2]) { // inside FE
+    } else if (mask(i,j,k) == 0.0) { // inside FE
         return (F(i,j,k+1) - F(i,j,k-1))/(2.*dx[2]);
 
     } else {
@@ -259,11 +259,11 @@ using namespace FerroX;
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
  static amrex::Real DoubleDPDx (
     amrex::Array4<amrex::Real> const& F,
-    amrex::Real const x, amrex::Real const x_hi, amrex::Real const x_lo, 
+    amrex::Array4<amrex::Real> const& mask,
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
     ) {
         
-    if (FE_lo[0] > x_lo && FE_lo[0] <= x) { //FE lower boundary
+    if (mask(i-1,j,k) != 0.0 && mask(i,j,k) == 0.0) { //FE lower boundary
       
         if(P_BC_flag_lo[0] == 0){
             Real F_lo = 0.0;
@@ -288,7 +288,7 @@ using namespace FerroX;
             return 0.0;
         }     
 
-    } else if (x_hi > FE_hi[0] && x <= FE_hi[0] ){ // FE higher boundary
+    } else if ( mask(i+1,j,k) != 0.0 && mask(i,j,k) == 0.0 ){ // FE higher boundary
 
         if(P_BC_flag_hi[0] == 0){
             Real F_hi = 0.0;
@@ -313,7 +313,7 @@ using namespace FerroX;
             return 0.0;
         }
                   
-    } else if (x_hi <= FE_hi[0] && x_lo >= FE_lo[0]) { // inside FE
+    } else if (mask(i,j,k) == 0.0) { // inside FE
         return (F(i+1,j,k) - 2.*F(i,j,k) + F(i-1,j,k)) / (dx[0]*dx[0]);  
 
     } else {
@@ -327,11 +327,11 @@ using namespace FerroX;
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
  static amrex::Real DoubleDPDy (
     amrex::Array4<amrex::Real> const& F,
-    amrex::Real const y, amrex::Real const y_hi, amrex::Real const y_lo, 
+    amrex::Array4<amrex::Real> const& mask,
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
     ) {
         
-    if (FE_lo[1] > y_lo && FE_lo[1] <= y) { //FE lower boundary
+    if (mask(i,j-1,k) != 0.0 && mask(i,j,k) == 0.0) { //FE lower boundary
       
         if(P_BC_flag_lo[1] == 0){
             Real F_lo = 0.0;
@@ -356,7 +356,7 @@ using namespace FerroX;
             return 0.0;
         }     
 
-    } else if (y_hi > FE_hi[1] && y <= FE_hi[1] ){ // FE higher boundary
+    } else if ( mask(i,j+1,k) != 0.0 && mask(i,j,k) == 0.0 ){ // FE higher boundary
 
         if(P_BC_flag_hi[1] == 0){
             Real F_hi = 0.0;
@@ -381,7 +381,7 @@ using namespace FerroX;
             return 0.0;
         }
                   
-    } else if (y_hi <= FE_hi[1] && y_lo >= FE_lo[1]) { // inside FE
+    } else if (mask(i,j,k) == 0.0) { // inside FE
         return (F(i,j+1,k) - 2.*F(i,j,k) + F(i,j-1,k)) / (dx[1]*dx[1]);  
 
     } else {
@@ -394,11 +394,11 @@ using namespace FerroX;
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
  static amrex::Real DoubleDPDz (
     amrex::Array4<amrex::Real> const& F,
-    amrex::Real const z, amrex::Real const z_hi, amrex::Real const z_lo, 
+    amrex::Array4<amrex::Real> const& mask,
     int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx
     ) {
         
-    if (FE_lo[2] > z_lo && FE_lo[2] <= z) { //FE lower boundary
+    if (mask(i,j,k-1) != 0.0 && mask(i,j,k) == 0.0) { //FE lower boundary
       
         if(P_BC_flag_lo[2] == 0){
             Real F_lo = 0.0;
@@ -420,7 +420,7 @@ using namespace FerroX;
             return 0.0;
         }     
 
-    } else if (z_hi > FE_hi[2] && z <= FE_hi[2] ){ // FE higher boundary
+    } else if ( mask(i,j,k+1) != 0.0 && mask(i,j,k) == 0.0 ){ // FE higher boundary
 
         if(P_BC_flag_hi[2] == 0){
             Real F_hi = 0.0;
@@ -442,7 +442,7 @@ using namespace FerroX;
             return 0.0;
         }
                   
-    } else if (z_hi <= FE_hi[2] && z_lo >= FE_lo[2]) { // inside FE
+    } else if (mask(i,j,k) == 0.0) { // inside FE
         return (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1)) / (dx[2]*dx[2]);  
 
     } else {

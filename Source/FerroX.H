@@ -113,6 +113,7 @@ private:
 
 
 void main_main (c_FerroX& rFerroX);
-void InitializeFerroXNamespace ();
+void InitializeFerroXNamespace (const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 #endif

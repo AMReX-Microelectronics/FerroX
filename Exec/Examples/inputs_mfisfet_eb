@@ -8,7 +8,7 @@ domain.prob_hi =  16.e-9  16.e-9 16.e-9
 domain.n_cell = 64 64 32
 
 domain.max_grid_size = 64 64 32
-#domain.blocking_factor = 16 16 16
+domain.blocking_factor = 16 16 16
 
 domain.coord_sys = cartesian 
 
@@ -16,8 +16,8 @@ prob_type = 1
 
 TimeIntegratorOrder = 1
 
-nsteps = 1
-plot_int = 1
+nsteps = 1000
+plot_int = 100
 
 dt = 2.0e-13
 
@@ -45,27 +45,28 @@ boundary.lo = neu neu dir(0.0)
 domain.embedded_boundary = 1
 ebgeom.specify_input_using_eb2 = 0
 ebgeom.objects = MyGeom MyGeom1 MyGeom2
+#ebgeom.objects = MyGeom
 ebgeom.specify_inhomo_dir = 1
 
-##### box
+##### box (gate)
 MyGeom.geom_type = box
-MyGeom.box_lo = -16.0e-9  -16.0e-9 9.0e-9
-MyGeom.box_hi =  -6.0e-9   16.0e-9 10.0e-9
+MyGeom.box_lo = -12.0e-9  -16.0e-9 15.0e-9
+MyGeom.box_hi =  12.0e-9   16.0e-9 16.0e-9
 MyGeom.has_fluid_inside = 0
-MyGeom.surf_soln = 1.0 #V
+MyGeom.surf_soln = 0.0 #V
 
 
-##### box
+##### box (source)
 MyGeom1.geom_type = box
-MyGeom1.box_lo =   6.0e-9  -18.0e-9 9.0e-9
-MyGeom1.box_hi =  16.0e-9   18.0e-9 10.0e-9
+MyGeom1.box_lo =  -16.0e-9  -16.0e-9 0.0e-9
+MyGeom1.box_hi =  -15.0e-9   16.0e-9 9.0e-9
 MyGeom1.has_fluid_inside = 0
-MyGeom1.surf_soln = -1.0 #V
+MyGeom1.surf_soln = 0.0 #V
 
-##### box
+##### box (drain)
 MyGeom2.geom_type = box
-MyGeom2.box_lo =  -6.0e-9  -16.0e-9 15.0e-9
-MyGeom2.box_hi =   6.0e-9   16.0e-9 16.0e-9
+MyGeom2.box_lo =  15.0e-9  -16.0e-9 0.0e-9
+MyGeom2.box_hi =  16.0e-9   16.0e-9 9.0e-9
 MyGeom2.has_fluid_inside = 0
 MyGeom2.surf_soln = 0.0 #V
 
@@ -74,18 +75,31 @@ MyGeom2.surf_soln = 0.0 #V
 #################################
 
 SC_lo = -16.e-9 -16.e-9 0.e-9
-SC_hi =  16.e-9  16.e-9 10.e-9
+SC_hi =  16.e-9  16.e-9 9.e-9
 
-DE_lo = -6.e-9 -16.e-9 10.0e-9
-DE_hi =  6.e-9  16.e-9 11.0e-9
+Channel_lo = -12.e-9 -16.e-9 0.e-9
+Channel_hi =  12.e-9  16.e-9 9.e-9
 
-FE_lo = -6.e-9 -16.e-9 11.0e-9
-FE_hi =  6.e-9  16.e-9 15.e-9
+DE_lo = -12.e-9 -16.e-9 9.0e-9
+DE_hi =  12.e-9  16.e-9 10.0e-9
+
+FE_lo = -12.e-9 -16.e-9 10.0e-9
+FE_hi =  12.e-9  16.e-9 15.e-9
+
+#FE:0.0, DE:1.0, Source/Drain:2.0, Channel:3.0
+my_constants.tiny = 1.e-16
+device_geom.device_geom_function(x,y,z) = "-1.*(x > -12.e-9 - tiny)*(x < 12.e-9 + tiny) * (y > -16.e-9 - tiny)*(y < 16.e-9 + tiny) * (z > 10.e-9 - tiny)*(z < 15.e-9 + tiny) 
+                                         + 1.*(x > -16.e-9 - tiny)*(x < 16.e-9 + tiny) * (y > -16.e-9 - tiny)*(y < 16.e-9 + tiny) * (z > 9.e-9 - tiny)*(z < 16.e-9 + tiny)
+                                         + 2.*(x > -16.e-9 - tiny)*(x < 16.e-9 + tiny) * (y > -16.e-9 - tiny)*(y < 16.e-9 + tiny) * (z > 0.e-9 - tiny)*(z < 9.e-9 + tiny)
+                                         + 1.*(x > -12.e-9 - tiny)*(x < 12.e-9 + tiny) * (y > -16.e-9 - tiny)*(y < 16.e-9 + tiny) * (z > 0.e-9 - tiny)*(z < 9.e-9 + tiny)"
+
 
 #################################
 ###### MATERIAL PROPERTIES ######
 #################################
 
+acceptor_doping = 1.0e8
+donor_doping = 1.e14
 epsilon_0 = 8.85e-12
 epsilonX_fe = 24.0
 epsilonZ_fe = 24.0

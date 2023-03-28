@@ -25,8 +25,8 @@ dt = 2.0e-13
 ###### POLARIZATION BOUNDARY CONDITIONS ####
 ############################################
 
-P_BC_flag_lo = 0
-P_BC_flag_hi = 1
+P_BC_flag_lo = 3 3 0
+P_BC_flag_hi = 3 3 1
 lambda = 3.0e-9
 
 ############################################
@@ -67,6 +67,9 @@ MyGeom.surf_soln = 0.0 #V
 
 SC_lo = -16.e-9 -16.e-9 0.e-9
 SC_hi =  16.e-9  16.e-9 10.e-9
+
+#SC_lo = -1. -1. -1.
+#SC_hi =  -1.  -1. -1.
 
 DE_lo = -16.e-9 -16.e-9 10.0e-9
 DE_hi =  16.e-9  16.e-9 11.0e-9

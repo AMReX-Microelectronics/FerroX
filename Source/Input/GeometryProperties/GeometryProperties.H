@@ -1,4 +1,7 @@
-/* Contributors: Saurabh Sawant
+/*
+ * This file is taken from eXstatic.
+ *
+ * Contributor: Saurabh S. Sawant
  *
  */
 #ifndef GEOMETRY_PROPERTIES_H_
