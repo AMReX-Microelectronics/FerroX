@@ -3,7 +3,7 @@
 
 void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
-                MultiFab&                       PoissonPhi,
+                Array<MultiFab, AMREX_SPACEDIM> &E,
                 MultiFab&                       Gamma,
                 MultiFab&                 MaterialMask,
                 const Geometry& geom,
@@ -24,7 +24,9 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
             const Array4<Real> &pOld_x = P_old[0].array(mfi);
             const Array4<Real> &pOld_y = P_old[1].array(mfi);
             const Array4<Real> &pOld_z = P_old[2].array(mfi);
-            const Array4<Real>& phi = PoissonPhi.array(mfi);
+            const Array4<Real> &Ex = E[0].array(mfi);
+            const Array4<Real> &Ey = E[1].array(mfi);
+            const Array4<Real> &Ez = E[2].array(mfi);
             const Array4<Real>& Gam = Gamma.array(mfi);
             const Array4<Real>& mask = MaterialMask.array(mfi);
 
@@ -94,13 +96,15 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 GL_RHS_x(i,j,k)  = -1.0 * Gam(i,j,k) *
                     (  dFdPx_Landau
                      + dFdPx_grad
-                     + DFDx(phi, i, j, k, dx)
+		     - Ex(i,j,k)
+                     //+ DFDx(phi, i, j, k, dx)
                     );
 
                 GL_RHS_y(i,j,k)  = -1.0 * Gam(i,j,k) *
                     (  dFdPy_Landau
                      + dFdPy_grad
-                     + DFDy(phi, i, j, k, dx)
+		     - Ey(i,j,k)
+                     //+ DFDy(phi, i, j, k, dx)
                     );
 
 		GL_RHS_x(i,j,k)  = 0.0;
@@ -108,7 +112,8 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 GL_RHS_z(i,j,k)  = -1.0 * Gam(i,j,k) *
                     (  dFdPz_Landau
                      + dFdPz_grad
-                     + DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi)
+		     - Ez(i,j,k)
+                     //+ DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi)
                     );
 
             });

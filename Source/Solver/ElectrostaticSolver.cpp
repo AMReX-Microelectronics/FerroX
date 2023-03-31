@@ -94,9 +94,7 @@ void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
 }
 
 void ComputeEfromPhi(MultiFab&                 PoissonPhi,
-                MultiFab&                      Ex,
-                MultiFab&                      Ey,
-                MultiFab&                      Ez,
+                Array<MultiFab, AMREX_SPACEDIM>& E,
                 const Geometry&                 geom,
 		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, 
 		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
@@ -110,9 +108,9 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
             // extract dx from the geometry object
             GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-            const Array4<Real>& Ex_arr = Ex.array(mfi);
-            const Array4<Real>& Ey_arr = Ey.array(mfi);
-            const Array4<Real>& Ez_arr = Ez.array(mfi);
+            const Array4<Real>& Ex_arr = E[0].array(mfi);
+            const Array4<Real>& Ey_arr = E[1].array(mfi);
+            const Array4<Real>& Ez_arr = E[2].array(mfi);
             const Array4<Real>& phi = PoissonPhi.array(mfi);
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)

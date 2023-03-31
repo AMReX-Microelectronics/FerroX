@@ -21,9 +21,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 //                const Geometry&                 geom);
 //
 void ComputeEfromPhi(MultiFab&                 PoissonPhi,
-                MultiFab&                      Ex,
-                MultiFab&                      Ey,
-                MultiFab&                      Ez,
+		Array<MultiFab, AMREX_SPACEDIM> &E,
                 const Geometry&                 geom,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);

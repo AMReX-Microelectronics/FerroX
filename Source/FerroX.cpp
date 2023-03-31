@@ -220,6 +220,10 @@ AMREX_GPU_MANAGED int FerroX::TimeIntegratorOrder;
 
 AMREX_GPU_MANAGED amrex::Real FerroX::delta;
 
+AMREX_GPU_MANAGED amrex::Real FerroX::angle_alpha;
+AMREX_GPU_MANAGED amrex::Real FerroX::angle_beta;
+AMREX_GPU_MANAGED amrex::Real FerroX::angle_theta;
+
 void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi) {
 
@@ -368,6 +372,13 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.query("acceptor_doping",acceptor_doping);
      donor_doping = 0.0;
      pp.query("donor_doping",donor_doping);
+
+     angle_alpha = 0.0;
+     angle_beta = 0.0;
+     angle_theta = 0.0;
+     pp.query("angle_alpha",angle_alpha);
+     pp.query("angle_beta",angle_beta);
+     pp.query("angle_theta",angle_theta);
 }
 
 

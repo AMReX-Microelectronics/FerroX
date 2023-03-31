@@ -59,4 +59,8 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int TimeIntegratorOrder;
 
     extern AMREX_GPU_MANAGED amrex::Real delta;
+
+    extern AMREX_GPU_MANAGED amrex::Real angle_alpha;
+    extern AMREX_GPU_MANAGED amrex::Real angle_beta;
+    extern AMREX_GPU_MANAGED amrex::Real angle_theta;
 }
