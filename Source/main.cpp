@@ -74,10 +74,10 @@ void main_main (c_FerroX& rFerroX)
         P_old[dir].define(ba, dm, Ncomp, Nghost);
     }
 
-    Array<MultiFab, AMREX_SPACEDIM> P_old_local;
+    Array<MultiFab, AMREX_SPACEDIM> P_old_global;
     for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
     {
-        P_old_local[dir].define(ba, dm, Ncomp, Nghost);
+        P_old_global[dir].define(ba, dm, Ncomp, Nghost);
     }
 
     Array<MultiFab, AMREX_SPACEDIM> P_new;
@@ -92,10 +92,10 @@ void main_main (c_FerroX& rFerroX)
         P_new_pre[dir].define(ba, dm, Ncomp, Nghost);
     }
 
-    Array<MultiFab, AMREX_SPACEDIM> P_new_pre_local;
+    Array<MultiFab, AMREX_SPACEDIM> P_new_pre_global;
     for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
     {
-        P_new_pre_local[dir].define(ba, dm, Ncomp, Nghost);
+        P_new_pre_global[dir].define(ba, dm, Ncomp, Nghost);
     }
 
 
@@ -131,7 +131,6 @@ void main_main (c_FerroX& rFerroX)
 
     MultiFab PoissonRHS(ba, dm, 1, 0);
     MultiFab PoissonPhi(ba, dm, 1, 1);
-    MultiFab PoissonPhi_local(ba, dm, 1, 1);
     MultiFab PoissonPhi_Prev(ba, dm, 1, 1);
     MultiFab PhiErr(ba, dm, 1, 1);
 //    MultiFab Ex(ba, dm, 1, 0);
@@ -144,8 +143,8 @@ void main_main (c_FerroX& rFerroX)
     MultiFab MaterialMask(ba, dm, 1, 1);
 
     //Initialize material mask
-    //InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
-    InitializeMaterialMask(rFerroX, geom, MaterialMask);
+    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
+    //InitializeMaterialMask(rFerroX, geom, MaterialMask);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -271,6 +270,7 @@ void main_main (c_FerroX& rFerroX)
     //InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);//old
     InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);//mask based
     
+    transform_local_to_global(P_old, P_old_global);
 
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
@@ -280,9 +280,9 @@ void main_main (c_FerroX& rFerroX)
     while(err > tol){
    
 	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, geom);
+	ComputePoissonRHS(PoissonRHS, P_old_global, charge_den, MaterialMask, geom);
 
-        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
+        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old_global, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
 
         ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -334,9 +334,9 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
         MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
         MultiFab::Copy(Plt, P_old[2], 0, 2, 1, 0);  
-        MultiFab::Copy(Plt, P_old[0], 0, 3, 1, 0);
-        MultiFab::Copy(Plt, P_old[1], 0, 4, 1, 0);
-        MultiFab::Copy(Plt, P_old[2], 0, 5, 1, 0);  
+        MultiFab::Copy(Plt, P_old_global[0], 0, 3, 1, 0);
+        MultiFab::Copy(Plt, P_old_global[1], 0, 4, 1, 0);
+        MultiFab::Copy(Plt, P_old_global[2], 0, 5, 1, 0);  
         MultiFab::Copy(Plt, PoissonPhi, 0, 6, 1, 0);
         MultiFab::Copy(Plt, PoissonRHS, 0, 7, 1, 0);
         MultiFab::Copy(Plt, E[0], 0, 8, 1, 0);
@@ -349,9 +349,9 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, beta_cc, 0, 14, 1, 0);
         MultiFab::Copy(Plt, MaterialMask, 0, 15, 1, 0);
 #ifdef AMREX_USE_EB
-	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_local","Py_local","Pz_local","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
+	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
 #else
-	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_local","Py_local","Pz_local","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
 #endif
     }
 
@@ -366,13 +366,10 @@ void main_main (c_FerroX& rFerroX)
 
 
         // compute f^n = f(P^n,Phi^n)
-        //CalculateTDGL_RHS(GL_rhs, P_old_local, PoissonPhi_local, Gamma, MaterialMask, geom, prob_lo, prob_hi);
         CalculateTDGL_RHS(GL_rhs, P_old, E_local, Gamma, MaterialMask, geom, prob_lo, prob_hi);
 
         // P^{n+1,*} = P^n + dt * f^n
         for (int i = 0; i < 3; i++){
-            //MultiFab::LinComb(P_new_pre_local[i], 1.0, P_old_local[i], 0, dt, GL_rhs[i], 0, 0, 1, Nghost);
-            //P_new_pre_local[i].FillBoundary(geom.periodicity()); 
             MultiFab::LinComb(P_new_pre[i], 1.0, P_old[i], 0, dt, GL_rhs[i], 0, 0, 1, Nghost);
             P_new_pre[i].FillBoundary(geom.periodicity()); 
         }  
@@ -392,7 +389,7 @@ void main_main (c_FerroX& rFerroX)
 //                         int             nghost);
 	
 	//Transform P_local to P_global for Poisson solve
-	transform_local_to_global(P_new_pre, P_new_pre_local);
+	transform_local_to_global(P_new_pre, P_new_pre_global);
 
         err = 1.0;
         iter = 0;
@@ -401,9 +398,9 @@ void main_main (c_FerroX& rFerroX)
         while(err > tol){
    
             // Compute RHS of Poisson equation
-            ComputePoissonRHS(PoissonRHS, P_new_pre_local, charge_den, MaterialMask, geom);
+            ComputePoissonRHS(PoissonRHS, P_new_pre_global, charge_den, MaterialMask, geom);
 
-            dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre_local, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
+            dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre_global, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
 
             ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -450,7 +447,7 @@ void main_main (c_FerroX& rFerroX)
                 MultiFab::Copy(P_old[i], P_new_pre[i], 0, 0, 1, 0);
                 // fill periodic ghost cells
                 P_old[i].FillBoundary(geom.periodicity());
-                P_new_pre_local[i].FillBoundary(geom.periodicity());
+                P_new_pre_global[i].FillBoundary(geom.periodicity());
             }
             
         } else {
@@ -543,9 +540,9 @@ void main_main (c_FerroX& rFerroX)
             MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
             MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
             MultiFab::Copy(Plt, P_old[2], 0, 2, 1, 0);  
-            MultiFab::Copy(Plt, P_new_pre_local[0], 0, 3, 1, 0);
-            MultiFab::Copy(Plt, P_new_pre_local[1], 0, 4, 1, 0);
-            MultiFab::Copy(Plt, P_new_pre_local[2], 0, 5, 1, 0);  
+            MultiFab::Copy(Plt, P_new_pre_global[0], 0, 3, 1, 0);
+            MultiFab::Copy(Plt, P_new_pre_global[1], 0, 4, 1, 0);
+            MultiFab::Copy(Plt, P_new_pre_global[2], 0, 5, 1, 0);  
             MultiFab::Copy(Plt, PoissonPhi, 0, 6, 1, 0);
             MultiFab::Copy(Plt, PoissonRHS, 0, 7, 1, 0);
             MultiFab::Copy(Plt, E[0], 0, 8, 1, 0);
