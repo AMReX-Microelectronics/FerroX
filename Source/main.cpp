@@ -270,8 +270,14 @@ void main_main (c_FerroX& rFerroX)
     //InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);//old
     InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);//mask based
     
-    transform_local_to_global(P_old, P_old_global);
-
+    if(Coordinate_Transformation == 1){
+       transform_local_to_global(P_old, P_old_global);
+    } else {
+      for (int i = 0; i < 3; i++){
+          MultiFab::Copy(P_old_global[i], P_old[i], 0, 0, 1, 0);
+      }	
+    }
+    
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
     Real err = 1.0;
@@ -362,8 +368,13 @@ void main_main (c_FerroX& rFerroX)
         Real step_strt_time = ParallelDescriptor::second();
 
 	//Transform E from global to local coordinates and compute total free energy in local coordinates
-	transform_global_to_local(E, E_local);
-
+        if(Coordinate_Transformation == 1){
+	  transform_global_to_local(E, E_local);
+	} else {
+          for (int i = 0; i < 3; i++){
+              MultiFab::Copy(E_local[i], E[i], 0, 0, 1, 0);
+	  }	
+	}
 
         // compute f^n = f(P^n,Phi^n)
         CalculateTDGL_RHS(GL_rhs, P_old, E_local, Gamma, MaterialMask, geom, prob_lo, prob_hi);
@@ -389,7 +400,13 @@ void main_main (c_FerroX& rFerroX)
 //                         int             nghost);
 	
 	//Transform P_local to P_global for Poisson solve
-	transform_local_to_global(P_new_pre, P_new_pre_global);
+        if(Coordinate_Transformation == 1){
+	  transform_local_to_global(P_new_pre, P_new_pre_global);
+	} else {
+          for (int i = 0; i < 3; i++){
+              MultiFab::Copy(P_new_pre_global[i], P_new_pre[i], 0, 0, 1, 0);
+	  }	
+	}
 
         err = 1.0;
         iter = 0;
