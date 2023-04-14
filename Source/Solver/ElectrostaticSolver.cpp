@@ -127,7 +127,13 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
 }
 
-void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, MultiFab& beta_cc, const MultiFab& MaterialMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom)
+void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, 
+		MultiFab& beta_cc,
+	       	const MultiFab& MaterialMask,
+	       	const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
+	       	const Geometry& geom, 
+		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+	       	const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
 
     beta_cc.setVal(0.0);
@@ -142,11 +148,22 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
         const Array4<Real>& beta = beta_cc.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
 
+	// extract dx from the geometry object
+        GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
 
+	  Real x = prob_lo[0] + (i+0.5) * dx[0];
+	  Real y = prob_lo[1] + (j+0.5) * dx[1];
+	  Real z = prob_lo[1] + (k+0.5) * dx[2];
+	
           if(mask(i,j,k) == 0.0) {
              beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
+	     //set t_phase beta to epsilonX_fe_tphase
+	     if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+               beta(i,j,k) = epsilonX_fe_tphase * epsilon_0;
+             }
           } else if(mask(i,j,k) == 1.0) {
              beta(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else if (mask(i,j,k) >= 2.0){

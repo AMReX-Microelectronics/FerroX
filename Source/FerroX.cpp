@@ -180,6 +180,7 @@ AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::Channel_l
 // material parameters
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_0;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilonX_fe;
+AMREX_GPU_MANAGED amrex::Real FerroX::epsilonX_fe_tphase;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilonZ_fe;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_de;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_si;
@@ -226,6 +227,10 @@ AMREX_GPU_MANAGED amrex::Real FerroX::angle_alpha;
 AMREX_GPU_MANAGED amrex::Real FerroX::angle_beta;
 AMREX_GPU_MANAGED amrex::Real FerroX::angle_theta;
 
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::t_phase_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::t_phase_hi;
+
+
 void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi) {
 
@@ -260,6 +265,10 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      pp.get("epsilon_0",epsilon_0); // epsilon_0
      pp.get("epsilonX_fe",epsilonX_fe);// epsilon_r for FE
+
+     epsilonX_fe_tphase = epsilonX_fe;
+     pp.query("epsilonX_fe_tphase",epsilonX_fe_tphase);
+
      pp.get("epsilonZ_fe",epsilonZ_fe);// epsilon_r for FE
      pp.get("epsilon_de",epsilon_de);// epsilon_r for DE
      pp.get("epsilon_si",epsilon_si);// epsilon_r for SC
@@ -306,6 +315,8 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
          DE_hi[i] = prob_hi[i] + 1.0;
          SC_hi[i] = prob_hi[i] + 1.0;
          Channel_hi[i] = prob_hi[i] + 1.0;
+	 t_phase_lo[i] = 1.0; //just a large number so that t_phase is NOT simulated by default
+	 t_phase_hi[i] = 1.0;
      }
 
      amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
@@ -356,6 +367,18 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
          }
      }
 
+     if (pp.queryarr("t_phase_lo",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             t_phase_lo[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("t_phase_hi",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             t_phase_hi[i] = temp[i];
+         }
+     }
+
      // For Silicon:
      // Nc = 2.8e25 m^-3
      // Nv = 1.04e25 m^-3
@@ -383,6 +406,7 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.query("angle_alpha",angle_alpha);
      pp.query("angle_beta",angle_beta);
      pp.query("angle_theta",angle_theta);
+     
 }
 
 

@@ -27,7 +27,13 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 //mask based permittivity
-void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, MultiFab& beta_cc, const MultiFab& MaterialMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom);
+void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, 
+                MultiFab& beta_cc, 
+                const MultiFab& MaterialMask, 
+                const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, 
+                const Geometry& geom, 
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, 
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS, 

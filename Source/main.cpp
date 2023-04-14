@@ -178,7 +178,7 @@ void main_main (c_FerroX& rFerroX)
                  beta_face[2].define(convert(ba,IntVect(AMREX_D_DECL(0,0,1))), dm, 1, 0););
 
     // set cell-centered beta coefficient to permittivity based on mask
-    InitializePermittivity(LinOpBCType_2d, beta_cc, MaterialMask, n_cell, geom);
+    InitializePermittivity(LinOpBCType_2d, beta_cc, MaterialMask, n_cell, geom, prob_lo, prob_hi);
     eXstatic_MFab_Util::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
 
     int amrlev = 0; //refers to the setcoarsest level of the solve

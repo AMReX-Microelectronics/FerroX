@@ -83,6 +83,12 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                }
 
                Gam(i,j,k) = BigGamma;
+
+	       //set t_phase Pz to zero
+	       if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+                 pOld_z(i,j,k) = 0.0;
+	       }
+
             } else {
                pOld_z(i,j,k) = 0.0;
                Gam(i,j,k) = 0.0;

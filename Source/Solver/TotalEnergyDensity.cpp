@@ -116,6 +116,10 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                      //+ DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi)
                     );
 
+		//set t_phase GL_RHS_z to zero so that it stays zero. It is initialized to zero in t-phase as well
+                if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+                  GL_RHS_z(i,j,k) = 0.0;
+                }
             });
         }
 }
