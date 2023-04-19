@@ -1,4 +1,3 @@
-
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MLABecLaplacian.H>
@@ -141,10 +140,16 @@ void main_main (c_FerroX& rFerroX)
     MultiFab e_den(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
     MultiFab MaterialMask(ba, dm, 1, 1);
+    MultiFab tphaseMask(ba, dm, 1, 1);
 
     //Initialize material mask
     InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
     //InitializeMaterialMask(rFerroX, geom, MaterialMask);
+    if(Coordinate_Transformation == 1){
+       Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
+    } else {
+       tphaseMask.setVal(0.);
+    }
 
     //Solver for Poisson equation
     LPInfo info;
@@ -162,9 +167,9 @@ void main_main (c_FerroX& rFerroX)
     amrex::Print() << "contains_SC = " << contains_SC << "\n";
 
 #ifdef AMREX_USE_EB
-    MultiFab Plt(ba, dm, 16, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
+    MultiFab Plt(ba, dm, 17, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
 #else    
-    MultiFab Plt(ba, dm, 16, 0);
+    MultiFab Plt(ba, dm, 17, 0);
 #endif
 
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
@@ -178,7 +183,7 @@ void main_main (c_FerroX& rFerroX)
                  beta_face[2].define(convert(ba,IntVect(AMREX_D_DECL(0,0,1))), dm, 1, 0););
 
     // set cell-centered beta coefficient to permittivity based on mask
-    InitializePermittivity(LinOpBCType_2d, beta_cc, MaterialMask, n_cell, geom, prob_lo, prob_hi);
+    InitializePermittivity(LinOpBCType_2d, beta_cc, MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);
     eXstatic_MFab_Util::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
 
     int amrlev = 0; //refers to the setcoarsest level of the solve
@@ -268,7 +273,7 @@ void main_main (c_FerroX& rFerroX)
     // INITIALIZE P in FE and rho in SC regions
 
     //InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);//old
-    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);//mask based
+    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, MaterialMask, tphaseMask, geom, prob_lo, prob_hi);//mask based
     
     if(Coordinate_Transformation == 1){
        transform_local_to_global(P_old, P_old_global);
@@ -354,10 +359,11 @@ void main_main (c_FerroX& rFerroX)
 
         MultiFab::Copy(Plt, beta_cc, 0, 14, 1, 0);
         MultiFab::Copy(Plt, MaterialMask, 0, 15, 1, 0);
+        MultiFab::Copy(Plt, tphaseMask, 0, 16, 1, 0);
 #ifdef AMREX_USE_EB
-	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
+	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase"}, geom, time, step);
 #else
-	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase"}, geom, time, step);
 #endif
     }
 
@@ -377,7 +383,7 @@ void main_main (c_FerroX& rFerroX)
 	}
 
         // compute f^n = f(P^n,Phi^n)
-        CalculateTDGL_RHS(GL_rhs, P_old, E_local, Gamma, MaterialMask, geom, prob_lo, prob_hi);
+        CalculateTDGL_RHS(GL_rhs, P_old, E_local, Gamma, MaterialMask, tphaseMask, geom, prob_lo, prob_hi);
 
         // P^{n+1,*} = P^n + dt * f^n
         for (int i = 0; i < 3; i++){
@@ -470,7 +476,7 @@ void main_main (c_FerroX& rFerroX)
         } else {
         
             // compute f^{n+1,*} = f(P^{n+1,*},Phi^{n+1,*})
-            CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, E, Gamma, MaterialMask, geom, prob_lo, prob_hi);
+            CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, E, Gamma, MaterialMask, tphaseMask, geom, prob_lo, prob_hi);
 
             // P^{n+1} = P^n + dt/2 * f^n + dt/2 * f^{n+1,*}
             for (int i = 0; i < 3; i++){
@@ -571,10 +577,11 @@ void main_main (c_FerroX& rFerroX)
 
             MultiFab::Copy(Plt, beta_cc, 0, 14, 1, 0);
             MultiFab::Copy(Plt, MaterialMask, 0, 15, 1, 0);
+            MultiFab::Copy(Plt, tphaseMask, 0, 15, 1, 0);
 #ifdef AMREX_USE_EB
-	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_local","Py_local","Pz_local","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
+	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase"}, geom, time, step);
 #else
-	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_local","Py_local","Pz_local","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
+	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase"}, geom, time, step);
 #endif
         }
 

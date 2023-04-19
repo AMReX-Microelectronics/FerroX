@@ -6,6 +6,7 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Array<MultiFab, AMREX_SPACEDIM> &E,
                 MultiFab&                       Gamma,
                 MultiFab&                 MaterialMask,
+                MultiFab&                 tphaseMask,
                 const Geometry& geom,
 		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
@@ -29,6 +30,7 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
             const Array4<Real> &Ez = E[2].array(mfi);
             const Array4<Real>& Gam = Gamma.array(mfi);
             const Array4<Real>& mask = MaterialMask.array(mfi);
+            const Array4<Real>& tphase = tphaseMask.array(mfi);
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
@@ -117,7 +119,8 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                     );
 
 		//set t_phase GL_RHS_z to zero so that it stays zero. It is initialized to zero in t-phase as well
-                if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+                //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+                if(tphase(i,j,k) == 1.0){
                   GL_RHS_z(i,j,k) = 0.0;
                 }
             });

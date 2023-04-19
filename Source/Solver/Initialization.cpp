@@ -9,6 +9,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                    MultiFab&   e_den,
                    MultiFab&   p_den,
 		   const MultiFab& MaterialMask,
+		   const MultiFab& tphaseMask,
                    const       Geometry& geom,
 		   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                    const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
@@ -53,6 +54,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
         const Array4<Real> &pOld_z = P_old[2].array(mfi);
         const Array4<Real>& Gam = Gamma.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
+        const Array4<Real const>& tphase = tphaseMask.array(mfi);
 
         Real pi = 3.141592653589793238;
 
@@ -85,7 +87,8 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                Gam(i,j,k) = BigGamma;
 
 	       //set t_phase Pz to zero
-	       if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+	       //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+	       if(tphase(i,j,k) == 1.0){
                  pOld_z(i,j,k) = 0.0;
 	       }
 
@@ -243,5 +246,51 @@ void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& M
 
     }
 	MaterialMask.FillBoundary(geom.periodicity());
+}
+
+// initialization of t-phase mask with parser
+void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& tphaseMask)
+{ 
+    auto& rGprop = rFerroX.get_GeometryProperties();
+    Box const& domain = rGprop.geom.Domain();
+
+    const auto dx = rGprop.geom.CellSizeArray();
+    const auto& real_box = rGprop.geom.ProbDomain();
+    const auto iv = tphaseMask.ixType().toIntVect();
+
+    for (MFIter mfi(tphaseMask, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    {
+        const auto& mask_arr = tphaseMask.array(mfi);
+        const auto& bx = mfi.tilebox();
+
+	std::string tphase_mask_s;
+	std::unique_ptr<amrex::Parser> tphase_mask_parser;
+        std::string m_str_tphase_geom_function;
+
+	ParmParse pp_mask("tphase_geom");
+
+	bool mask_specified = false;
+
+	if (pp_mask.query("tphase_geom_function(x,y,z)", m_str_tphase_geom_function) ) {
+            tphase_mask_s = "parse_tphase_geom_function";
+            mask_specified = true;
+        }
+
+        if (tphase_mask_s == "parse_tphase_geom_function") {
+            Store_parserString(pp_mask, "tphase_geom_function(x,y,z)", m_str_tphase_geom_function);
+            tphase_mask_parser = std::make_unique<amrex::Parser>(
+                                     makeParser(m_str_tphase_geom_function,{"x","y","z"}));
+        }
+
+        const auto& macro_parser = tphase_mask_parser->compile<3>();
+
+        amrex::ParallelFor(bx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,mask_arr);
+        });
+
+    }
+	tphaseMask.FillBoundary(geom.periodicity());
 }
 
