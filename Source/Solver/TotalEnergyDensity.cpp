@@ -87,8 +87,9 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                                   - (g12 + g44 - g44_p) * (DPDz(pOld_z, mask, i, j+1, k, dx) 
                                                          - DPDz(pOld_z, mask, i, j-1, k, dx)) / 2. /dx[1];
 
-                Real dFdPz_grad = - g11 * DoubleDPDz(pOld_z, mask, i, j, k, dx)
-                                  - (g44 - g44_p) * DoubleDPDx(pOld_z, mask, i, j, k, dx)
+		//Switch g11 and g44 temporarily for multiphase simulations. This will be generalized later
+                Real dFdPz_grad = - g44 * DoubleDPDz(pOld_z, mask, i, j, k, dx)
+                                  - (g11 - g44_p) * DoubleDPDx(pOld_z, mask, i, j, k, dx)
                                   - (g44 - g44_p) * DoubleDPDy(pOld_z, mask, i, j, k, dx)
                                   - (g44 + g44_p + g12) * (DPDz(pOld_y, mask, i, j+1, k, dx) 
                                                          - DPDz(pOld_y, mask, i, j-1, k, dx)) / 2. /dx[1] // d2P/dydz
