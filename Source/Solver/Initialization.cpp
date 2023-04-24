@@ -294,3 +294,98 @@ void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& t
 	tphaseMask.FillBoundary(geom.periodicity());
 }
 
+
+// initialization of Euler angles
+void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta)
+{ 
+    auto& rGprop = rFerroX.get_GeometryProperties();
+    Box const& domain = rGprop.geom.Domain();
+
+    const auto dx = rGprop.geom.CellSizeArray();
+    const auto& real_box = rGprop.geom.ProbDomain();
+    const auto iv_alpha = angle_alpha.ixType().toIntVect();
+    const auto iv_beta = angle_beta.ixType().toIntVect();
+    const auto iv_theta = angle_theta.ixType().toIntVect();
+
+    for (MFIter mfi(angle_alpha, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    {
+        const auto& alpha_arr = angle_alpha.array(mfi);
+        const auto& beta_arr = angle_beta.array(mfi);
+        const auto& theta_arr = angle_theta.array(mfi);
+        const auto& bx = mfi.tilebox();
+
+	std::string alpha_s;
+	std::unique_ptr<amrex::Parser> alpha_parser;
+        std::string m_str_alpha_function;
+
+	std::string beta_s;
+	std::unique_ptr<amrex::Parser> beta_parser;
+        std::string m_str_beta_function;
+
+	std::string theta_s;
+	std::unique_ptr<amrex::Parser> theta_parser;
+        std::string m_str_theta_function;
+
+	ParmParse pp_alpha("angle_alpha");
+
+	bool alpha_specified = false;
+
+	if (pp_alpha.query("alpha_function(x,y,z)", m_str_alpha_function) ) {
+            alpha_s = "parse_alpha_function";
+            alpha_specified = true;
+        }
+
+        if (alpha_s == "parse_alpha_function") {
+            Store_parserString(pp_alpha, "alpha_function(x,y,z)", m_str_alpha_function);
+            alpha_parser = std::make_unique<amrex::Parser>(
+                                     makeParser(m_str_alpha_function,{"x","y","z"}));
+        }
+
+	ParmParse pp_beta("angle_beta");
+
+	bool beta_specified = false;
+
+	if (pp_beta.query("beta_function(x,y,z)", m_str_beta_function) ) {
+            beta_s = "parse_beta_function";
+            beta_specified = true;
+        }
+
+        if (beta_s == "parse_beta_function") {
+            Store_parserString(pp_beta, "beta_function(x,y,z)", m_str_beta_function);
+            beta_parser = std::make_unique<amrex::Parser>(
+                                     makeParser(m_str_beta_function,{"x","y","z"}));
+        }
+
+	ParmParse pp_theta("angle_theta");
+
+	bool theta_specified = false;
+
+	if (pp_theta.query("theta_function(x,y,z)", m_str_theta_function) ) {
+            theta_s = "parse_theta_function";
+            theta_specified = true;
+        }
+
+        if (theta_s == "parse_theta_function") {
+            Store_parserString(pp_theta, "theta_function(x,y,z)", m_str_theta_function);
+            theta_parser = std::make_unique<amrex::Parser>(
+                                     makeParser(m_str_theta_function,{"x","y","z"}));
+        }
+
+        const auto& macro_parser_alpha = alpha_parser->compile<3>();
+        const auto& macro_parser_beta = beta_parser->compile<3>();
+        const auto& macro_parser_theta = theta_parser->compile<3>();
+
+        amrex::ParallelFor(bx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv_alpha,macro_parser_alpha,alpha_arr);
+            eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv_beta, macro_parser_beta, beta_arr );
+            eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv_theta,macro_parser_theta,theta_arr);
+        });
+
+    }
+	angle_alpha.FillBoundary(geom.periodicity());
+	angle_beta.FillBoundary(geom.periodicity());
+	angle_theta.FillBoundary(geom.periodicity());
+}
+

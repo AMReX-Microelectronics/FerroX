@@ -7,7 +7,9 @@ using namespace amrex;
 using namespace FerroX;
 
 void transform_global_to_local(Array<MultiFab, AMREX_SPACEDIM> &src,
-		               Array<MultiFab, AMREX_SPACEDIM> &dst);
+		               Array<MultiFab, AMREX_SPACEDIM> &dst,
+			       MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta);
 
 void transform_local_to_global(Array<MultiFab, AMREX_SPACEDIM> &src,
-		               Array<MultiFab, AMREX_SPACEDIM> &dst);
+		               Array<MultiFab, AMREX_SPACEDIM> &dst,
+			       MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta);

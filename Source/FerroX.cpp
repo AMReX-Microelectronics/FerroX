@@ -223,10 +223,6 @@ AMREX_GPU_MANAGED amrex::Real FerroX::delta;
 
 AMREX_GPU_MANAGED int FerroX::Coordinate_Transformation;
 
-AMREX_GPU_MANAGED amrex::Real FerroX::angle_alpha;
-AMREX_GPU_MANAGED amrex::Real FerroX::angle_beta;
-AMREX_GPU_MANAGED amrex::Real FerroX::angle_theta;
-
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::t_phase_lo;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::t_phase_hi;
 
@@ -399,13 +395,7 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.query("donor_doping",donor_doping);
 
      Coordinate_Transformation = 0;
-     angle_alpha = 0.0;
-     angle_beta = 0.0;
-     angle_theta = 0.0;
      pp.query("Coordinate_Transformation",Coordinate_Transformation);
-     pp.query("angle_alpha",angle_alpha);
-     pp.query("angle_beta",angle_beta);
-     pp.query("angle_theta",angle_theta);
      
 }
 

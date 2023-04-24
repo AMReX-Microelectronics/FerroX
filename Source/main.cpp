@@ -141,12 +141,16 @@ void main_main (c_FerroX& rFerroX)
     MultiFab charge_den(ba, dm, 1, 0);
     MultiFab MaterialMask(ba, dm, 1, 1);
     MultiFab tphaseMask(ba, dm, 1, 1);
+    MultiFab angle_alpha(ba, dm, 1, 0);
+    MultiFab angle_beta(ba, dm, 1, 0);
+    MultiFab angle_theta(ba, dm, 1, 0);
 
     //Initialize material mask
     InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
     //InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
+       Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
     } else {
        tphaseMask.setVal(0.);
     }
@@ -167,9 +171,9 @@ void main_main (c_FerroX& rFerroX)
     amrex::Print() << "contains_SC = " << contains_SC << "\n";
 
 #ifdef AMREX_USE_EB
-    MultiFab Plt(ba, dm, 17, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
+    MultiFab Plt(ba, dm, 20, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
 #else    
-    MultiFab Plt(ba, dm, 17, 0);
+    MultiFab Plt(ba, dm, 20, 0);
 #endif
 
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
@@ -276,7 +280,7 @@ void main_main (c_FerroX& rFerroX)
     InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, MaterialMask, tphaseMask, geom, prob_lo, prob_hi);//mask based
     
     if(Coordinate_Transformation == 1){
-       transform_local_to_global(P_old, P_old_global);
+       transform_local_to_global(P_old, P_old_global, angle_alpha, angle_beta, angle_theta);
     } else {
       for (int i = 0; i < 3; i++){
           MultiFab::Copy(P_old_global[i], P_old[i], 0, 0, 1, 0);
@@ -360,10 +364,13 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, beta_cc, 0, 14, 1, 0);
         MultiFab::Copy(Plt, MaterialMask, 0, 15, 1, 0);
         MultiFab::Copy(Plt, tphaseMask, 0, 16, 1, 0);
+        MultiFab::Copy(Plt, angle_alpha, 0, 17, 1, 0);
+        MultiFab::Copy(Plt, angle_beta, 0, 18, 1, 0);
+        MultiFab::Copy(Plt, angle_theta, 0, 19, 1, 0);
 #ifdef AMREX_USE_EB
-	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase"}, geom, time, step);
+	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta"}, geom, time, step);
 #else
-	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase"}, geom, time, step);
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta"}, geom, time, step);
 #endif
     }
 
@@ -375,7 +382,7 @@ void main_main (c_FerroX& rFerroX)
 
 	//Transform E from global to local coordinates and compute total free energy in local coordinates
         if(Coordinate_Transformation == 1){
-	  transform_global_to_local(E, E_local);
+	  transform_global_to_local(E, E_local, angle_alpha, angle_beta, angle_theta);
 	} else {
           for (int i = 0; i < 3; i++){
               MultiFab::Copy(E_local[i], E[i], 0, 0, 1, 0);
@@ -407,7 +414,7 @@ void main_main (c_FerroX& rFerroX)
 	
 	//Transform P_local to P_global for Poisson solve
         if(Coordinate_Transformation == 1){
-	  transform_local_to_global(P_new_pre, P_new_pre_global);
+	  transform_local_to_global(P_new_pre, P_new_pre_global, angle_alpha, angle_beta, angle_theta);
 	} else {
           for (int i = 0; i < 3; i++){
               MultiFab::Copy(P_new_pre_global[i], P_new_pre[i], 0, 0, 1, 0);
@@ -578,10 +585,13 @@ void main_main (c_FerroX& rFerroX)
             MultiFab::Copy(Plt, beta_cc, 0, 14, 1, 0);
             MultiFab::Copy(Plt, MaterialMask, 0, 15, 1, 0);
             MultiFab::Copy(Plt, tphaseMask, 0, 15, 1, 0);
+            MultiFab::Copy(Plt, angle_alpha, 0, 17, 1, 0);
+            MultiFab::Copy(Plt, angle_beta, 0, 18, 1, 0);
+            MultiFab::Copy(Plt, angle_theta, 0, 19, 1, 0);
 #ifdef AMREX_USE_EB
-	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase"}, geom, time, step);
+	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta"}, geom, time, step);
 #else
-	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase"}, geom, time, step);
+	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Px_global","Py_global","Pz_global","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta"}, geom, time, step);
 #endif
         }
 

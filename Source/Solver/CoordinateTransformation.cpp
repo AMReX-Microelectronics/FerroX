@@ -7,7 +7,8 @@
         [sin(a)sin(b) 				-cos(a)sin(b) 				cos(b)	    ]
  */
 void transform_global_to_local(Array<MultiFab, AMREX_SPACEDIM> &src,
-                               Array<MultiFab, AMREX_SPACEDIM> &dst)
+                               Array<MultiFab, AMREX_SPACEDIM> &dst,
+			       MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta)
 {
     for (MFIter mfi(src[0]); mfi.isValid(); ++mfi)
     {
@@ -21,18 +22,23 @@ void transform_global_to_local(Array<MultiFab, AMREX_SPACEDIM> &src,
         const Array4<Real> &dst_y = dst[1].array(mfi);
         const Array4<Real> &dst_z = dst[2].array(mfi);
 
-	amrex::Real R_11 = cos(angle_alpha)*cos(angle_theta) - cos(angle_beta)*sin(angle_alpha)*sin(angle_theta);  
-	amrex::Real R_12 = sin(angle_alpha)*cos(angle_theta) + cos(angle_beta)*cos(angle_alpha)*sin(angle_theta);  
-	amrex::Real R_13 = sin(angle_beta)*sin(angle_theta);  
-	amrex::Real R_21 = -cos(angle_beta)*cos(angle_theta)*sin(angle_alpha) - cos(angle_alpha)*sin(angle_theta);  
-	amrex::Real R_22 = cos(angle_beta)*cos(angle_alpha)*cos(angle_theta) - sin(angle_alpha)*sin(angle_theta);  
-	amrex::Real R_23 = sin(angle_beta)*cos(angle_theta);  
-	amrex::Real R_31 = sin(angle_alpha)*sin(angle_beta);  
-	amrex::Real R_32 = -cos(angle_alpha)*sin(angle_beta);  
-	amrex::Real R_33 = cos(angle_beta);  
+	const Array4<Real> &alpha_arr = angle_alpha.array(mfi);
+        const Array4<Real> &beta_arr = angle_beta.array(mfi);
+        const Array4<Real> &theta_arr = angle_theta.array(mfi);
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
+
+	     amrex::Real R_11 = cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(beta_arr(i,j,k))*sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
+	     amrex::Real R_12 = sin(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) + cos(beta_arr(i,j,k))*cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
+	     amrex::Real R_13 = sin(beta_arr(i,j,k))*sin(theta_arr(i,j,k));  
+	     amrex::Real R_21 = -cos(beta_arr(i,j,k))*cos(theta_arr(i,j,k))*sin(alpha_arr(i,j,k)) - cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
+	     amrex::Real R_22 = cos(beta_arr(i,j,k))*cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) - sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
+	     amrex::Real R_23 = sin(beta_arr(i,j,k))*cos(theta_arr(i,j,k));  
+	     amrex::Real R_31 = sin(alpha_arr(i,j,k))*sin(beta_arr(i,j,k));  
+	     amrex::Real R_32 = -cos(alpha_arr(i,j,k))*sin(beta_arr(i,j,k));  
+	     amrex::Real R_33 = cos(beta_arr(i,j,k));  
+
              dst_x(i,j,k) = R_11*src_x(i,j,k) + R_12*src_y(i,j,k) + R_13*src_z(i,j,k);
              dst_y(i,j,k) = R_21*src_x(i,j,k) + R_22*src_y(i,j,k) + R_23*src_z(i,j,k);
              dst_z(i,j,k) = R_31*src_x(i,j,k) + R_32*src_y(i,j,k) + R_33*src_z(i,j,k);
@@ -47,7 +53,8 @@ void transform_global_to_local(Array<MultiFab, AMREX_SPACEDIM> &src,
              [sin(t)sin(b) 				cos(t)sin(b) 				cos(b)       ]
  */
 void transform_local_to_global(Array<MultiFab, AMREX_SPACEDIM> &src,
-                               Array<MultiFab, AMREX_SPACEDIM> &dst)
+                               Array<MultiFab, AMREX_SPACEDIM> &dst,
+			       MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta)
 {
     for (MFIter mfi(src[0]); mfi.isValid(); ++mfi)
     {
@@ -61,18 +68,23 @@ void transform_local_to_global(Array<MultiFab, AMREX_SPACEDIM> &src,
         const Array4<Real> &dst_y = dst[1].array(mfi);
         const Array4<Real> &dst_z = dst[2].array(mfi);
 
-	amrex::Real iR_11 = cos(angle_alpha)*cos(angle_theta) - cos(angle_beta)*sin(angle_alpha)*sin(angle_theta);  
-	amrex::Real iR_12 = -sin(angle_alpha)*cos(angle_beta)*cos(angle_theta) - cos(angle_alpha)*sin(angle_theta);  
-	amrex::Real iR_13 = sin(angle_beta)*sin(angle_alpha);  
-	amrex::Real iR_21 = cos(angle_theta)*sin(angle_alpha) + cos(angle_alpha)*sin(angle_theta)*cos(angle_beta);  
-	amrex::Real iR_22 = cos(angle_beta)*cos(angle_alpha)*cos(angle_theta) - sin(angle_alpha)*sin(angle_theta);  
-	amrex::Real iR_23 = -sin(angle_beta)*cos(angle_alpha);  
-	amrex::Real iR_31 = sin(angle_theta)*sin(angle_beta);  
-	amrex::Real iR_32 = cos(angle_theta)*sin(angle_beta);  
-	amrex::Real iR_33 = cos(angle_beta);  
+	const Array4<Real> &alpha_arr = angle_alpha.array(mfi);
+        const Array4<Real> &beta_arr = angle_beta.array(mfi);
+        const Array4<Real> &theta_arr = angle_theta.array(mfi);
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
+
+	     amrex::Real iR_11 = cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(beta_arr(i,j,k))*sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
+	     amrex::Real iR_12 = -sin(alpha_arr(i,j,k))*cos(beta_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
+	     amrex::Real iR_13 = sin(beta_arr(i,j,k))*sin(alpha_arr(i,j,k));  
+	     amrex::Real iR_21 = cos(theta_arr(i,j,k))*sin(alpha_arr(i,j,k)) + cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k))*cos(beta_arr(i,j,k));  
+	     amrex::Real iR_22 = cos(beta_arr(i,j,k))*cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) - sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
+	     amrex::Real iR_23 = -sin(beta_arr(i,j,k))*cos(alpha_arr(i,j,k));  
+	     amrex::Real iR_31 = sin(theta_arr(i,j,k))*sin(beta_arr(i,j,k));  
+	     amrex::Real iR_32 = cos(theta_arr(i,j,k))*sin(beta_arr(i,j,k));  
+	     amrex::Real iR_33 = cos(beta_arr(i,j,k));  
+
              dst_x(i,j,k) = iR_11*src_x(i,j,k) + iR_12*src_y(i,j,k) + iR_13*src_z(i,j,k);
              dst_y(i,j,k) = iR_21*src_x(i,j,k) + iR_22*src_y(i,j,k) + iR_23*src_z(i,j,k);
              dst_z(i,j,k) = iR_31*src_x(i,j,k) + iR_32*src_y(i,j,k) + iR_33*src_z(i,j,k);
