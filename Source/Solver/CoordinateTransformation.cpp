@@ -29,6 +29,11 @@ void transform_global_to_local(Array<MultiFab, AMREX_SPACEDIM> &src,
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
 
+	     //Convert Euler angles from degrees to radians 
+	     alpha_arr(i,j,k) = 0.0174533*alpha_arr(i,j,k);
+	     alpha_arr(i,j,k) = 0.0174533*beta_arr(i,j,k);
+	     alpha_arr(i,j,k) = 0.0174533*theta_arr(i,j,k);
+
 	     amrex::Real R_11 = cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(beta_arr(i,j,k))*sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
 	     amrex::Real R_12 = sin(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) + cos(beta_arr(i,j,k))*cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
 	     amrex::Real R_13 = sin(beta_arr(i,j,k))*sin(theta_arr(i,j,k));  
@@ -74,6 +79,11 @@ void transform_local_to_global(Array<MultiFab, AMREX_SPACEDIM> &src,
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
+
+	     //Convert Euler angles from degrees to radians 
+	     alpha_arr(i,j,k) = 0.0174533*alpha_arr(i,j,k);
+	     alpha_arr(i,j,k) = 0.0174533*beta_arr(i,j,k);
+	     alpha_arr(i,j,k) = 0.0174533*theta_arr(i,j,k);
 
 	     amrex::Real iR_11 = cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(beta_arr(i,j,k))*sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
 	     amrex::Real iR_12 = -sin(alpha_arr(i,j,k))*cos(beta_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
