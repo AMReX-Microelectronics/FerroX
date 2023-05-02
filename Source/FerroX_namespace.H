@@ -62,6 +62,7 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED amrex::Real delta;
 
     extern AMREX_GPU_MANAGED int Coordinate_Transformation;
+    extern AMREX_GPU_MANAGED int use_Euler_angles;
     
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> t_phase_lo;
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> t_phase_hi;

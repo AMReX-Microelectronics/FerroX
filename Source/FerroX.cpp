@@ -222,6 +222,7 @@ AMREX_GPU_MANAGED int FerroX::TimeIntegratorOrder;
 AMREX_GPU_MANAGED amrex::Real FerroX::delta;
 
 AMREX_GPU_MANAGED int FerroX::Coordinate_Transformation;
+AMREX_GPU_MANAGED int FerroX::use_Euler_angles;
 
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::t_phase_lo;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::t_phase_hi;
@@ -397,6 +398,8 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      Coordinate_Transformation = 0;
      pp.query("Coordinate_Transformation",Coordinate_Transformation);
      
+     use_Euler_angles = 0;
+     pp.query("use_Euler_angles",use_Euler_angles);
 }
 
 
