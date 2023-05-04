@@ -31,32 +31,32 @@ void transform_global_to_local(Array<MultiFab, AMREX_SPACEDIM> &src,
         {
 
 	     //Convert Euler angles from degrees to radians 
-	     alpha_arr(i,j,k) = 0.0174533*alpha_arr(i,j,k);
-	     alpha_arr(i,j,k) = 0.0174533*beta_arr(i,j,k);
-	     alpha_arr(i,j,k) = 0.0174533*theta_arr(i,j,k);
+	     amrex::Real alpha_rad = 0.0174533*alpha_arr(i,j,k);
+	     amrex::Real beta_rad = 0.0174533*beta_arr(i,j,k);
+	     amrex::Real theta_rad = 0.0174533*theta_arr(i,j,k);
 
              amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
 
              if(use_Euler_angles){
-	     	R_11 = cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(beta_arr(i,j,k))*sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	R_12 = sin(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) + cos(beta_arr(i,j,k))*cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	R_13 = sin(beta_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	R_21 = -cos(beta_arr(i,j,k))*cos(theta_arr(i,j,k))*sin(alpha_arr(i,j,k)) - cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	R_22 = cos(beta_arr(i,j,k))*cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) - sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	R_23 = sin(beta_arr(i,j,k))*cos(theta_arr(i,j,k));  
-	     	R_31 = sin(alpha_arr(i,j,k))*sin(beta_arr(i,j,k));  
-	     	R_32 = -cos(alpha_arr(i,j,k))*sin(beta_arr(i,j,k));  
-	     	R_33 = cos(beta_arr(i,j,k));  
+	     	R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);  
+	     	R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);  
+	     	R_13 = sin(beta_rad)*sin(theta_rad);  
+	     	R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);  
+	     	R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);  
+	     	R_23 = sin(beta_rad)*cos(theta_rad);  
+	     	R_31 = sin(alpha_rad)*sin(beta_rad);  
+	     	R_32 = -cos(alpha_rad)*sin(beta_rad);  
+	     	R_33 = cos(beta_rad);  
              } else {
-	     	R_11 = cos(beta_arr(i,j,k))*cos(theta_arr(i,j,k));  
-	     	R_12 = sin(alpha_arr(i,j,k))*sin(beta_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	R_13 = cos(alpha_arr(i,j,k))*sin(beta_arr(i,j,k))*cos(theta_arr(i,j,k)) + sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	R_21 = cos(beta_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	R_22 = sin(beta_arr(i,j,k))*sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k)) + cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k));  
-	     	R_23 = cos(alpha_arr(i,j,k))*sin(beta_arr(i,j,k))*sin(theta_arr(i,j,k)) - sin(alpha_arr(i,j,k))*cos(theta_arr(i,j,k));  
-	     	R_31 = -sin(beta_arr(i,j,k));  
-	     	R_32 = sin(alpha_arr(i,j,k))*cos(beta_arr(i,j,k));  
-	     	R_33 = cos(alpha_arr(i,j,k))*cos(beta_arr(i,j,k));  
+	     	R_11 = cos(beta_rad)*cos(theta_rad);  
+	     	R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
+	     	R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);  
+	     	R_21 = cos(beta_rad)*sin(theta_rad);  
+	     	R_22 = sin(beta_rad)*sin(alpha_rad)*sin(theta_rad) + cos(alpha_rad)*cos(theta_rad);  
+	     	R_23 = cos(alpha_rad)*sin(beta_rad)*sin(theta_rad) - sin(alpha_rad)*cos(theta_rad);  
+	     	R_31 = -sin(beta_rad);  
+	     	R_32 = sin(alpha_rad)*cos(beta_rad);  
+	     	R_33 = cos(alpha_rad)*cos(beta_rad);  
              }
              dst_x(i,j,k) = R_11*src_x(i,j,k) + R_12*src_y(i,j,k) + R_13*src_z(i,j,k);
              dst_y(i,j,k) = R_21*src_x(i,j,k) + R_22*src_y(i,j,k) + R_23*src_z(i,j,k);
@@ -95,32 +95,32 @@ void transform_local_to_global(Array<MultiFab, AMREX_SPACEDIM> &src,
         {
 
 	     //Convert Euler angles from degrees to radians 
-	     alpha_arr(i,j,k) = 0.0174533*alpha_arr(i,j,k);
-	     alpha_arr(i,j,k) = 0.0174533*beta_arr(i,j,k);
-	     alpha_arr(i,j,k) = 0.0174533*theta_arr(i,j,k);
+	     amrex::Real alpha_rad = 0.0174533*alpha_arr(i,j,k);
+	     amrex::Real beta_rad = 0.0174533*beta_arr(i,j,k);
+	     amrex::Real theta_rad = 0.0174533*theta_arr(i,j,k);
 
              amrex::Real iR_11, iR_12, iR_13, iR_21, iR_22, iR_23, iR_31, iR_32, iR_33;
 
              if(use_Euler_angles == 1){
-	     	iR_11 = cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(beta_arr(i,j,k))*sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	iR_12 = -sin(alpha_arr(i,j,k))*cos(beta_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	iR_13 = sin(beta_arr(i,j,k))*sin(alpha_arr(i,j,k));  
-	     	iR_21 = cos(theta_arr(i,j,k))*sin(alpha_arr(i,j,k)) + cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k))*cos(beta_arr(i,j,k));  
-	     	iR_22 = cos(beta_arr(i,j,k))*cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k)) - sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	iR_23 = -sin(beta_arr(i,j,k))*cos(alpha_arr(i,j,k));  
-	     	iR_31 = sin(theta_arr(i,j,k))*sin(beta_arr(i,j,k));  
-	     	iR_32 = cos(theta_arr(i,j,k))*sin(beta_arr(i,j,k));  
-	     	iR_33 = cos(beta_arr(i,j,k));  
+	     	iR_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);  
+	     	iR_12 = -sin(alpha_rad)*cos(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
+	     	iR_13 = sin(beta_rad)*sin(alpha_rad);  
+	     	iR_21 = cos(theta_rad)*sin(alpha_rad) + cos(alpha_rad)*sin(theta_rad)*cos(beta_rad);  
+	     	iR_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);  
+	     	iR_23 = -sin(beta_rad)*cos(alpha_rad);  
+	     	iR_31 = sin(theta_rad)*sin(beta_rad);  
+	     	iR_32 = cos(theta_rad)*sin(beta_rad);  
+	     	iR_33 = cos(beta_rad);  
              } else {
-	     	iR_11 = cos(beta_arr(i,j,k))*cos(theta_arr(i,j,k));  
-	     	iR_21 = sin(alpha_arr(i,j,k))*sin(beta_arr(i,j,k))*cos(theta_arr(i,j,k)) - cos(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	iR_31 = cos(alpha_arr(i,j,k))*sin(beta_arr(i,j,k))*cos(theta_arr(i,j,k)) + sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	iR_12 = cos(beta_arr(i,j,k))*sin(theta_arr(i,j,k));  
-	     	iR_22 = sin(beta_arr(i,j,k))*sin(alpha_arr(i,j,k))*sin(theta_arr(i,j,k)) + cos(alpha_arr(i,j,k))*cos(theta_arr(i,j,k));  
-	     	iR_32 = cos(alpha_arr(i,j,k))*sin(beta_arr(i,j,k))*sin(theta_arr(i,j,k)) - sin(alpha_arr(i,j,k))*cos(theta_arr(i,j,k));  
-	     	iR_13 = -sin(beta_arr(i,j,k));  
-	     	iR_23 = sin(alpha_arr(i,j,k))*cos(beta_arr(i,j,k));  
-	     	iR_33 = cos(alpha_arr(i,j,k))*cos(beta_arr(i,j,k));  
+	     	iR_11 = cos(beta_rad)*cos(theta_rad);  
+	     	iR_21 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
+	     	iR_31 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);  
+	     	iR_12 = cos(beta_rad)*sin(theta_rad);  
+	     	iR_22 = sin(beta_rad)*sin(alpha_rad)*sin(theta_rad) + cos(alpha_rad)*cos(theta_rad);  
+	     	iR_32 = cos(alpha_rad)*sin(beta_rad)*sin(theta_rad) - sin(alpha_rad)*cos(theta_rad);  
+	     	iR_13 = -sin(beta_rad);  
+	     	iR_23 = sin(alpha_rad)*cos(beta_rad);  
+	     	iR_33 = cos(alpha_rad)*cos(beta_rad);  
              }
 
              dst_x(i,j,k) = iR_11*src_x(i,j,k) + iR_12*src_y(i,j,k) + iR_13*src_z(i,j,k);
