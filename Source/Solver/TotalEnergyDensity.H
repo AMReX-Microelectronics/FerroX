@@ -12,6 +12,7 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 MultiFab&                       Gamma,
                 MultiFab&                       MaterialMask,
                 MultiFab&                       tphaseMask,
+                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry& geom,
 		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);

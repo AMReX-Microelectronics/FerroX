@@ -12,6 +12,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 		Array<MultiFab, AMREX_SPACEDIM> &P_old,
 		MultiFab&                      rho, 
 		MultiFab&                      MaterialMask, 
+                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
 		const Geometry&                 geom);
 
 //void ComputeEfromPhi(MultiFab&                 PoissonPhi,
@@ -22,6 +23,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 //
 void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 		Array<MultiFab, AMREX_SPACEDIM> &E,
+                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry&                 geom,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
@@ -44,6 +46,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            e_den,
              MultiFab&            p_den,
 	     MultiFab&      MaterialMask,
+             MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
 	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);

@@ -7,6 +7,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 MultiFab&                       rho,
                 MultiFab&                 MaterialMask,
+                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry&                 geom)
 {
     for ( MFIter mfi(PoissonRHS); mfi.isValid(); ++mfi )
@@ -22,8 +23,41 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
             const Array4<Real>& charge_den_arr = rho.array(mfi);
             const Array4<Real>& mask = MaterialMask.array(mfi);
 
+            const Array4<Real> &alpha_arr = angle_alpha.array(mfi);
+            const Array4<Real> &beta_arr = angle_beta.array(mfi);
+            const Array4<Real> &theta_arr = angle_theta.array(mfi);
+
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
+
+                 //Convert Euler angles from degrees to radians 
+                 amrex::Real alpha_rad = 0.0174533*alpha_arr(i,j,k);
+                 amrex::Real beta_rad = 0.0174533*beta_arr(i,j,k);
+                 amrex::Real theta_rad = 0.0174533*theta_arr(i,j,k);
+
+                 amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
+
+                 if(use_Euler_angles){
+                    R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);  
+                    R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);  
+                    R_13 = sin(beta_rad)*sin(theta_rad);  
+                    R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);  
+                    R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);  
+                    R_23 = sin(beta_rad)*cos(theta_rad);  
+                    R_31 = sin(alpha_rad)*sin(beta_rad);  
+                    R_32 = -cos(alpha_rad)*sin(beta_rad);  
+                    R_33 = cos(beta_rad);  
+                 } else {
+                    R_11 = cos(beta_rad)*cos(theta_rad);  
+                    R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
+                    R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);  
+                    R_21 = cos(beta_rad)*sin(theta_rad);  
+                    R_22 = sin(beta_rad)*sin(alpha_rad)*sin(theta_rad) + cos(alpha_rad)*cos(theta_rad);
+                    R_23 = cos(alpha_rad)*sin(beta_rad)*sin(theta_rad) - sin(alpha_rad)*cos(theta_rad);
+                    R_31 = -sin(beta_rad);
+                    R_32 = sin(alpha_rad)*cos(beta_rad);
+                    R_33 = cos(alpha_rad)*cos(beta_rad);
+                 }
 
                  if(mask(i,j,k) >= 2.0){ //SC region
 
@@ -34,9 +68,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                    RHS(i,j,k) = 0.;
 
                  } else { //mask(i,j,k) == 0.0 FE region
-                   RHS(i,j,k) = - DPDz(pOld_z, mask, i, j, k, dx)
-                                - DPDx(pOld_x, mask, i, j, k, dx)
-                                - DPDy(pOld_y, mask, i, j, k, dx);
+                   RHS(i,j,k) = - (R_31*DPDx(pOld_z, mask, i, j, k, dx) + R_32*DPDy(pOld_z, mask, i, j, k, dx) + R_33*DPDz(pOld_z, mask, i, j, k, dx))
+                                - (R_11*DPDx(pOld_x, mask, i, j, k, dx) + R_12*DPDy(pOld_x, mask, i, j, k, dx) + R_13*DPDz(pOld_x, mask, i, j, k, dx))
+                                - (R_21*DPDx(pOld_y, mask, i, j, k, dx) + R_22*DPDy(pOld_y, mask, i, j, k, dx) + R_23*DPDz(pOld_y, mask, i, j, k, dx));
 
                  }
 
@@ -53,6 +87,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            e_den,
              MultiFab&            p_den,
 	     MultiFab&            MaterialMask,
+             MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
 	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
@@ -69,7 +104,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
         ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
 
         //Compute RHS of Poisson equation
-        ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, geom);
+        ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
         MultiFab::LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 0);
 }
@@ -95,6 +130,7 @@ void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
 
 void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                 Array<MultiFab, AMREX_SPACEDIM>& E,
+                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry&                 geom,
 		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, 
 		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
@@ -113,14 +149,49 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
             const Array4<Real>& Ez_arr = E[2].array(mfi);
             const Array4<Real>& phi = PoissonPhi.array(mfi);
 
+            const Array4<Real> &alpha_arr = angle_alpha.array(mfi);
+            const Array4<Real> &beta_arr = angle_beta.array(mfi);
+            const Array4<Real> &theta_arr = angle_theta.array(mfi);
+
+
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
                      Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
                      Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
-                     Ex_arr(i,j,k) = - DFDx(phi, i, j, k, dx);
-                     Ey_arr(i,j,k) = - DFDy(phi, i, j, k, dx);
-                     Ez_arr(i,j,k) = - DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi);
+                     //Convert Euler angles from degrees to radians 
+                     amrex::Real alpha_rad = 0.0174533*alpha_arr(i,j,k);
+                     amrex::Real beta_rad = 0.0174533*beta_arr(i,j,k);
+                     amrex::Real theta_rad = 0.0174533*theta_arr(i,j,k);
+
+                     amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
+
+                     if(use_Euler_angles){
+                        R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);  
+                        R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);  
+                        R_13 = sin(beta_rad)*sin(theta_rad);  
+                        R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);  
+                        R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);  
+                        R_23 = sin(beta_rad)*cos(theta_rad);  
+                        R_31 = sin(alpha_rad)*sin(beta_rad);  
+                        R_32 = -cos(alpha_rad)*sin(beta_rad);  
+                        R_33 = cos(beta_rad);  
+                     } else {
+                        R_11 = cos(beta_rad)*cos(theta_rad);  
+                        R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
+                        R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);  
+                        R_21 = cos(beta_rad)*sin(theta_rad);  
+                        R_22 = sin(beta_rad)*sin(alpha_rad)*sin(theta_rad) + cos(alpha_rad)*cos(theta_rad);
+                        R_23 = cos(alpha_rad)*sin(beta_rad)*sin(theta_rad) - sin(alpha_rad)*cos(theta_rad);
+                        R_31 = -sin(beta_rad);
+                        R_32 = sin(alpha_rad)*cos(beta_rad);
+                        R_33 = cos(alpha_rad)*cos(beta_rad);
+                     }
+
+                     Ex_arr(i,j,k) = - (R_11*DFDx(phi, i, j, k, dx) + R_12*DFDy(phi, i, j, k, dx) + R_13*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
+                     Ey_arr(i,j,k) = - (R_21*DFDx(phi, i, j, k, dx) + R_22*DFDy(phi, i, j, k, dx) + R_23*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
+                     Ez_arr(i,j,k) = - (R_31*DFDx(phi, i, j, k, dx) + R_32*DFDy(phi, i, j, k, dx) + R_33*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
+
 
              });
         }

@@ -450,3 +450,34 @@ using namespace FerroX;
     }
                
 }
+
+/**
+  * Perform double derivative (d^2)P/dxdy */
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+static amrex::Real DoubleDPDxDy (amrex::Array4<amrex::Real> const& F,
+                               amrex::Array4<amrex::Real> const& mask,
+                               int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx)
+{
+      return (DPDy(F, mask, i+1, j, k, dx) - DPDy(F, mask, i-1, j, k, dx)) / 2. /dx[0]; 
+}
+
+/**
+  * Perform double derivative (d^2)P/dxdz */
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+static amrex::Real DoubleDPDxDz (amrex::Array4<amrex::Real> const& F,
+                               amrex::Array4<amrex::Real> const& mask,
+                               int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx)
+{
+      return (DPDz(F, mask, i+1, j, k, dx) - DPDz(F, mask, i-1, j, k, dx)) / 2. /dx[0]; 
+}
+
+/**
+  * Perform double derivative (d^2)P/dydz */
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+static amrex::Real DoubleDPDyDz (amrex::Array4<amrex::Real> const& F,
+                               amrex::Array4<amrex::Real> const& mask,
+                               int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx)
+{
+      return (DPDz(F, mask, i, j+1, k, dx) - DPDy(F, mask, i, j-1, k, dx)) / 2. /dx[1];  
+}
+
