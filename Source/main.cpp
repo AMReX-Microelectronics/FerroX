@@ -12,7 +12,6 @@
 #include "Solver/Initialization.H"
 #include "Solver/ChargeDensity.H"
 #include "Solver/TotalEnergyDensity.H"
-#include "CoordinateTransformation.H"
 #include "Input/BoundaryConditions/BoundaryConditions.H"
 #include "Input/GeometryProperties/GeometryProperties.H"
 #include "Utils/SelectWarpXUtils/WarpXUtil.H"
