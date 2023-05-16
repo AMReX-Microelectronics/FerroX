@@ -56,7 +56,6 @@ void main_main (c_FerroX& rFerroX)
     // read in inputs file
     InitializeFerroXNamespace(prob_lo, prob_hi);
 
-    int inc_step = 2000;
 
     // Nghost = number of ghost cells for each array
     int Nghost = 1;

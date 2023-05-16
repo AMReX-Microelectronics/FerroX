@@ -43,7 +43,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
     }
 
     // can enhance code to read these from inputs file
-    int seed = 1;
+    int seed = random_seed;
 
     int nprocs = ParallelDescriptor::NProcs();
 
