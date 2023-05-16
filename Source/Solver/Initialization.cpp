@@ -55,8 +55,8 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
     // generate random numbers on the host
     for (int i=0; i<nrand; ++i) {
-        rngs[i] = amrex::RandomNormal(0.,1.); // zero mean, unit variance
-        // rngs[i] = amrex::Random(); // uniform [0,1] option
+        //rngs[i] = amrex::RandomNormal(0.,1.); // zero mean, unit variance
+         rngs[i] = amrex::Random(); // uniform [0,1] option
     }
 
     // loop over boxes
@@ -87,15 +87,13 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
             if (mask(i,j,k) == 0.0) { //FE mask is 0.0
                if (prob_type == 1) {  //2D : Initialize uniform P in y direction
 
-                  double tmp = (i%3 + k%4)/5.;
-                  pOld_z(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
+                 // double tmp = (i%3 + k%4)/5.;
+                 // pOld_z(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
+                 pOld_z(i,j,k) = (-1.0 + 2.0*rng[i + k*n_cell[2]])*0.002;
 
                } else if (prob_type == 2) { // 3D : Initialize random P
 
-                 // 2D option
-                 pOld_z(i,j,k) = (-1.0 + 2.0*rng[i + k*n_cell[2]])*0.002;
-                 // 3D option
-                 //pOld_z(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
+                 pOld_z(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
 
                } else if (prob_type == 3) { // smooth P for convergence tests
 
