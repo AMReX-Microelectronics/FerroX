@@ -40,18 +40,6 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                Real grad_term, phi_term, d2P_z;
-                Real x    = prob_lo[0] + (i+0.5) * dx[0];
-                Real x_hi = prob_lo[0] + (i+1.5) * dx[0];
-                Real x_lo = prob_lo[0] + (i-0.5) * dx[0];
-
-                Real y    = prob_lo[1] + (j+0.5) * dx[1];
-                Real y_hi = prob_lo[1] + (j+1.5) * dx[1];
-                Real y_lo = prob_lo[1] + (j-0.5) * dx[1];
-
-                Real z    = prob_lo[2] + (k+0.5) * dx[2];
-                Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
-                Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
                //Convert Euler angles from degrees to radians 
                amrex::Real alpha_rad = 0.0174533*alpha_arr(i,j,k);

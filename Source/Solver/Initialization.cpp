@@ -42,7 +42,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
       amrex::Abort();
     }
 
-    // can enhance code to read these from inputs file
+    // Read this from inputs file. Default seed = 1
     int seed = random_seed;
 
     int nprocs = ParallelDescriptor::NProcs();
@@ -73,8 +73,6 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
         const Array4<Real>& Gam = Gamma.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
         const Array4<Real const>& tphase = tphaseMask.array(mfi);
-
-        Real pi = 3.141592653589793238;
 
         Real* rng = rngs.data();
 
@@ -244,11 +242,9 @@ void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& M
 
 	ParmParse pp_mask("device_geom");
 
-	bool mask_specified = false;
 
 	if (pp_mask.query("device_geom_function(x,y,z)", m_str_device_geom_function) ) {
             m_mask_s = "parse_device_geom_function";
-            mask_specified = true;
         }
 
         if (m_mask_s == "parse_device_geom_function") {
@@ -290,11 +286,9 @@ void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& t
 
 	ParmParse pp_mask("tphase_geom");
 
-	bool mask_specified = false;
 
 	if (pp_mask.query("tphase_geom_function(x,y,z)", m_str_tphase_geom_function) ) {
             tphase_mask_s = "parse_tphase_geom_function";
-            mask_specified = true;
         }
 
         if (tphase_mask_s == "parse_tphase_geom_function") {
@@ -349,11 +343,9 @@ void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& 
 
 	ParmParse pp_alpha("angle_alpha");
 
-	bool alpha_specified = false;
 
 	if (pp_alpha.query("alpha_function(x,y,z)", m_str_alpha_function) ) {
             alpha_s = "parse_alpha_function";
-            alpha_specified = true;
         }
 
         if (alpha_s == "parse_alpha_function") {
@@ -364,11 +356,9 @@ void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& 
 
 	ParmParse pp_beta("angle_beta");
 
-	bool beta_specified = false;
 
 	if (pp_beta.query("beta_function(x,y,z)", m_str_beta_function) ) {
             beta_s = "parse_beta_function";
-            beta_specified = true;
         }
 
         if (beta_s == "parse_beta_function") {
@@ -379,11 +369,9 @@ void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& 
 
 	ParmParse pp_theta("angle_theta");
 
-	bool theta_specified = false;
 
 	if (pp_theta.query("theta_function(x,y,z)", m_str_theta_function) ) {
             theta_s = "parse_theta_function";
-            theta_specified = true;
         }
 
         if (theta_s == "parse_theta_function") {
