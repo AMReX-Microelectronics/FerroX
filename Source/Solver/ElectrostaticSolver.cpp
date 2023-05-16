@@ -16,9 +16,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
             // extract dx from the geometry object
             GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-            const Array4<Real> &pOld_x = P_old[0].array(mfi);
-            const Array4<Real> &pOld_y = P_old[1].array(mfi);
-            const Array4<Real> &pOld_z = P_old[2].array(mfi);
+            const Array4<Real> &pOld_p = P_old[0].array(mfi);
+            const Array4<Real> &pOld_q = P_old[1].array(mfi);
+            const Array4<Real> &pOld_r = P_old[2].array(mfi);
             const Array4<Real>& RHS = PoissonRHS.array(mfi);
             const Array4<Real>& charge_den_arr = rho.array(mfi);
             const Array4<Real>& mask = MaterialMask.array(mfi);
@@ -68,9 +68,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                    RHS(i,j,k) = 0.;
 
                  } else { //mask(i,j,k) == 0.0 FE region
-                   RHS(i,j,k) = - (R_31*DPDx(pOld_z, mask, i, j, k, dx) + R_32*DPDy(pOld_z, mask, i, j, k, dx) + R_33*DPDz(pOld_z, mask, i, j, k, dx))
-                                - (R_11*DPDx(pOld_x, mask, i, j, k, dx) + R_12*DPDy(pOld_x, mask, i, j, k, dx) + R_13*DPDz(pOld_x, mask, i, j, k, dx))
-                                - (R_21*DPDx(pOld_y, mask, i, j, k, dx) + R_22*DPDy(pOld_y, mask, i, j, k, dx) + R_23*DPDz(pOld_y, mask, i, j, k, dx));
+                   RHS(i,j,k) = - (R_11*DPDx(pOld_p, mask, i, j, k, dx) + R_12*DPDy(pOld_p, mask, i, j, k, dx) + R_13*DPDz(pOld_p, mask, i, j, k, dx))
+                                - (R_21*DPDx(pOld_q, mask, i, j, k, dx) + R_22*DPDy(pOld_q, mask, i, j, k, dx) + R_23*DPDz(pOld_q, mask, i, j, k, dx))
+                                - (R_31*DPDx(pOld_r, mask, i, j, k, dx) + R_32*DPDy(pOld_r, mask, i, j, k, dx) + R_33*DPDz(pOld_r, mask, i, j, k, dx));
 
                  }
 
@@ -144,9 +144,9 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
             // extract dx from the geometry object
             GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-            const Array4<Real>& Ex_arr = E[0].array(mfi);
-            const Array4<Real>& Ey_arr = E[1].array(mfi);
-            const Array4<Real>& Ez_arr = E[2].array(mfi);
+            const Array4<Real>& Ep_arr = E[0].array(mfi);
+            const Array4<Real>& Eq_arr = E[1].array(mfi);
+            const Array4<Real>& Er_arr = E[2].array(mfi);
             const Array4<Real>& phi = PoissonPhi.array(mfi);
 
             const Array4<Real> &alpha_arr = angle_alpha.array(mfi);
@@ -188,9 +188,9 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                         R_33 = cos(alpha_rad)*cos(beta_rad);
                      }
 
-                     Ex_arr(i,j,k) = - (R_11*DFDx(phi, i, j, k, dx) + R_12*DFDy(phi, i, j, k, dx) + R_13*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
-                     Ey_arr(i,j,k) = - (R_21*DFDx(phi, i, j, k, dx) + R_22*DFDy(phi, i, j, k, dx) + R_23*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
-                     Ez_arr(i,j,k) = - (R_31*DFDx(phi, i, j, k, dx) + R_32*DFDy(phi, i, j, k, dx) + R_33*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
+                     Ep_arr(i,j,k) = - (R_11*DFDx(phi, i, j, k, dx) + R_12*DFDy(phi, i, j, k, dx) + R_13*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
+                     Eq_arr(i,j,k) = - (R_21*DFDx(phi, i, j, k, dx) + R_22*DFDy(phi, i, j, k, dx) + R_23*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
+                     Er_arr(i,j,k) = - (R_31*DFDx(phi, i, j, k, dx) + R_32*DFDy(phi, i, j, k, dx) + R_33*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
 
 
              });

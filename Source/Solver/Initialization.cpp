@@ -67,9 +67,9 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
         // extract dx from the geometry object
         GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-        const Array4<Real> &pOld_x = P_old[0].array(mfi);
-        const Array4<Real> &pOld_y = P_old[1].array(mfi);
-        const Array4<Real> &pOld_z = P_old[2].array(mfi);
+        const Array4<Real> &pOld_p = P_old[0].array(mfi);
+        const Array4<Real> &pOld_q = P_old[1].array(mfi);
+        const Array4<Real> &pOld_r = P_old[2].array(mfi);
         const Array4<Real>& Gam = Gamma.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
         const Array4<Real const>& tphase = tphaseMask.array(mfi);
@@ -88,16 +88,16 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                if (prob_type == 1) {  //2D : Initialize uniform P in y direction
 
                  // double tmp = (i%3 + k%4)/5.;
-                 // pOld_z(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
-                 pOld_z(i,j,k) = (-1.0 + 2.0*rng[i + k*n_cell[2]])*0.002;
+                 // pOld_r(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
+                 pOld_r(i,j,k) = (-1.0 + 2.0*rng[i + k*n_cell[2]])*0.002;
 
                } else if (prob_type == 2) { // 3D : Initialize random P
 
-                 pOld_z(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
+                 pOld_r(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
 
                } else if (prob_type == 3) { // smooth P for convergence tests
 
-                 pOld_z(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi[2])*(z - 1.5*DE_hi[2])/(2.0*2.0e-9*2.0e-9)));
+                 pOld_r(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi[2])*(z - 1.5*DE_hi[2])/(2.0*2.0e-9*2.0e-9)));
 
                } else {
 
@@ -110,15 +110,15 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 	       //set t_phase Pz to zero
 	       //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
 	       if(tphase(i,j,k) == 1.0){
-                 pOld_z(i,j,k) = 0.0;
+                 pOld_r(i,j,k) = 0.0;
 	       }
 
             } else {
-               pOld_z(i,j,k) = 0.0;
+               pOld_r(i,j,k) = 0.0;
                Gam(i,j,k) = 0.0;
             }
-            pOld_x(i,j,k) = 0.0;
-            pOld_y(i,j,k) = 0.0;
+            pOld_p(i,j,k) = 0.0;
+            pOld_q(i,j,k) = 0.0;
         });
         // Calculate charge density from Phi, Nc, Nv, Ec, and Ev
 
