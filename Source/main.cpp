@@ -508,7 +508,11 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Phidiff, PoissonPhi, 0, 0, 1, 0);
         MultiFab::Subtract(Phidiff, PoissonPhi_Old, 0, 0, 1, 0);
         Real phi_err = Phidiff.norm0();
-	if (phi_err < 1.e-7) final_step = step;
+
+	if (phi_err < 1.e-7) {
+		final_step = step;
+		inc_step = step;
+	}
 
         //Copy PoissonPhi to PoissonPhi_Old to calculate difference at the next iteration
         MultiFab::Copy(PoissonPhi_Old, PoissonPhi, 0, 0, 1, 0);
@@ -562,7 +566,7 @@ void main_main (c_FerroX& rFerroX)
 
         if(inc_step > 0 && step%inc_step == 0)
         {
-           //Update time-dependen Boundary Condition of Poisson's equation
+           //Update time-dependent Boundary Condition of Poisson's equation
 
 	   amrex::Print() << "Applied voltage updated at time " << time << ", step = " << step << "\n";
            
@@ -629,9 +633,11 @@ void main_main (c_FerroX& rFerroX)
            }
        
         }//end inc_step	
-    
-	if (step == final_step) break; //Terminate the loop if steady state is reached
-	
+   
+        if(voltage_sweep == 0){
+	  if (step == final_step) break; //Terminate the loop if steady state is reached
+	}
+
     } // end step
 
     // MultiFab memory usage

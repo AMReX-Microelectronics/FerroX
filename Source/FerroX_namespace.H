@@ -63,6 +63,7 @@ namespace FerroX {
 
     extern AMREX_GPU_MANAGED int inc_step;
     extern AMREX_GPU_MANAGED int random_seed;
+    extern AMREX_GPU_MANAGED int voltage_sweep;
 
     extern AMREX_GPU_MANAGED int Coordinate_Transformation;
     extern AMREX_GPU_MANAGED int use_Euler_angles;

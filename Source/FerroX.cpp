@@ -225,6 +225,8 @@ AMREX_GPU_MANAGED int FerroX::inc_step;
 
 AMREX_GPU_MANAGED int FerroX::random_seed;
 
+AMREX_GPU_MANAGED int FerroX::voltage_sweep;
+
 AMREX_GPU_MANAGED int FerroX::Coordinate_Transformation;
 AMREX_GPU_MANAGED int FerroX::use_Euler_angles;
 
@@ -307,6 +309,9 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      random_seed = 1;
      pp.query("random_seed",random_seed);
+
+     voltage_sweep = 0;
+     pp.query("voltage_sweep",voltage_sweep);
 
      //stack dimensions in 3D. This is an alternate way of initializing the device geometry, which works in simpler scenarios.
      //A more general way of initializing device geometry is accomplished through masks which use function parsers
