@@ -220,6 +220,14 @@ AMREX_GPU_MANAGED int FerroX::TimeIntegratorOrder;
 
 AMREX_GPU_MANAGED amrex::Real FerroX::delta;
 
+AMREX_GPU_MANAGED int FerroX::voltage_sweep;
+AMREX_GPU_MANAGED int FerroX::inc_step;
+AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_lo;
+AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_hi;
+AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_inc;
+AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_hi_max;
+AMREX_GPU_MANAGED amrex::Real FerroX::phi_tolerance;
+
 void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi) {
 
@@ -285,6 +293,28 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      delta = 1.e-6;
      pp.query("delta",delta);
+
+     voltage_sweep = 0; //0 means OFF, 1 means ON. Default to 0, that is do voltage sweep only when specified.
+     pp.query("voltage_sweep",voltage_sweep);
+
+     inc_step = -1;
+     pp.query("inc_step",inc_step);
+
+     Phi_Bc_hi = 0.;
+     pp.query("Phi_Bc_hi",Phi_Bc_hi);
+
+     Phi_Bc_lo = 0.;
+     pp.query("Phi_Bc_lo",Phi_Bc_lo);
+
+     Phi_Bc_inc = 0.;
+     pp.query("Phi_Bc_inc",Phi_Bc_inc);
+
+     Phi_Bc_hi_max = 0.;
+     pp.query("Phi_Bc_hi_max",Phi_Bc_hi_max);
+
+     phi_tolerance = 1.e-7;
+     pp.query("phi_tolerance",phi_tolerance);
+
 
      //stack dimensions in 3D. This is an alternate way of initializing the device geometry, which works in simpler scenarios.
      //A more general way of initializing device geometry is accomplished through masks which use function parsers

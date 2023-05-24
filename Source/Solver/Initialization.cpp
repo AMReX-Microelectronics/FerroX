@@ -70,7 +70,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
                } else if (prob_type == 2) { // 3D : Initialize random P
 
-                 pOld_z(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
+                 pOld_z(i,j,k) = (-1.0 + 2.0*Random(engine))*0.; //0.002;
 
                } else if (prob_type == 3) { // smooth P for convergence tests
 

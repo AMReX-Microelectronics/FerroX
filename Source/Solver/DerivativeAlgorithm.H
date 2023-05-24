@@ -198,6 +198,9 @@ using namespace FerroX;
         } else if (P_BC_flag_lo[2] == 2){
             return ( - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]); //dPdz = 0.
 
+        } else if (P_BC_flag_lo[2] == 3){
+            return ( - F(i,j,k-1) + F(i,j,k+1))/(2.*dx[2]); //No BC
+
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
             return 0.0;
@@ -219,6 +222,9 @@ using namespace FerroX;
 
         } else if (P_BC_flag_hi[2] == 2){
             return (F(i,j,k) - F(i,j,k-1))/(2.*dx[2]); //dPdz = 0.
+
+        } else if (P_BC_flag_hi[2] == 3){
+            return (0. - F(i,j,k-1))/(2.*dx[2]); //No BC
 
         } else {
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
@@ -415,6 +421,9 @@ using namespace FerroX;
         } else if (P_BC_flag_lo[2] == 2){
             return ( - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = 0.
 
+	} else if (P_BC_flag_lo[2] == 3){
+            return ( F(i,j,k-1) - 2.*F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//No BC.
+
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
             return 0.0;
@@ -437,7 +446,10 @@ using namespace FerroX;
         } else if (P_BC_flag_hi[2] == 2){
             return ( - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = 0.
 
-        } else {
+        } else if (P_BC_flag_hi[2] == 3){
+            return (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//No BC
+
+	} else {
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
             return 0.0;
         }

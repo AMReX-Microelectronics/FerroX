@@ -57,8 +57,6 @@ void main_main (c_FerroX& rFerroX)
     // read in inputs file
     InitializeFerroXNamespace(prob_lo, prob_hi);
 
-    int inc_step = 1000;
-
     // Nghost = number of ghost cells for each array
     int Nghost = 1;
 
@@ -105,8 +103,10 @@ void main_main (c_FerroX& rFerroX)
 
     MultiFab PoissonRHS(ba, dm, 1, 0);
     MultiFab PoissonPhi(ba, dm, 1, 1);
+    MultiFab PoissonPhi_Old(ba, dm, 1, 1);
     MultiFab PoissonPhi_Prev(ba, dm, 1, 1);
     MultiFab PhiErr(ba, dm, 1, 1);
+    MultiFab Phidiff(ba, dm, 1, 1);
     MultiFab Ex(ba, dm, 1, 0);
     MultiFab Ey(ba, dm, 1, 0);
     MultiFab Ez(ba, dm, 1, 0);
@@ -117,8 +117,8 @@ void main_main (c_FerroX& rFerroX)
     MultiFab MaterialMask(ba, dm, 1, 1);
 
     //Initialize material mask
-    //InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
-    InitializeMaterialMask(rFerroX, geom, MaterialMask);
+    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
+    //InitializeMaterialMask(rFerroX, geom, MaterialMask);
 
     //Solver for Poisson equation
     LPInfo info;
@@ -136,9 +136,9 @@ void main_main (c_FerroX& rFerroX)
     amrex::Print() << "contains_SC = " << contains_SC << "\n";
 
 #ifdef AMREX_USE_EB
-    MultiFab Plt(ba, dm, 13, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
+    MultiFab Plt(ba, dm, 14, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
 #else    
-    MultiFab Plt(ba, dm, 13, 0);
+    MultiFab Plt(ba, dm, 14, 0);
 #endif
 
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
@@ -317,14 +317,17 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, charge_den, 0, 10, 1, 0);
         MultiFab::Copy(Plt, beta_cc, 0, 11, 1, 0);
         MultiFab::Copy(Plt, MaterialMask, 0, 12, 1, 0);
+        MultiFab::Copy(Plt, Phidiff, 0, 13, 1, 0);
 #ifdef AMREX_USE_EB
-	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
+	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "PhiDiff"}, geom, time, step);
 #else
-	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "PhiDiff"}, geom, time, step);
 #endif
     }
 
     amrex::Print() << "\n ========= Advance Steps  ========== \n"<< std::endl;
+
+    int steady_state_step = 1000000; //Initialize to a large number. It will be overwritten by the time step at which steady state condition is satidfied
 
     for (int step = 1; step <= nsteps; ++step)
     {
@@ -479,6 +482,22 @@ void main_main (c_FerroX& rFerroX)
             }
     	}
 
+        // Check if steady state has reached 
+        MultiFab::Copy(Phidiff, PoissonPhi, 0, 0, 1, 0);
+        MultiFab::Subtract(Phidiff, PoissonPhi_Old, 0, 0, 1, 0);
+        Real phi_err = Phidiff.norm0();
+
+        if (phi_err < phi_tolerance) {
+                steady_state_step = step;
+                inc_step = step;
+        }
+
+        //Copy PoissonPhi to PoissonPhi_Old to calculate difference at the next iteration
+        MultiFab::Copy(PoissonPhi_Old, PoissonPhi, 0, 0, 1, 0);
+
+        amrex::Print() << "Steady state check : (phi(t) - phi(t-1)).norm0() = " << phi_err << std::endl;
+
+
 
 	// Calculate E from Phi
 	ComputeEfromPhi(PoissonPhi, Ex, Ey, Ez, geom, prob_lo, prob_hi);
@@ -495,7 +514,7 @@ void main_main (c_FerroX& rFerroX)
 
 
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
-        if (plot_int > 0 && step%plot_int == 0)
+        if (plot_int > 0 && (step%plot_int == 0 || step == steady_state_step))
         {
             const std::string& pltfile = amrex::Concatenate("plt",step,8);
             MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
@@ -512,24 +531,25 @@ void main_main (c_FerroX& rFerroX)
 
             MultiFab::Copy(Plt, beta_cc, 0, 11, 1, 0);
             MultiFab::Copy(Plt, MaterialMask, 0, 12, 1, 0);
+            MultiFab::Copy(Plt, Phidiff, 0, 12, 1, 0);
 #ifdef AMREX_USE_EB
-	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
+	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "PhiDiff"}, geom, time, step);
 #else
-	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask"}, geom, time, step);
+	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "PhiDiff"}, geom, time, step);
 #endif
         }
 
-        if(inc_step > 0 && step%inc_step == 0)
+        if(voltage_sweep == 1 && inc_step > 0 && step == inc_step)
         {
            //Update time-dependen Boundary Condition of Poisson's equation
 
 	   amrex::Print() << "Applied voltage updated at time " << time << ", step = " << step << "\n";
            
-	   if(some_functionbased_inhomogeneous_boundaries)
-           {
-               Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
-           }
-           PoissonPhi.FillBoundary(geom.periodicity());
+            Phi_Bc_hi += Phi_Bc_inc;
+            amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
+
+            // Set Dirichlet BC for Phi in z
+            SetPhiBC_z(PoissonPhi, n_cell);
 
            // set Dirichlet BC by reading in the ghost cell values
 #ifdef AMREX_USE_EB
@@ -588,6 +608,9 @@ void main_main (c_FerroX& rFerroX)
            }
        
         }//end inc_step	
+
+        if (voltage_sweep == 0 && step == steady_state_step) break;
+        if (voltage_sweep == 1 && Phi_Bc_hi > Phi_Bc_hi_max) break;
 
     } // end step
 
