@@ -1,5 +1,7 @@
 #include "TotalEnergyDensity.H"
 #include "DerivativeAlgorithm.H"
+#include "AMReX_CONSTANTS.H"
+
 
 void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
@@ -33,18 +35,19 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
             const Array4<Real>& mask = MaterialMask.array(mfi);
             const Array4<Real>& tphase = tphaseMask.array(mfi);
 
-            const Array4<Real> &alpha_arr = angle_alpha.array(mfi);
-            const Array4<Real> &beta_arr = angle_beta.array(mfi);
-            const Array4<Real> &theta_arr = angle_theta.array(mfi);
+            const Array4<Real> &angle_alpha_arr = angle_alpha.array(mfi);
+            const Array4<Real> &angle_beta_arr = angle_beta.array(mfi);
+            const Array4<Real> &angle_theta_arr = angle_theta.array(mfi);
 
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
 
-               //Convert Euler angles from degrees to radians 
-               amrex::Real alpha_rad = 0.0174533*alpha_arr(i,j,k);
-               amrex::Real beta_rad = 0.0174533*beta_arr(i,j,k);
-               amrex::Real theta_rad = 0.0174533*theta_arr(i,j,k);
+               //Convert Euler angles from degrees to radians
+               amrex::Real Pi = 3.14159265358979323846; 
+               amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
+               amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
+               amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
   
                amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
   
