@@ -406,4 +406,22 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
     }
 }
 
+void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
+{
+    for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.growntilebox(1);
+
+        const Array4<Real>& Phi = PoissonPhi.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+          if(k < 0) {
+            Phi(i,j,k) = Phi_Bc_lo;
+          } else if(k >= n_cell[2]){
+            Phi(i,j,k) = Phi_Bc_hi;
+          }
+        });
+    }
+}
 

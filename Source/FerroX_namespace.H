@@ -60,5 +60,14 @@ namespace FerroX {
 
     extern AMREX_GPU_MANAGED amrex::Real delta;
 
+    //Params related to voltage sweep
+    extern AMREX_GPU_MANAGED int voltage_sweep;
+    extern AMREX_GPU_MANAGED int inc_step;
+    extern AMREX_GPU_MANAGED amrex::Real Phi_Bc_lo;
+    extern AMREX_GPU_MANAGED amrex::Real Phi_Bc_hi;
+    extern AMREX_GPU_MANAGED amrex::Real Phi_Bc_inc;
+    extern AMREX_GPU_MANAGED amrex::Real Phi_Bc_hi_max;
+    extern AMREX_GPU_MANAGED amrex::Real phi_tolerance;
+
     extern AMREX_GPU_MANAGED int random_seed;
 }
