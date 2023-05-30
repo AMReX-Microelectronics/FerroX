@@ -1,0 +1,116 @@
+#################################
+###### PROBLEM DOMAIN ######
+#################################
+
+domain.prob_lo = -15.e-9 -15.e-9 0.e-9
+domain.prob_hi =  15.e-9  15.e-9 7.6e-9
+
+domain.n_cell = 128 128 32
+
+domain.max_grid_size = 128 128 32
+domain.blocking_factor = 32 32 32
+
+domain.coord_sys = cartesian 
+
+prob_type = 2
+
+TimeIntegratorOrder = 1
+
+nsteps = 1000
+plot_int = 100
+
+dt = 2.0e-13
+
+############################################
+###### COORDINATE TRANSFORMATION ###########
+############################################
+
+Coordinate_Transformation = 1
+
+angle_alpha = 0. #0.78539816339 #0.52359877559 #1.309 #0.0 #1.0471975512 #-0.52359877559   #pi/6.0
+angle_beta = 0. #0.78539816339 #0.52359877559 #1.309 # 0.0 #1.0471975512   #pi/6.0
+angle_theta = 0. #0.78539816339 #0.52359877559 #1.309 #0.0 # 1.0471975512   #pi/6.0
+
+#tphase_geom.tphase_geom_function(x,y,z) = "0.*(x > -4.5e-9)*(x < 5.5e-9) * (y > -5.5e-9)*(y < 5.5e-9) * (z > 5.8e-9)*(z < 7.6e-9)
+#                                         + 1.*(x > -5.5e-9)*(x < -4.5e-9) * (y > -5.5e-9)*(y < 5.5e-9) * (z > 5.8e-9)*(z < 7.6e-9)"
+#
+tphase_geom.tphase_geom_function(x,y,z) = "0.*(x >= -15.e-9)*(x <= -5.e-9)*(z >= 5.8e-9)*(z <= 7.6e-9)
+                                         + 1.*(x >= -5.e-9)*(x <=  5.e-9)*(z >= 5.8e-9)*(z <= 7.6e-9)
+                                         + 0.*(x >=  5.e-9)*(x <=  15.e-9)*(z >= 5.8e-9)*(z <= 7.6e-9)
+                                         + 0.*(y >= -15.e-9)*(y <= -5.e-9)*(z >= 5.8e-9)*(z <= 7.6e-9)
+                                         + 1.*(y >= -5.e-9)*(y <=  5.e-9)*(z >= 5.8e-9)*(z <= 7.6e-9)
+                                         + 0.*(y >=  5.e-9)*(y <=  15.e-9)*(z >= 5.8e-9)*(z <= 7.6e-9)
+                                         - 2.*(x >= -5.e-9)*(x <=  5.e-9)*(y >= -5.e-9)*(y <=  5.e-9)*(z >= 5.8e-9)*(z <= 7.6e-9)"
+
+epsilonX_fe_tphase = 40.0
+
+############################################
+###### POLARIZATION BOUNDARY CONDITIONS ####
+############################################
+
+P_BC_flag_lo = 3 3 0
+P_BC_flag_hi = 3 3 1
+lambda = 3.0e-9
+
+############################################
+###### ELECTRICAL BOUNDARY CONDITIONS ######
+############################################
+
+domain.is_periodic = 1 1 0
+
+boundary.hi = per per dir(Zmax)
+boundary.lo = per per dir(Zmin)
+
+my_constants.Vmin = -5.0
+my_constants.Vmax = 5.0
+my_constants.t_Vmax = 2.e-9 #10000 timesteps 
+my_constants.t_final = 4.e-9 # 20000 timestep
+
+#boundary.Zmax_function = "(t <= t_Vmax) * (Vmin + (Vmax - Vmin)*(t/t_Vmax)) + (t > t_Vmax)*(Vmax - (Vmax - Vmin)*(t-t_Vmax)/(t_final - t_Vmax))"
+boundary.Zmax_function = "0.0"
+boundary.Zmin_function = "0.0"
+
+#################################
+###### STACK GEOMETRY ###########
+#################################
+
+SC_lo = -15.e-9 -15.e-9 0.0e-9
+SC_hi =  15.e-9  15.e-9 5.0e-9
+
+DE_lo = -15.e-9 -15.e-9 5.0e-9
+DE_hi =  15.e-9  15.e-9 5.8e-9
+
+FE_lo = -15.e-9 -15.e-9 5.8e-9
+FE_hi =  15.e-9  15.e-9 7.6e-9
+
+#FE_lo = -8.e-9 -8.e-9 4.0e-9
+#FE_hi =  8.e-9  8.e-9 9.0e-9
+##FE:0.0, DE:1.0, Source/Drain:2.0, Channel:3.0
+
+#device_geom.device_geom_function(x,y,z) = "0.*(x > -8.e-9)*(x < 8.e-9) * (y > -8.e-9)*(y < 8.e-9) * (z > 4.0e-9)*(z < 9.e-9)
+#                                         + 1.*(x > -8.e-9)*(x < 8.e-9) * (y > -8.e-9)*(y < 8.e-9) * (z > 0.0)*(z < 4.e-9)"
+
+#################################
+###### MATERIAL PROPERTIES ######
+#################################
+
+epsilon_0 = 8.85e-12
+epsilonX_fe = 25.0
+epsilonZ_fe = 25.0
+epsilon_de = 3.9
+epsilon_si = 11.7
+alpha = -2.5e9
+beta = 6.0e10
+gamma = 1.5e11
+BigGamma = 100
+g11 = -1.0e-12
+g44 = 1.0e-10
+g44_p = 0.0
+g12 = 0.0
+alpha_12 = 0.0
+alpha_112 = 0.0
+alpha_123 = 0.0
+
+acceptor_doping = 1.e21
+donor_doping = 0.
+

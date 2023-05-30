@@ -19,6 +19,7 @@ namespace FerroX {
     // material parameters
     extern AMREX_GPU_MANAGED amrex::Real epsilon_0;
     extern AMREX_GPU_MANAGED amrex::Real epsilonX_fe;
+    extern AMREX_GPU_MANAGED amrex::Real epsilonX_fe_tphase;
     extern AMREX_GPU_MANAGED amrex::Real epsilonZ_fe;
     extern AMREX_GPU_MANAGED amrex::Real epsilon_de;
     extern AMREX_GPU_MANAGED amrex::Real epsilon_si;
@@ -59,6 +60,12 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int TimeIntegratorOrder;
 
     extern AMREX_GPU_MANAGED amrex::Real delta;
+
+    extern AMREX_GPU_MANAGED int Coordinate_Transformation;
+    extern AMREX_GPU_MANAGED int use_Euler_angles;
+    
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> t_phase_lo;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> t_phase_hi;
 
     //Params related to voltage sweep
     extern AMREX_GPU_MANAGED int voltage_sweep;

@@ -13,6 +13,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                    MultiFab&   e_den,
                    MultiFab&   p_den,
 		   const MultiFab& MaterialMask,
+		   const MultiFab& tphaseMask,
                    const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
                    const       Geometry& geom,
 		   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
@@ -24,3 +25,6 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
                             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& MaterialMask);
+void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& tphaseMask);
+void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta);
+

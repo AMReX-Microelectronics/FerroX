@@ -199,7 +199,7 @@ using namespace FerroX;
             return ( - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]); //dPdz = 0.
 
         } else if (P_BC_flag_lo[2] == 3){
-            return ( - F(i,j,k-1) + F(i,j,k+1))/(2.*dx[2]); //No BC
+            return ( - F(i,j,k-1) + F(i,j,k+1))/(2.*dx[2]); //Periodic
 
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
@@ -224,7 +224,7 @@ using namespace FerroX;
             return (F(i,j,k) - F(i,j,k-1))/(2.*dx[2]); //dPdz = 0.
 
         } else if (P_BC_flag_hi[2] == 3){
-            return (0. - F(i,j,k-1))/(2.*dx[2]); //No BC
+            return ( - F(i,j,k-1) + F(i,j,k+1))/(2.*dx[2]); //Periodic
 
         } else {
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
@@ -421,8 +421,8 @@ using namespace FerroX;
         } else if (P_BC_flag_lo[2] == 2){
             return ( - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = 0.
 
-	} else if (P_BC_flag_lo[2] == 3){
-            return ( F(i,j,k-1) - 2.*F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//No BC.
+        } else if (P_BC_flag_lo[2] == 3){
+            return (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1)) / (dx[2]*dx[2]);  
 
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
@@ -447,9 +447,9 @@ using namespace FerroX;
             return ( - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = 0.
 
         } else if (P_BC_flag_hi[2] == 3){
-            return (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//No BC
+            return (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1)) / (dx[2]*dx[2]);  
 
-	} else {
+        } else {
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
             return 0.0;
         }
@@ -462,34 +462,3 @@ using namespace FerroX;
     }
                
 }
-
-/**
-  * Perform double derivative (d^2)P/dxdy */
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-static amrex::Real DoubleDPDxDy (amrex::Array4<amrex::Real> const& F,
-                               amrex::Array4<amrex::Real> const& mask,
-                               int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx)
-{
-      return (DPDy(F, mask, i+1, j, k, dx) - DPDy(F, mask, i-1, j, k, dx)) / 2. /dx[0]; 
-}
-
-/**
-  * Perform double derivative (d^2)P/dxdz */
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-static amrex::Real DoubleDPDxDz (amrex::Array4<amrex::Real> const& F,
-                               amrex::Array4<amrex::Real> const& mask,
-                               int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx)
-{
-      return (DPDz(F, mask, i+1, j, k, dx) - DPDz(F, mask, i-1, j, k, dx)) / 2. /dx[0]; 
-}
-
-/**
-  * Perform double derivative (d^2)P/dydz */
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-static amrex::Real DoubleDPDyDz (amrex::Array4<amrex::Real> const& F,
-                               amrex::Array4<amrex::Real> const& mask,
-                               int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx)
-{
-      return (DPDz(F, mask, i, j+1, k, dx) - DPDz(F, mask, i, j-1, k, dx)) / 2. /dx[1];  
-}
-

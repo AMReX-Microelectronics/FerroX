@@ -12,6 +12,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 		Array<MultiFab, AMREX_SPACEDIM> &P_old,
 		MultiFab&                      rho, 
 		MultiFab&                      MaterialMask, 
+                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
 		const Geometry&                 geom);
 
 //void ComputeEfromPhi(MultiFab&                 PoissonPhi,
@@ -21,15 +22,21 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 //                const Geometry&                 geom);
 //
 void ComputeEfromPhi(MultiFab&                 PoissonPhi,
-                MultiFab&                      Ex,
-                MultiFab&                      Ey,
-                MultiFab&                      Ez,
+		Array<MultiFab, AMREX_SPACEDIM> &E,
+                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry&                 geom,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 //mask based permittivity
-void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, MultiFab& beta_cc, const MultiFab& MaterialMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom);
+void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, 
+                MultiFab& beta_cc, 
+                const MultiFab& MaterialMask, 
+                const MultiFab& tphaseMask, 
+                const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, 
+                const Geometry& geom, 
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, 
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS, 
@@ -39,6 +46,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            e_den,
              MultiFab&            p_den,
 	     MultiFab&      MaterialMask,
+             MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
 	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);

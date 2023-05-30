@@ -7,6 +7,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 MultiFab&                       rho,
                 MultiFab&                 MaterialMask,
+                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry&                 geom)
 {
     for ( MFIter mfi(PoissonRHS); mfi.isValid(); ++mfi )
@@ -15,15 +16,49 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
             // extract dx from the geometry object
             GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-            const Array4<Real> &pOld_x = P_old[0].array(mfi);
-            const Array4<Real> &pOld_y = P_old[1].array(mfi);
-            const Array4<Real> &pOld_z = P_old[2].array(mfi);
+            const Array4<Real> &pOld_p = P_old[0].array(mfi);
+            const Array4<Real> &pOld_q = P_old[1].array(mfi);
+            const Array4<Real> &pOld_r = P_old[2].array(mfi);
             const Array4<Real>& RHS = PoissonRHS.array(mfi);
             const Array4<Real>& charge_den_arr = rho.array(mfi);
             const Array4<Real>& mask = MaterialMask.array(mfi);
 
+            const Array4<Real> &angle_alpha_arr = angle_alpha.array(mfi);
+            const Array4<Real> &angle_beta_arr = angle_beta.array(mfi);
+            const Array4<Real> &angle_theta_arr = angle_theta.array(mfi);
+
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
+
+                 //Convert Euler angles from degrees to radians 
+                 amrex::Real Pi = 3.14159265358979323846; 
+                 amrex::Real alpha_rad = Pi*angle_alpha_arr(i,j,k);
+                 amrex::Real beta_rad =  Pi*angle_beta_arr(i,j,k);
+                 amrex::Real theta_rad = Pi*angle_theta_arr(i,j,k);
+
+                 amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
+
+                 if(use_Euler_angles){
+                    R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);  
+                    R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);  
+                    R_13 = sin(beta_rad)*sin(theta_rad);  
+                    R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);  
+                    R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);  
+                    R_23 = sin(beta_rad)*cos(theta_rad);  
+                    R_31 = sin(alpha_rad)*sin(beta_rad);  
+                    R_32 = -cos(alpha_rad)*sin(beta_rad);  
+                    R_33 = cos(beta_rad);  
+                 } else {
+                    R_11 = cos(beta_rad)*cos(theta_rad);  
+                    R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
+                    R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);  
+                    R_21 = cos(beta_rad)*sin(theta_rad);  
+                    R_22 = sin(beta_rad)*sin(alpha_rad)*sin(theta_rad) + cos(alpha_rad)*cos(theta_rad);
+                    R_23 = cos(alpha_rad)*sin(beta_rad)*sin(theta_rad) - sin(alpha_rad)*cos(theta_rad);
+                    R_31 = -sin(beta_rad);
+                    R_32 = sin(alpha_rad)*cos(beta_rad);
+                    R_33 = cos(alpha_rad)*cos(beta_rad);
+                 }
 
                  if(mask(i,j,k) >= 2.0){ //SC region
 
@@ -34,9 +69,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                    RHS(i,j,k) = 0.;
 
                  } else { //mask(i,j,k) == 0.0 FE region
-                   RHS(i,j,k) = - DPDz(pOld_z, mask, i, j, k, dx)
-                                - DPDx(pOld_x, mask, i, j, k, dx)
-                                - DPDy(pOld_y, mask, i, j, k, dx);
+                   RHS(i,j,k) = - (R_11*DPDx(pOld_p, mask, i, j, k, dx) + R_12*DPDy(pOld_p, mask, i, j, k, dx) + R_13*DPDz(pOld_p, mask, i, j, k, dx))
+                                - (R_21*DPDx(pOld_q, mask, i, j, k, dx) + R_22*DPDy(pOld_q, mask, i, j, k, dx) + R_23*DPDz(pOld_q, mask, i, j, k, dx))
+                                - (R_31*DPDx(pOld_r, mask, i, j, k, dx) + R_32*DPDy(pOld_r, mask, i, j, k, dx) + R_33*DPDz(pOld_r, mask, i, j, k, dx));
 
                  }
 
@@ -53,6 +88,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            e_den,
              MultiFab&            p_den,
 	     MultiFab&            MaterialMask,
+             MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
 	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
@@ -69,7 +105,7 @@ void dF_dPhi(MultiFab&            alpha_cc,
         ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
 
         //Compute RHS of Poisson equation
-        ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, geom);
+        ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
         MultiFab::LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 0);
 }
@@ -94,9 +130,8 @@ void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
 }
 
 void ComputeEfromPhi(MultiFab&                 PoissonPhi,
-                MultiFab&                      Ex,
-                MultiFab&                      Ey,
-                MultiFab&                      Ez,
+                Array<MultiFab, AMREX_SPACEDIM>& E,
+                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry&                 geom,
 		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, 
 		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
@@ -110,26 +145,69 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
             // extract dx from the geometry object
             GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-            const Array4<Real>& Ex_arr = Ex.array(mfi);
-            const Array4<Real>& Ey_arr = Ey.array(mfi);
-            const Array4<Real>& Ez_arr = Ez.array(mfi);
+            const Array4<Real>& Ep_arr = E[0].array(mfi);
+            const Array4<Real>& Eq_arr = E[1].array(mfi);
+            const Array4<Real>& Er_arr = E[2].array(mfi);
             const Array4<Real>& phi = PoissonPhi.array(mfi);
+
+            const Array4<Real> &angle_alpha_arr = angle_alpha.array(mfi);
+            const Array4<Real> &angle_beta_arr = angle_beta.array(mfi);
+            const Array4<Real> &angle_theta_arr = angle_theta.array(mfi);
+
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
                      Real z_hi = prob_lo[2] + (k+1.5) * dx[2];
                      Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
-                     Ex_arr(i,j,k) = - DFDx(phi, i, j, k, dx);
-                     Ey_arr(i,j,k) = - DFDy(phi, i, j, k, dx);
-                     Ez_arr(i,j,k) = - DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi);
+                     //Convert Euler angles from degrees to radians
+                     amrex::Real Pi = 3.14159265358979323846; 
+                     amrex::Real alpha_rad = Pi*angle_alpha_arr(i,j,k);
+                     amrex::Real beta_rad =  Pi*angle_beta_arr(i,j,k);
+                     amrex::Real theta_rad = Pi*angle_theta_arr(i,j,k);
+
+                     amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
+
+                     if(use_Euler_angles){
+                        R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);  
+                        R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);  
+                        R_13 = sin(beta_rad)*sin(theta_rad);  
+                        R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);  
+                        R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);  
+                        R_23 = sin(beta_rad)*cos(theta_rad);  
+                        R_31 = sin(alpha_rad)*sin(beta_rad);  
+                        R_32 = -cos(alpha_rad)*sin(beta_rad);  
+                        R_33 = cos(beta_rad);  
+                     } else {
+                        R_11 = cos(beta_rad)*cos(theta_rad);  
+                        R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
+                        R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);  
+                        R_21 = cos(beta_rad)*sin(theta_rad);  
+                        R_22 = sin(beta_rad)*sin(alpha_rad)*sin(theta_rad) + cos(alpha_rad)*cos(theta_rad);
+                        R_23 = cos(alpha_rad)*sin(beta_rad)*sin(theta_rad) - sin(alpha_rad)*cos(theta_rad);
+                        R_31 = -sin(beta_rad);
+                        R_32 = sin(alpha_rad)*cos(beta_rad);
+                        R_33 = cos(alpha_rad)*cos(beta_rad);
+                     }
+
+                     Ep_arr(i,j,k) = - (R_11*DFDx(phi, i, j, k, dx) + R_12*DFDy(phi, i, j, k, dx) + R_13*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
+                     Eq_arr(i,j,k) = - (R_21*DFDx(phi, i, j, k, dx) + R_22*DFDy(phi, i, j, k, dx) + R_23*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
+                     Er_arr(i,j,k) = - (R_31*DFDx(phi, i, j, k, dx) + R_32*DFDy(phi, i, j, k, dx) + R_33*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
+
 
              });
         }
 
 }
 
-void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, MultiFab& beta_cc, const MultiFab& MaterialMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom)
+void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, 
+		MultiFab& beta_cc,
+	       	const MultiFab& MaterialMask,
+	       	const MultiFab& tphaseMask,
+	       	const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
+	       	const Geometry& geom, 
+		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+	       	const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
 
     beta_cc.setVal(0.0);
@@ -143,12 +221,25 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
 
         const Array4<Real>& beta = beta_cc.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
+        const Array4<Real const>& tphase = tphaseMask.array(mfi);
+
+	// extract dx from the geometry object
+        GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
 
+	  Real x = prob_lo[0] + (i+0.5) * dx[0];
+	  Real y = prob_lo[1] + (j+0.5) * dx[1];
+	  Real z = prob_lo[1] + (k+0.5) * dx[2];
+	
           if(mask(i,j,k) == 0.0) {
              beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
+	     //set t_phase beta to epsilonX_fe_tphase
+	     //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+	     if(tphase(i,j,k) == 1.0){
+               beta(i,j,k) = epsilonX_fe_tphase * epsilon_0;
+             }
           } else if(mask(i,j,k) == 1.0) {
              beta(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else if (mask(i,j,k) >= 2.0){
