@@ -56,7 +56,6 @@ void main_main (c_FerroX& rFerroX)
     // read in inputs file
     InitializeFerroXNamespace(prob_lo, prob_hi);
 
-
     // Nghost = number of ghost cells for each array
     int Nghost = 1;
 
@@ -113,9 +112,9 @@ void main_main (c_FerroX& rFerroX)
     MultiFab PoissonPhi_Prev(ba, dm, 1, 1);
     MultiFab PhiErr(ba, dm, 1, 1);
     MultiFab Phidiff(ba, dm, 1, 1);
-//    MultiFab Ex(ba, dm, 1, 0);
-//    MultiFab Ey(ba, dm, 1, 0);
-//    MultiFab Ez(ba, dm, 1, 0);
+    MultiFab Ex(ba, dm, 1, 0);
+    MultiFab Ey(ba, dm, 1, 0);
+    MultiFab Ez(ba, dm, 1, 0);
 
     MultiFab hole_den(ba, dm, 1, 0);
     MultiFab e_den(ba, dm, 1, 0);
@@ -347,8 +346,8 @@ void main_main (c_FerroX& rFerroX)
 
     amrex::Print() << "\n ========= Advance Steps  ========== \n"<< std::endl;
 
-    int final_step = 1000000; //Large Number
-    
+    int steady_state_step = 1000000; //Initialize to a large number. It will be overwritten by the time step at which steady state condition is satidfied
+
     for (int step = 1; step <= nsteps; ++step)
     {
         Real step_strt_time = ParallelDescriptor::second();
@@ -504,21 +503,21 @@ void main_main (c_FerroX& rFerroX)
             }
     	}
 
-	// Check if steady state has reached
+        // Check if steady state has reached 
         MultiFab::Copy(Phidiff, PoissonPhi, 0, 0, 1, 0);
         MultiFab::Subtract(Phidiff, PoissonPhi_Old, 0, 0, 1, 0);
         Real phi_err = Phidiff.norm0();
 
-	if (phi_err < 1.e-7) {
-		final_step = step;
-		inc_step = step;
-	}
+        if (phi_err < phi_tolerance) {
+                steady_state_step = step;
+                inc_step = step;
+        }
 
         //Copy PoissonPhi to PoissonPhi_Old to calculate difference at the next iteration
         MultiFab::Copy(PoissonPhi_Old, PoissonPhi, 0, 0, 1, 0);
 
         amrex::Print() << "Steady state check : (phi(t) - phi(t-1)).norm0() = " << phi_err << std::endl;
-        
+
 
 	// Calculate E from Phi
 	ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
@@ -535,7 +534,7 @@ void main_main (c_FerroX& rFerroX)
 
 
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
-        if (plot_int > 0 && (step%plot_int == 0 || step == final_step))
+        if (plot_int > 0 && (step%plot_int == 0 || step == steady_state_step))
         {
             const std::string& pltfile = amrex::Concatenate("plt",step,8);
             MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
@@ -564,17 +563,17 @@ void main_main (c_FerroX& rFerroX)
 #endif
         }
 
-        if(inc_step > 0 && step%inc_step == 0)
+        if(voltage_sweep == 1 && inc_step > 0 && step == inc_step)
         {
            //Update time-dependent Boundary Condition of Poisson's equation
 
 	   amrex::Print() << "Applied voltage updated at time " << time << ", step = " << step << "\n";
            
-	   if(some_functionbased_inhomogeneous_boundaries)
-           {
-               Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
-           }
-           PoissonPhi.FillBoundary(geom.periodicity());
+            Phi_Bc_hi += Phi_Bc_inc;
+            amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
+
+            // Set Dirichlet BC for Phi in z
+            SetPhiBC_z(PoissonPhi, n_cell);
 
            // set Dirichlet BC by reading in the ghost cell values
 #ifdef AMREX_USE_EB
@@ -637,6 +636,9 @@ void main_main (c_FerroX& rFerroX)
         if(voltage_sweep == 0){
 	  if (step == final_step) break; //Terminate the loop if steady state is reached
 	}
+
+        if (voltage_sweep == 0 && step == steady_state_step) break;
+        if (voltage_sweep == 1 && Phi_Bc_hi > Phi_Bc_hi_max) break;
 
     } // end step
 

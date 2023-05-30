@@ -221,18 +221,20 @@ AMREX_GPU_MANAGED int FerroX::TimeIntegratorOrder;
 
 AMREX_GPU_MANAGED amrex::Real FerroX::delta;
 
-AMREX_GPU_MANAGED int FerroX::inc_step;
-
-AMREX_GPU_MANAGED int FerroX::random_seed;
-
-AMREX_GPU_MANAGED int FerroX::voltage_sweep;
-
 AMREX_GPU_MANAGED int FerroX::Coordinate_Transformation;
 AMREX_GPU_MANAGED int FerroX::use_Euler_angles;
 
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::t_phase_lo;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::t_phase_hi;
 
+AMREX_GPU_MANAGED int FerroX::voltage_sweep;
+AMREX_GPU_MANAGED int FerroX::inc_step;
+AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_lo;
+AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_hi;
+AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_inc;
+AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_hi_max;
+AMREX_GPU_MANAGED amrex::Real FerroX::phi_tolerance;
+AMREX_GPU_MANAGED int FerroX::random_seed;
 
 void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi) {
@@ -255,6 +257,10 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
              P_BC_flag_hi[i] = temp_int[i];
          }
+     }
+
+     if(P_BC_flag_lo[2] == 3 || P_BC_flag_hi[2] == 3){
+       amrex::Warning("This boundary condition does not represent the accurate physical picture!!");
      }
 
      pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
@@ -312,6 +318,30 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      voltage_sweep = 0;
      pp.query("voltage_sweep",voltage_sweep);
+
+     voltage_sweep = 0; //0 means OFF, 1 means ON. Default to 0, that is do voltage sweep only when specified.
+     pp.query("voltage_sweep",voltage_sweep);
+
+     inc_step = -1;
+     pp.query("inc_step",inc_step);
+
+     Phi_Bc_hi = 0.;
+     pp.query("Phi_Bc_hi",Phi_Bc_hi);
+
+     Phi_Bc_lo = 0.;
+     pp.query("Phi_Bc_lo",Phi_Bc_lo);
+
+     Phi_Bc_inc = 0.;
+     pp.query("Phi_Bc_inc",Phi_Bc_inc);
+
+     Phi_Bc_hi_max = 0.;
+     pp.query("Phi_Bc_hi_max",Phi_Bc_hi_max);
+
+     phi_tolerance = 1.e-7;
+     pp.query("phi_tolerance",phi_tolerance);
+
+     random_seed = 1;
+     pp.query("random_seed",random_seed);
 
      //stack dimensions in 3D. This is an alternate way of initializing the device geometry, which works in simpler scenarios.
      //A more general way of initializing device geometry is accomplished through masks which use function parsers

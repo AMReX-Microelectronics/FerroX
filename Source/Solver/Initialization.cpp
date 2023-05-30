@@ -76,6 +76,8 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
         Real* rng = rngs.data();
 
+        Real* rng = rngs.data();
+
         // set P
         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
@@ -85,8 +87,6 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
             if (mask(i,j,k) == 0.0) { //FE mask is 0.0
                if (prob_type == 1) {  //2D : Initialize uniform P in y direction
 
-                 // double tmp = (i%3 + k%4)/5.;
-                 // pOld_r(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
                  pOld_r(i,j,k) = (-1.0 + 2.0*rng[i + k*n_cell[2]])*0.002;
 
                } else if (prob_type == 2) { // 3D : Initialize random P
