@@ -69,6 +69,5 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED amrex::Real Phi_Bc_hi_max;
     extern AMREX_GPU_MANAGED amrex::Real phi_tolerance;
 
-
-
+    extern AMREX_GPU_MANAGED int random_seed;
 }

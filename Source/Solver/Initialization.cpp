@@ -9,6 +9,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                    MultiFab&   e_den,
                    MultiFab&   p_den,
 		   const MultiFab& MaterialMask,
+                   const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
                    const       Geometry& geom,
 		   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                    const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
@@ -40,6 +41,23 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
       amrex::Abort();
     }
 
+    // Read this from inputs file. Default seed = 1
+    int seed = random_seed;
+
+    int nprocs = ParallelDescriptor::NProcs();
+
+    amrex::InitRandom(seed                             , nprocs, seed                             );  // give all MPI ranks the same seed
+    // amrex::InitRandom(seed+ParallelDescriptor::MyProc(), nprocs, seed+ParallelDescriptor::MyProc());  // give all MPI ranks a different seed
+
+    int nrand = n_cell[0]*n_cell[2];
+    amrex::Gpu::ManagedVector<Real> rngs(nrand, 0.0);
+
+    // generate random numbers on the host
+    for (int i=0; i<nrand; ++i) {
+        //rngs[i] = amrex::RandomNormal(0.,1.); // zero mean, unit variance
+         rngs[i] = amrex::Random(); // uniform [0,1] option
+    }
+
     // loop over boxes
     for (MFIter mfi(rho); mfi.isValid(); ++mfi)
     {
@@ -56,6 +74,8 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
         Real pi = 3.141592653589793238;
 
+        Real* rng = rngs.data();
+
         // set P
         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
@@ -65,8 +85,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
             if (mask(i,j,k) == 0.0) { //FE mask is 0.0
                if (prob_type == 1) {  //2D : Initialize uniform P in y direction
 
-                  double tmp = (i%3 + k%4)/5.;
-                  pOld_z(i,j,k) = (-1.0 + 2.0*tmp)*0.002;
+                  pOld_z(i,j,k) = (-1.0 + 2.0*rng[i + k*n_cell[2]])*0.002;
 
                } else if (prob_type == 2) { // 3D : Initialize random P
 
