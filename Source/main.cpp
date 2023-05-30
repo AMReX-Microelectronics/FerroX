@@ -633,10 +633,6 @@ void main_main (c_FerroX& rFerroX)
        
         }//end inc_step	
    
-        if(voltage_sweep == 0){
-	  if (step == final_step) break; //Terminate the loop if steady state is reached
-	}
-
         if (voltage_sweep == 0 && step == steady_state_step) break;
         if (voltage_sweep == 1 && Phi_Bc_hi > Phi_Bc_hi_max) break;
 

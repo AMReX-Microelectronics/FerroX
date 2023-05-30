@@ -76,8 +76,6 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
         Real* rng = rngs.data();
 
-        Real* rng = rngs.data();
-
         // set P
         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
