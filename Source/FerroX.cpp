@@ -251,6 +251,10 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
          }
      }
 
+     if(P_BC_flag_lo[2] == 3 || P_BC_flag_hi[2] == 3){
+       amrex::Warning("This boundary condition does not represent the accurate physical picture!!");
+     }
+
      pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 
      pp.get("prob_type", prob_type);
