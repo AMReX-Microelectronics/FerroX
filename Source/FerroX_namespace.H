@@ -59,4 +59,6 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int TimeIntegratorOrder;
 
     extern AMREX_GPU_MANAGED amrex::Real delta;
+
+    extern AMREX_GPU_MANAGED int random_seed;
 }

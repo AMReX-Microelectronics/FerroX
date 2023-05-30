@@ -220,6 +220,8 @@ AMREX_GPU_MANAGED int FerroX::TimeIntegratorOrder;
 
 AMREX_GPU_MANAGED amrex::Real FerroX::delta;
 
+AMREX_GPU_MANAGED int FerroX::random_seed;
+
 void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi) {
 
@@ -285,6 +287,9 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      delta = 1.e-6;
      pp.query("delta",delta);
+
+     random_seed = 1;
+     pp.query("random_seed",random_seed);
 
      //stack dimensions in 3D. This is an alternate way of initializing the device geometry, which works in simpler scenarios.
      //A more general way of initializing device geometry is accomplished through masks which use function parsers
