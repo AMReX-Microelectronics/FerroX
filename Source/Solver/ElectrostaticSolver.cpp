@@ -32,9 +32,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
                  //Convert Euler angles from degrees to radians 
                  amrex::Real Pi = 3.14159265358979323846; 
-                 amrex::Real alpha_rad = Pi*angle_alpha_arr(i,j,k);
-                 amrex::Real beta_rad =  Pi*angle_beta_arr(i,j,k);
-                 amrex::Real theta_rad = Pi*angle_theta_arr(i,j,k);
+                 amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
+                 amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
+                 amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
 
                  amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
 
@@ -162,9 +162,9 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
                      //Convert Euler angles from degrees to radians
                      amrex::Real Pi = 3.14159265358979323846; 
-                     amrex::Real alpha_rad = Pi*angle_alpha_arr(i,j,k);
-                     amrex::Real beta_rad =  Pi*angle_beta_arr(i,j,k);
-                     amrex::Real theta_rad = Pi*angle_theta_arr(i,j,k);
+                     amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
+                     amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
+                     amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
 
                      amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
 
