@@ -504,11 +504,29 @@ void main_main (c_FerroX& rFerroX)
     	}
 
         // Check if steady state has reached 
-        MultiFab::Copy(Phidiff, PoissonPhi, 0, 0, 1, 0);
-        MultiFab::Subtract(Phidiff, PoissonPhi_Old, 0, 0, 1, 0);
-        Real phi_err = Phidiff.norm0();
+        //MultiFab::Copy(Phidiff, PoissonPhi, 0, 0, 1, 0);
+        //MultiFab::Subtract(Phidiff, PoissonPhi_Old, 0, 0, 1, 0);
 
-        if (phi_err < phi_tolerance) {
+        Real phi_max = PoissonPhi_Old.norm0();
+
+        for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
+        {   
+            const Box& bx = mfi.growntilebox(1);
+
+            const Array4<Real>& Phi = PoissonPhi.array(mfi);
+            const Array4<Real>& PhiOld = PoissonPhi_Old.array(mfi);
+            const Array4<Real>& Phi_err = Phidiff.array(mfi);
+
+
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+            {   
+                Phi_err(i,j,k) = amrex::Math::abs(Phi(i,j,k) - PhiOld(i,j,k)) / phi_max;
+            }); 
+        }   
+ 
+        Real max_phi_err = Phidiff.norm0();
+
+        if (max_phi_err < phi_tolerance) {
                 steady_state_step = step;
                 inc_step = step;
         }
@@ -516,7 +534,7 @@ void main_main (c_FerroX& rFerroX)
         //Copy PoissonPhi to PoissonPhi_Old to calculate difference at the next iteration
         MultiFab::Copy(PoissonPhi_Old, PoissonPhi, 0, 0, 1, 0);
 
-        amrex::Print() << "Steady state check : (phi(t) - phi(t-1)).norm0() = " << phi_err << std::endl;
+        amrex::Print() << "Steady state check : (phi(t) - phi(t-1)).norm0() = " << max_phi_err << std::endl;
 
 
 	// Calculate E from Phi
