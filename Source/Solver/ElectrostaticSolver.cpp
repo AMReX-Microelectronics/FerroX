@@ -10,6 +10,14 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                 MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry&                 geom)
 {
+    MultiFab P_old_x(P_old[0].boxArray(), P_old[0].DistributionMap(), 1, 1);
+    MultiFab P_old_y(P_old[1].boxArray(), P_old[1].DistributionMap(), 1, 1);
+    MultiFab P_old_z(P_old[2].boxArray(), P_old[2].DistributionMap(), 1, 1);
+
+    P_old_x.setVal(0.);
+    P_old_y.setVal(0.);
+    P_old_z.setVal(0.);
+
     for ( MFIter mfi(PoissonRHS); mfi.isValid(); ++mfi )
         {
             const Box& bx = mfi.validbox();
@@ -27,7 +35,11 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
             const Array4<Real> &angle_beta_arr = angle_beta.array(mfi);
             const Array4<Real> &angle_theta_arr = angle_theta.array(mfi);
 
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            const Array4<Real>& pOld_x = P_old_x.array(mfi);
+            const Array4<Real>& pOld_y = P_old_y.array(mfi);
+            const Array4<Real>& pOld_z = P_old_z.array(mfi);
+            
+	    amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
 
                  //Convert Euler angles from degrees to radians 
@@ -60,6 +72,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                     R_33 = cos(alpha_rad)*cos(beta_rad);
                  }
 
+
                  if(mask(i,j,k) >= 2.0){ //SC region
 
                    RHS(i,j,k) = charge_den_arr(i,j,k);
@@ -69,10 +82,21 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                    RHS(i,j,k) = 0.;
 
                  } else { //mask(i,j,k) == 0.0 FE region
-                   RHS(i,j,k) = - (R_11*DPDx(pOld_p, mask, i, j, k, dx) + R_12*DPDy(pOld_p, mask, i, j, k, dx) + R_13*DPDz(pOld_p, mask, i, j, k, dx))
-                                - (R_21*DPDx(pOld_q, mask, i, j, k, dx) + R_22*DPDy(pOld_q, mask, i, j, k, dx) + R_23*DPDz(pOld_q, mask, i, j, k, dx))
-                                - (R_31*DPDx(pOld_r, mask, i, j, k, dx) + R_32*DPDy(pOld_r, mask, i, j, k, dx) + R_33*DPDz(pOld_r, mask, i, j, k, dx));
+		   
+		   //Convert (P_p, P_q, P_r) to (P_x, P_y, P_z) by multiplying by transverse(R)
+                   pOld_x(i,j,k) = R_11*pOld_p(i,j,k) + R_21*pOld_q(i,j,k) + R_31*pOld_r(i,j,k);
+                   pOld_y(i,j,k) = R_12*pOld_p(i,j,k) + R_22*pOld_q(i,j,k) + R_32*pOld_r(i,j,k);
+                   pOld_z(i,j,k) = R_13*pOld_p(i,j,k) + R_23*pOld_q(i,j,k) + R_33*pOld_r(i,j,k);
 
+		   //option 1
+                   RHS(i,j,k) = - DPDx(pOld_x, mask, i, j, k, dx)
+                                - DPDy(pOld_y, mask, i, j, k, dx)
+                                - DPDz(pOld_z, mask, i, j, k, dx);
+
+		   //option 2
+                   //RHS(i,j,k) = - (R_11*DPDx(pOld_p, mask, i, j, k, dx) + R_12*DPDy(pOld_p, mask, i, j, k, dx) + R_13*DPDz(pOld_p, mask, i, j, k, dx))
+                   //             - (R_21*DPDx(pOld_q, mask, i, j, k, dx) + R_22*DPDy(pOld_q, mask, i, j, k, dx) + R_23*DPDz(pOld_q, mask, i, j, k, dx))
+                   //             - (R_31*DPDx(pOld_r, mask, i, j, k, dx) + R_32*DPDy(pOld_r, mask, i, j, k, dx) + R_33*DPDz(pOld_r, mask, i, j, k, dx));
                  }
 
             });
