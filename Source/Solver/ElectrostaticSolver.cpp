@@ -20,6 +20,66 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
     for ( MFIter mfi(PoissonRHS); mfi.isValid(); ++mfi )
         {
+            const Box& bx = mfi.growntilebox(1);
+            // extract dx from the geometry object
+            GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+
+            const Array4<Real> &pOld_p = P_old[0].array(mfi);
+            const Array4<Real> &pOld_q = P_old[1].array(mfi);
+            const Array4<Real> &pOld_r = P_old[2].array(mfi);
+            const Array4<Real>& RHS = PoissonRHS.array(mfi);
+            const Array4<Real>& charge_den_arr = rho.array(mfi);
+            const Array4<Real>& mask = MaterialMask.array(mfi);
+
+            const Array4<Real> &angle_alpha_arr = angle_alpha.array(mfi);
+            const Array4<Real> &angle_beta_arr = angle_beta.array(mfi);
+            const Array4<Real> &angle_theta_arr = angle_theta.array(mfi);
+
+            const Array4<Real>& pOld_x = P_old_x.array(mfi);
+            const Array4<Real>& pOld_y = P_old_y.array(mfi);
+            const Array4<Real>& pOld_z = P_old_z.array(mfi);
+            
+	    amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                 //Convert Euler angles from degrees to radians 
+                 amrex::Real Pi = 3.14159265358979323846; 
+                 amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
+                 amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
+                 amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
+
+                 amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
+
+                 if(use_Euler_angles){
+                    R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);  
+                    R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);  
+                    R_13 = sin(beta_rad)*sin(theta_rad);  
+                    R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);  
+                    R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);  
+                    R_23 = sin(beta_rad)*cos(theta_rad);  
+                    R_31 = sin(alpha_rad)*sin(beta_rad);  
+                    R_32 = -cos(alpha_rad)*sin(beta_rad);  
+                    R_33 = cos(beta_rad);  
+                 } else {
+                    R_11 = cos(beta_rad)*cos(theta_rad);  
+                    R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
+                    R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);  
+                    R_21 = cos(beta_rad)*sin(theta_rad);  
+                    R_22 = sin(beta_rad)*sin(alpha_rad)*sin(theta_rad) + cos(alpha_rad)*cos(theta_rad);
+                    R_23 = cos(alpha_rad)*sin(beta_rad)*sin(theta_rad) - sin(alpha_rad)*cos(theta_rad);
+                    R_31 = -sin(beta_rad);
+                    R_32 = sin(alpha_rad)*cos(beta_rad);
+                    R_33 = cos(alpha_rad)*cos(beta_rad);
+                 }
+
+		   //Convert (P_p, P_q, P_r) to (P_x, P_y, P_z) by multiplying by transverse(R)
+                   pOld_x(i,j,k) = R_11*pOld_p(i,j,k) + R_21*pOld_q(i,j,k) + R_31*pOld_r(i,j,k);
+                   pOld_y(i,j,k) = R_12*pOld_p(i,j,k) + R_22*pOld_q(i,j,k) + R_32*pOld_r(i,j,k);
+                   pOld_z(i,j,k) = R_13*pOld_p(i,j,k) + R_23*pOld_q(i,j,k) + R_33*pOld_r(i,j,k);
+            });
+        }
+
+    for ( MFIter mfi(PoissonRHS); mfi.isValid(); ++mfi )
+        {
             const Box& bx = mfi.validbox();
             // extract dx from the geometry object
             GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
@@ -84,9 +144,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                  } else { //mask(i,j,k) == 0.0 FE region
 		   
 		   //Convert (P_p, P_q, P_r) to (P_x, P_y, P_z) by multiplying by transverse(R)
-                   pOld_x(i,j,k) = R_11*pOld_p(i,j,k) + R_21*pOld_q(i,j,k) + R_31*pOld_r(i,j,k);
-                   pOld_y(i,j,k) = R_12*pOld_p(i,j,k) + R_22*pOld_q(i,j,k) + R_32*pOld_r(i,j,k);
-                   pOld_z(i,j,k) = R_13*pOld_p(i,j,k) + R_23*pOld_q(i,j,k) + R_33*pOld_r(i,j,k);
+                   //pOld_x(i,j,k) = R_11*pOld_p(i,j,k) + R_21*pOld_q(i,j,k) + R_31*pOld_r(i,j,k);
+                   //pOld_y(i,j,k) = R_12*pOld_p(i,j,k) + R_22*pOld_q(i,j,k) + R_32*pOld_r(i,j,k);
+                   //pOld_z(i,j,k) = R_13*pOld_p(i,j,k) + R_23*pOld_q(i,j,k) + R_33*pOld_r(i,j,k);
 
 		   //option 1
                    RHS(i,j,k) = - DPDx(pOld_x, mask, i, j, k, dx)
