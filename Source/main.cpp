@@ -452,7 +452,7 @@ void main_main (c_FerroX& rFerroX)
             Nodal_PoissonPhi.setVal(0.);
 
             //Poisson Solve
-            pMLMG->solve({&Nodal_PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+            pMLMG->solve({&Nodal_PoissonPhi}, {&Nodal_PoissonRHS}, 1.e-10, -1);
 	    
 	    Nodal_PoissonPhi.FillBoundary(geom.periodicity());
             
@@ -525,7 +525,7 @@ void main_main (c_FerroX& rFerroX)
                 Nodal_PoissonPhi.setVal(0.);
 
                 //Poisson Solve
-                pMLMG->solve({&Nodal_PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+                pMLMG->solve({&Nodal_PoissonPhi}, {&Nodal_PoissonRHS}, 1.e-10, -1);
 	        Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 	
                 // Calculate rho from Phi in SC region
@@ -573,7 +573,7 @@ void main_main (c_FerroX& rFerroX)
 
             const Array4<Real>& Phi = Nodal_PoissonPhi.array(mfi);
             const Array4<Real>& PhiOld = Nodal_PoissonPhi_Old.array(mfi);
-            const Array4<Real>& Phi_err = Phidiff.array(mfi);
+            const Array4<Real>& Phi_err = Nodal_Phidiff.array(mfi);
 
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
@@ -582,11 +582,13 @@ void main_main (c_FerroX& rFerroX)
             }); 
         }   
  
-        Real max_phi_err = Phidiff.norm0();
+        Real max_phi_err = Nodal_Phidiff.norm0();
 
-        if (max_phi_err < phi_tolerance) {
+        if(step > 1){
+          if (max_phi_err < phi_tolerance) {
                 steady_state_step = step;
                 inc_step = step;
+          }
         }
 
         //Copy PoissonPhi to PoissonPhi_Old to calculate difference at the next iteration
@@ -683,7 +685,7 @@ void main_main (c_FerroX& rFerroX)
                Nodal_PoissonPhi.setVal(0.);
 
                //Poisson Solve
-               pMLMG->solve({&Nodal_PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+               pMLMG->solve({&Nodal_PoissonPhi}, {&Nodal_PoissonRHS}, 1.e-10, -1);
 	       Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 	
                // Calculate rho from Phi in SC region

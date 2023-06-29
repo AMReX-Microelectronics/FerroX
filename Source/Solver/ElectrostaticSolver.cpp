@@ -32,9 +32,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
                  //Convert Euler angles from degrees to radians 
                  amrex::Real Pi = 3.14159265358979323846; 
-                 amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
-                 amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
-                 amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
+                 amrex::Real alpha_rad = 45.*Pi/180.;//Pi/180.*angle_alpha_arr(i,j,k);
+                 amrex::Real beta_rad =  45.*Pi/180.;//Pi/180.*angle_beta_arr(i,j,k);
+                 amrex::Real theta_rad = 45.*Pi/180.;//Pi/180.*angle_theta_arr(i,j,k);
 
                  amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
 
@@ -63,16 +63,19 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                  if(mask(i,j,k) >= 2.0){ //SC region
 
                    RHS(i,j,k) = charge_den_arr(i,j,k);
+                   RHS(i,j,k) *= -1.;
 
                  } else if(mask(i,j,k) == 1.0){ //DE region
 
                    RHS(i,j,k) = 0.;
 
                  } else { //mask(i,j,k) == 0.0 FE region
-                   RHS(i,j,k) = - (R_11*DPDx(pOld_p, mask, i, j, k, dx) + R_12*DPDy(pOld_p, mask, i, j, k, dx) + R_13*DPDz(pOld_p, mask, i, j, k, dx))
-                                - (R_21*DPDx(pOld_q, mask, i, j, k, dx) + R_22*DPDy(pOld_q, mask, i, j, k, dx) + R_23*DPDz(pOld_q, mask, i, j, k, dx))
-                                - (R_31*DPDx(pOld_r, mask, i, j, k, dx) + R_32*DPDy(pOld_r, mask, i, j, k, dx) + R_33*DPDz(pOld_r, mask, i, j, k, dx));
+                   RHS(i,j,k) = - (R_11*NodalDPDx(pOld_p, mask, i, j, k, dx) + R_12*NodalDPDy(pOld_p, mask, i, j, k, dx) + R_13*NodalDPDz(pOld_p, mask, i, j, k, dx))
+                                - (R_21*NodalDPDx(pOld_q, mask, i, j, k, dx) + R_22*NodalDPDy(pOld_q, mask, i, j, k, dx) + R_23*NodalDPDz(pOld_q, mask, i, j, k, dx))
+                                - (R_31*NodalDPDx(pOld_r, mask, i, j, k, dx) + R_32*NodalDPDy(pOld_r, mask, i, j, k, dx) + R_33*NodalDPDz(pOld_r, mask, i, j, k, dx));
 
+                   RHS(i,j,k) *= -1.;
+//                   RHS(i,j,k) = -0.;
                  }
 
             });
@@ -138,7 +141,7 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 {
        // Calculate E from Phi
 
-        for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
+        for ( MFIter mfi(E[0]); mfi.isValid(); ++mfi )
         {
             const Box& bx = mfi.validbox();
 
@@ -162,9 +165,9 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
                      //Convert Euler angles from degrees to radians
                      amrex::Real Pi = 3.14159265358979323846; 
-                     amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
-                     amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
-                     amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
+                     amrex::Real alpha_rad = 45.*Pi/180.;//Pi/180.*angle_alpha_arr(i,j,k);
+                     amrex::Real beta_rad =  45.*Pi/180.;//Pi/180.*angle_beta_arr(i,j,k);
+                     amrex::Real theta_rad = 45.*Pi/180.;//Pi/180.*angle_theta_arr(i,j,k);
 
                      amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
 
