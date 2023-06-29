@@ -1,6 +1,7 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MLABecLaplacian.H>
+#include <AMReX_MLNodeLaplacian.H>
 #ifdef AMREX_USE_EB
 #include <AMReX_MLEBABecLap.H>
 #endif
@@ -47,6 +48,7 @@ void main_main (c_FerroX& rFerroX)
     auto& rGprop = rFerroX.get_GeometryProperties();
     auto& geom = rGprop.geom;
     auto& ba = rGprop.ba;
+    const BoxArray& nba = amrex::convert(ba,IntVect::TheNodeVector());
     auto& dm = rGprop.dm;
     auto& is_periodic = rGprop.is_periodic;
     auto& prob_lo = rGprop.prob_lo;
@@ -112,6 +114,15 @@ void main_main (c_FerroX& rFerroX)
     MultiFab PoissonPhi_Prev(ba, dm, 1, 1);
     MultiFab PhiErr(ba, dm, 1, 1);
     MultiFab Phidiff(ba, dm, 1, 1);
+
+    //For nodal Poisson
+    MultiFab Nodal_PoissonRHS(nba, dm, 1, 0);
+    MultiFab Nodal_PoissonPhi(nba, dm, 1, 1);
+    MultiFab Nodal_PoissonPhi_Old(nba, dm, 1, 1);
+    MultiFab Nodal_PoissonPhi_Prev(nba, dm, 1, 1);
+    MultiFab Nodal_PhiErr(nba, dm, 1, 1);
+    MultiFab Nodal_Phidiff(nba, dm, 1, 1);
+
     MultiFab Ex(ba, dm, 1, 0);
     MultiFab Ey(ba, dm, 1, 0);
     MultiFab Ez(ba, dm, 1, 0);
@@ -119,6 +130,12 @@ void main_main (c_FerroX& rFerroX)
     MultiFab hole_den(ba, dm, 1, 0);
     MultiFab e_den(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
+ 
+    //Nodal rho
+    MultiFab Nodal_hole_den(nba, dm, 1, 0);
+    MultiFab Nodal_e_den(nba, dm, 1, 0);
+    MultiFab Nodal_charge_den(nba, dm, 1, 0);
+
     MultiFab MaterialMask(ba, dm, 1, 1);
     MultiFab tphaseMask(ba, dm, 1, 1);
     MultiFab angle_alpha(ba, dm, 1, 0);
@@ -220,44 +237,77 @@ void main_main (c_FerroX& rFerroX)
 
     pMLMG->setVerbose(mlmg_verbosity);
 #else
-    std::unique_ptr<amrex::MLABecLaplacian> p_mlabec;
-    p_mlabec = std::make_unique<amrex::MLABecLaplacian>();
-    p_mlabec->define({geom}, {ba}, {dm}, info);
+//    std::unique_ptr<amrex::MLABecLaplacian> p_mlabec;
+//    p_mlabec = std::make_unique<amrex::MLABecLaplacian>();
+//    p_mlabec->define({geom}, {ba}, {dm}, info);
+//
+//    //Force singular system to be solvable
+//    p_mlabec->setEnforceSingularSolvable(false); 
+//
+//    p_mlabec->setMaxOrder(linop_maxorder);  
+//
+//    p_mlabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
+//
+//    if(some_constant_inhomogeneous_boundaries)
+//    {
+//        Fill_Constant_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
+//    }
+//    if(some_functionbased_inhomogeneous_boundaries)
+//    {
+//        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
+//    }
+//    PoissonPhi.FillBoundary(geom.periodicity());
+//
+//    // set Dirichlet BC by reading in the ghost cell values
+//    p_mlabec->setLevelBC(amrlev, &PoissonPhi);
+//    
+//    // (A*alpha_cc - B * div beta grad) phi = rhs
+//    p_mlabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
+//    p_mlabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
+//
+//    //Declare MLMG object
+//    pMLMG = std::make_unique<MLMG>(*p_mlabec);
+//    pMLMG->setVerbose(mlmg_verbosity);
+
+    //Nodal Poisson
+    std::unique_ptr<amrex::MLNodeLaplacian> p_mlnode;
+    p_mlnode = std::make_unique<amrex::MLNodeLaplacian>();
+    p_mlnode->define({geom}, {ba}, {dm}, info);
 
     //Force singular system to be solvable
-    p_mlabec->setEnforceSingularSolvable(false); 
+    p_mlnode->setEnforceSingularSolvable(false); 
 
-    p_mlabec->setMaxOrder(linop_maxorder);  
+    p_mlnode->setMaxOrder(linop_maxorder);  
 
-    p_mlabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
+    p_mlnode->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
 
     if(some_constant_inhomogeneous_boundaries)
     {
-        Fill_Constant_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
+        Fill_Constant_Inhomogeneous_Boundaries(rFerroX, Nodal_PoissonPhi);
     }
     if(some_functionbased_inhomogeneous_boundaries)
     {
-        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
+        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, Nodal_PoissonPhi, time);
     }
-    PoissonPhi.FillBoundary(geom.periodicity());
+    Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 
     // set Dirichlet BC by reading in the ghost cell values
-    p_mlabec->setLevelBC(amrlev, &PoissonPhi);
+    //p_mlnode->setLevelBC(amrlev, &Nodal_PoissonPhi);
     
-    // (A*alpha_cc - B * div beta grad) phi = rhs
-    p_mlabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
-    p_mlabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
+    // (div beta grad) phi = rhs
+    p_mlnode->setSigma(amrlev, beta_cc);
 
     //Declare MLMG object
-    pMLMG = std::make_unique<MLMG>(*p_mlabec);
+    pMLMG = std::make_unique<MLMG>(*p_mlnode);
     pMLMG->setVerbose(mlmg_verbosity);
+
 #endif
 
 
     // INITIALIZE P in FE and rho in SC regions
 
     //InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);//old
-    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);//mask based
+    InitializePandRho(P_old, Gamma, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);//mask based
     
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
@@ -267,26 +317,28 @@ void main_main (c_FerroX& rFerroX)
     while(err > tol){
    
 	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+	ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+        //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+        //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-#ifdef AMREX_USE_EB
-        p_mlebabec->setACoeffs(0, alpha_cc);
-#else
-        p_mlabec->setACoeffs(0, alpha_cc);
-#endif
+//#ifdef AMREX_USE_EB
+//        p_mlebabec->setACoeffs(0, alpha_cc);
+//#else
+//        p_mlabec->setACoeffs(0, alpha_cc);
+//#endif
         //Initial guess for phi
-        PoissonPhi.setVal(0.);
+        Nodal_PoissonPhi.setVal(0.);
 
         //Poisson Solve
-        pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-	PoissonPhi.FillBoundary(geom.periodicity());
+        pMLMG->solve({&Nodal_PoissonPhi}, {&Nodal_PoissonRHS}, 1.e-10, -1);
+	Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 	
         // Calculate rho from Phi in SC region
-        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+        //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+        //Nodal 
+        ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, MaterialMask);
         
 	if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
@@ -295,13 +347,13 @@ void main_main (c_FerroX& rFerroX)
 
             // Calculate Error
             if (iter > 0){
-                MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
-                MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
-                err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+                MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 0);
+                MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 0);
+                err = Nodal_PhiErr.norm1(0, geom.periodicity())/Nodal_PoissonPhi.norm1(0, geom.periodicity());
             }
 
             //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
-            MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
+            MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 0);
 
             iter = iter + 1;
             amrex::Print() << iter << " iterations :: err = " << err << std::endl;
@@ -311,8 +363,10 @@ void main_main (c_FerroX& rFerroX)
     amrex::Print() << "\n ========= Self-Consistent Initialization of P and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
 
     // Calculate E from Phi
-    ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+    ComputeEfromPhi(Nodal_PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
+    amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
+    amrex::average_node_to_cellcenter(PoissonRHS, 0, Nodal_PoissonRHS, 0, 1);
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
     {
@@ -383,27 +437,29 @@ void main_main (c_FerroX& rFerroX)
         while(err > tol){
    
             // Compute RHS of Poisson equation
-            ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+            ComputePoissonRHS(Nodal_PoissonRHS, P_new_pre, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-            dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+            //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-            ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+            //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-#ifdef AMREX_USE_EB
-            p_mlebabec->setACoeffs(0, alpha_cc);
-#else 
-            p_mlabec->setACoeffs(0, alpha_cc);
-#endif
+//#ifdef AMREX_USE_EB
+//            p_mlebabec->setACoeffs(0, alpha_cc);
+//#else 
+//            p_mlabec->setACoeffs(0, alpha_cc);
+//#endif
             //Initial guess for phi
-            PoissonPhi.setVal(0.);
+            Nodal_PoissonPhi.setVal(0.);
 
             //Poisson Solve
-            pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+            pMLMG->solve({&Nodal_PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
 	    
-	    PoissonPhi.FillBoundary(geom.periodicity());
+	    Nodal_PoissonPhi.FillBoundary(geom.periodicity());
             
 	    // Calculate rho from Phi in SC region
-            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+            //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+            //Nodal 
+            ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, MaterialMask);
 
             if (contains_SC == 0) {
                 // no semiconductor region; set error to zero so the while loop terminates
@@ -412,13 +468,13 @@ void main_main (c_FerroX& rFerroX)
                 
                 // Calculate Error
                 if (iter > 0){
-                    MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
-                    MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
-                    err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+                    MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 0);
+                    MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 0);
+                    err = Nodal_PhiErr.norm1(0, geom.periodicity())/Nodal_PoissonPhi.norm1(0, geom.periodicity());
                 }
 
                 //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
-                MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
+                MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 0);
 
                 iter = iter + 1;
                 amrex::Print() << iter << " iterations :: err = " << err << std::endl;
@@ -453,27 +509,29 @@ void main_main (c_FerroX& rFerroX)
             while(err > tol){
    
                 // Compute RHS of Poisson equation
-                ComputePoissonRHS(PoissonRHS, P_new, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+                ComputePoissonRHS(Nodal_PoissonRHS, P_new, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+                //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+                //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-#ifdef AMREX_USE_EB
-                p_mlebabec->setACoeffs(0, alpha_cc);
-#else 
-                p_mlabec->setACoeffs(0, alpha_cc);
-#endif
+//#ifdef AMREX_USE_EB
+//                p_mlebabec->setACoeffs(0, alpha_cc);
+//#else 
+//                p_mlabec->setACoeffs(0, alpha_cc);
+//#endif
  
                 //Initial guess for phi
-                PoissonPhi.setVal(0.);
+                Nodal_PoissonPhi.setVal(0.);
 
                 //Poisson Solve
-                pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-	        PoissonPhi.FillBoundary(geom.periodicity());
+                pMLMG->solve({&Nodal_PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+	        Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 	
                 // Calculate rho from Phi in SC region
-                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+                //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+                //Nodal 
+                ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, MaterialMask);
 
                 if (contains_SC == 0) {
                     // no semiconductor region; set error to zero so the while loop terminates
@@ -482,13 +540,13 @@ void main_main (c_FerroX& rFerroX)
                     
                     // Calculate Error
                     if (iter > 0){
-                        MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
-                        MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
-                        err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+                        MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 0);
+                        MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 0);
+                        err = Nodal_PhiErr.norm1(0, geom.periodicity())/Nodal_PoissonPhi.norm1(0, geom.periodicity());
                     }
 
                     //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
-                    MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
+                    MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 0);
 
                     iter = iter + 1;
                     amrex::Print() << iter << " iterations :: err = " << err << std::endl;
@@ -507,14 +565,14 @@ void main_main (c_FerroX& rFerroX)
         //MultiFab::Copy(Phidiff, PoissonPhi, 0, 0, 1, 0);
         //MultiFab::Subtract(Phidiff, PoissonPhi_Old, 0, 0, 1, 0);
 
-        Real phi_max = PoissonPhi_Old.norm0();
+        Real phi_max = Nodal_PoissonPhi_Old.norm0();
 
-        for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
+        for (MFIter mfi(Nodal_PoissonPhi); mfi.isValid(); ++mfi)
         {   
             const Box& bx = mfi.growntilebox(1);
 
-            const Array4<Real>& Phi = PoissonPhi.array(mfi);
-            const Array4<Real>& PhiOld = PoissonPhi_Old.array(mfi);
+            const Array4<Real>& Phi = Nodal_PoissonPhi.array(mfi);
+            const Array4<Real>& PhiOld = Nodal_PoissonPhi_Old.array(mfi);
             const Array4<Real>& Phi_err = Phidiff.array(mfi);
 
 
@@ -532,13 +590,13 @@ void main_main (c_FerroX& rFerroX)
         }
 
         //Copy PoissonPhi to PoissonPhi_Old to calculate difference at the next iteration
-        MultiFab::Copy(PoissonPhi_Old, PoissonPhi, 0, 0, 1, 0);
+        MultiFab::Copy(Nodal_PoissonPhi_Old, Nodal_PoissonPhi, 0, 0, 1, 0);
 
         amrex::Print() << "Steady state check : (phi(t) - phi(t-1)).norm0() = " << max_phi_err << std::endl;
 
 
 	// Calculate E from Phi
-	ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+	ComputeEfromPhi(Nodal_PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
 
 	Real step_stop_time = ParallelDescriptor::second() - step_strt_time;
@@ -551,6 +609,8 @@ void main_main (c_FerroX& rFerroX)
         time = time + dt;
 
 
+        amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
+        amrex::average_node_to_cellcenter(PoissonRHS, 0, Nodal_PoissonRHS, 0, 1);
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
         if (plot_int > 0 && (step%plot_int == 0 || step == steady_state_step))
         {
@@ -591,14 +651,14 @@ void main_main (c_FerroX& rFerroX)
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
 
             // Set Dirichlet BC for Phi in z
-            SetPhiBC_z(PoissonPhi, n_cell);
+            SetPhiBC_z(Nodal_PoissonPhi, n_cell);
 
            // set Dirichlet BC by reading in the ghost cell values
-#ifdef AMREX_USE_EB
-           p_mlebabec->setLevelBC(amrlev, &PoissonPhi);
-#else 
-           p_mlabec->setLevelBC(amrlev, &PoissonPhi);
-#endif
+//#ifdef AMREX_USE_EB
+//           p_mlebabec->setLevelBC(amrlev, &PoissonPhi);
+//#else 
+//           p_mlabec->setLevelBC(amrlev, &PoissonPhi);
+//#endif
 
            err = 1.0;
            iter = 0;
@@ -607,27 +667,29 @@ void main_main (c_FerroX& rFerroX)
            while(err > tol){
    
                // Compute RHS of Poisson equation
-               ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+               ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-               dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+               //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-               ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+               //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
-#ifdef AMREX_USE_EB
-               p_mlebabec->setACoeffs(0, alpha_cc);
-#else 
-               p_mlabec->setACoeffs(0, alpha_cc);
-#endif
+//#ifdef AMREX_USE_EB
+//               p_mlebabec->setACoeffs(0, alpha_cc);
+//#else 
+//               p_mlabec->setACoeffs(0, alpha_cc);
+//#endif
  
                //Initial guess for phi
-               PoissonPhi.setVal(0.);
+               Nodal_PoissonPhi.setVal(0.);
 
                //Poisson Solve
-               pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-	       PoissonPhi.FillBoundary(geom.periodicity());
+               pMLMG->solve({&Nodal_PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+	       Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 	
                // Calculate rho from Phi in SC region
-               ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+               //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+               //Nodal 
+               ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, MaterialMask);
 
                if (contains_SC == 0) {
                    // no semiconductor region; set error to zero so the while loop terminates
@@ -636,13 +698,13 @@ void main_main (c_FerroX& rFerroX)
                
                    // Calculate Error
                    if (iter > 0){
-                       MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
-                       MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
-                       err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+                       MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 0);
+                       MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 0);
+                       err = Nodal_PhiErr.norm1(0, geom.periodicity())/Nodal_PoissonPhi.norm1(0, geom.periodicity());
                    }
 
                    //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
-                   MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
+                   MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 0);
 
                    iter = iter + 1;
                    amrex::Print() << iter << " iterations :: err = " << err << std::endl;
