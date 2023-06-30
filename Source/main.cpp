@@ -120,6 +120,8 @@ void main_main (c_FerroX& rFerroX)
     MultiFab Nodal_PoissonPhi(nba, dm, 1, 1);
     MultiFab Nodal_PoissonPhi_Old(nba, dm, 1, 1);
     MultiFab Nodal_PoissonPhi_Prev(nba, dm, 1, 1);
+    MultiFab Nodal_PoissonPhi_BC(nba, dm, 1, 1);
+    MultiFab APoissonPhi_BC(nba, dm, 1, 1);
     MultiFab Nodal_PhiErr(nba, dm, 1, 1);
     MultiFab Nodal_Phidiff(nba, dm, 1, 1);
 
@@ -315,9 +317,13 @@ void main_main (c_FerroX& rFerroX)
     int iter = 0;
     
     while(err > tol){
-   
+
+        SetPhiBC_z(Nodal_PoissonPhi_BC, n_cell); 
+	p_mlnode->Fapply (0, 4, APoissonPhi_BC, Nodal_PoissonPhi_BC);
 	//Compute RHS of Poisson equation
 	ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+	MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
 
         //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
