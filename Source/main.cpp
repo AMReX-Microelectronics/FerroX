@@ -318,11 +318,25 @@ void main_main (c_FerroX& rFerroX)
     
     while(err > tol){
 
-        SetPhiBC_z(Nodal_PoissonPhi_BC, n_cell); 
-	p_mlnode->Fapply (0, 4, APoissonPhi_BC, Nodal_PoissonPhi_BC);
-	//Compute RHS of Poisson equation
+/*
+       We would like to solve A x = b with inhomogeneous bc's
+       Here, "A" is div sigma grad
+       This is equivalent to A_H x = b - A x_H, where
+       A   is the inhomogeneous operator
+       A_H is the homogeneous operator
+       x_H is a multifab filled with zeros, but boundary cells cells filled to respect bc's 
+*/
+
+        //Compute x_H	
+    	SetPhiBC_z(Nodal_PoissonPhi_BC, n_cell); 
+
+        //Compute A x_H	
+	p_mlnode->Fapply (0, 4, APoissonPhi_BC, Nodal_PoissonPhi_BC); //mglev = 4 is hard coded for now based on n_cell and number of boxes
+	
+	//Compute b
 	ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
+	//Compute b - A x_H
 	MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
 
         //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
