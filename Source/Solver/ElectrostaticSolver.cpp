@@ -32,9 +32,13 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
                  //Convert Euler angles from degrees to radians 
                  amrex::Real Pi = 3.14159265358979323846; 
-                 amrex::Real alpha_rad = 0.*Pi/180.;//Pi/180.*angle_alpha_arr(i,j,k);
-                 amrex::Real beta_rad =  45.*Pi/180.;//Pi/180.*angle_beta_arr(i,j,k);
-                 amrex::Real theta_rad = 0.*Pi/180.;//Pi/180.*angle_theta_arr(i,j,k);
+                 
+//                 amrex::Real alpha_rad = 0.*Pi/180.;//Pi/180.*angle_alpha_arr(i,j,k);
+//                 amrex::Real beta_rad =  45.*Pi/180.;//Pi/180.*angle_beta_arr(i,j,k);
+//                 amrex::Real theta_rad = 0.*Pi/180.;//Pi/180.*angle_theta_arr(i,j,k);
+		 amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
+                 amrex::Real beta_rad  = Pi/180.*angle_beta_arr(i,j,k);
+                 amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
 
                  amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
 
@@ -165,9 +169,12 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
                      //Convert Euler angles from degrees to radians
                      amrex::Real Pi = 3.14159265358979323846; 
-                     amrex::Real alpha_rad = 0.*Pi/180.;//Pi/180.*angle_alpha_arr(i,j,k);
-                     amrex::Real beta_rad =  45.*Pi/180.;//Pi/180.*angle_beta_arr(i,j,k);
-                     amrex::Real theta_rad = 0.*Pi/180.;//Pi/180.*angle_theta_arr(i,j,k);
+//                     amrex::Real alpha_rad = 0.*Pi/180.;//Pi/180.*angle_alpha_arr(i,j,k);
+//                     amrex::Real beta_rad =  45.*Pi/180.;//Pi/180.*angle_beta_arr(i,j,k);
+//                     amrex::Real theta_rad = 0.*Pi/180.;//Pi/180.*angle_theta_arr(i,j,k);
+                     amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
+                     amrex::Real beta_rad  = Pi/180.*angle_beta_arr(i,j,k);
+                     amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
 
                      amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
 
@@ -500,14 +507,7 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
     }
 }
 
-//We would like to solve A x = b with inhomogeneous bc's
-//Here, "A" is div sigma grad
-//This is equivalent to A_H x = b - A x_H, where
-//A   is the inhomogeneous operator
-//A_H is the homogeneous operator
-//x_H is a multifab filled with zeros, but ghost cells filled to respect bc's
-
-
+//A multifab filled with zeros, but boundary cells filled to respect bc's
 void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
 {
     PoissonPhi.setVal(0.);
@@ -526,5 +526,51 @@ void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>
           }
         });
     }
+}
+
+
+//A multifab filled with zeros, but boundary cells filled to respect bc's
+void SetPhiBC_z_after_solve(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
+{
+    for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real>& Phi = PoissonPhi.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+          if(k == 0) {
+            Phi(i,j,k) = Phi_Bc_lo;
+          } else if(k == n_cell[2]){
+            Phi(i,j,k) = Phi_Bc_hi;
+          }
+        });
+    }
+}
+
+//Avergae cell-centered multifab to nodes
+void average_cc_to_nodes(MultiFab& mf_nodal, const MultiFab& mf_cc, const Geometry& geom)
+{
+    for (MFIter mfi(mf_nodal); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real const>& mf_cc_arr = mf_cc.array(mfi);
+        const Array4<Real      >& mf_nodal_arr = mf_nodal.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+	       mf_nodal_arr(i,j,k) = 1./8.*(mf_cc_arr(i-1, j-1, k-1)
+			                  + mf_cc_arr(i,   j-1, k-1)
+			                  + mf_cc_arr(i-1, j,   k-1)
+			                  + mf_cc_arr(i,   j,   k-1)
+			                  + mf_cc_arr(i-1, j-1, k  )
+			                  + mf_cc_arr(i,   j-1, k  )
+			                  + mf_cc_arr(i-1, j,   k  )
+			                  + mf_cc_arr(i,   j,   k  ));
+        });
+    }
+    mf_nodal.FillBoundary(geom.periodicity());
 }
 

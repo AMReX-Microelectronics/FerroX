@@ -120,8 +120,8 @@ void main_main (c_FerroX& rFerroX)
     MultiFab Nodal_PoissonPhi(nba, dm, 1, 1);
     MultiFab Nodal_PoissonPhi_Old(nba, dm, 1, 1);
     MultiFab Nodal_PoissonPhi_Prev(nba, dm, 1, 1);
-    MultiFab Nodal_PoissonPhi_BC(nba, dm, 1, 1);
-    MultiFab APoissonPhi_BC(nba, dm, 1, 1);
+    MultiFab Nodal_PoissonPhi_BC(nba, dm, 1, 0);
+    MultiFab APoissonPhi_BC(nba, dm, 1, 0);
     MultiFab Nodal_PhiErr(nba, dm, 1, 1);
     MultiFab Nodal_Phidiff(nba, dm, 1, 1);
 
@@ -144,12 +144,22 @@ void main_main (c_FerroX& rFerroX)
     MultiFab angle_beta(ba, dm, 1, 0);
     MultiFab angle_theta(ba, dm, 1, 0);
 
+    //Nodal angles
+    MultiFab Nodal_angle_alpha(nba, dm, 1, 0);
+    MultiFab Nodal_angle_beta(nba, dm, 1, 0);
+    MultiFab Nodal_angle_theta(nba, dm, 1, 0);
+
     //Initialize material mask
     InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
     //InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
-       Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
+       //Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
+       //average_cc_to_nodes(Nodal_angle_alpha, angle_alpha, geom);
+       //average_cc_to_nodes(Nodal_angle_beta, angle_beta, geom);
+       //average_cc_to_nodes(Nodal_angle_theta, angle_theta, geom);
+
+       Initialize_nodal_Euler_angles(rFerroX, geom, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta);
     } else {
        tphaseMask.setVal(0.);
     }
@@ -324,17 +334,17 @@ void main_main (c_FerroX& rFerroX)
        This is equivalent to A_H x = b - A x_H, where
        A   is the inhomogeneous operator
        A_H is the homogeneous operator
-       x_H is a multifab filled with zeros, but boundary cells cells filled to respect bc's 
+       x_H is a multifab filled with zeros, but boundary cells filled to respect bc's 
 */
 
         //Compute x_H	
     	SetPhiBC_z(Nodal_PoissonPhi_BC, n_cell); 
 
         //Compute A x_H	
-	p_mlnode->Fapply (0, 4, APoissonPhi_BC, Nodal_PoissonPhi_BC); //mglev = 4 is hard coded for now based on n_cell and number of boxes
+	pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	
 	//Compute b
-	ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+	ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
 
 	//Compute b - A x_H
 	MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -353,6 +363,10 @@ void main_main (c_FerroX& rFerroX)
 
         //Poisson Solve
         pMLMG->solve({&Nodal_PoissonPhi}, {&Nodal_PoissonRHS}, 1.e-10, -1);
+        
+	//Fill inhomogenous Dirichlet BC in boundary nodes after the solve
+	SetPhiBC_z_after_solve(Nodal_PoissonPhi, n_cell); 
+
 	Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 	
         // Calculate rho from Phi in SC region
@@ -387,6 +401,7 @@ void main_main (c_FerroX& rFerroX)
 
     amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
     amrex::average_node_to_cellcenter(PoissonRHS, 0, Nodal_PoissonRHS, 0, 1);
+    amrex::average_node_to_cellcenter(angle_beta, 0, Nodal_angle_beta, 0, 1);
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
     {
@@ -456,8 +471,17 @@ void main_main (c_FerroX& rFerroX)
         // iterate to compute Phi^{n+1,*}
         while(err > tol){
    
-            // Compute RHS of Poisson equation
-            ComputePoissonRHS(Nodal_PoissonRHS, P_new_pre, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+            //Compute x_H	
+    	    SetPhiBC_z(Nodal_PoissonPhi_BC, n_cell); 
+
+            //Compute A x_H	
+	    pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
+	    
+	    //Compute b
+	    ComputePoissonRHS(Nodal_PoissonRHS, P_new_pre, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+	    //Compute b - A x_H
+	    MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
 
             //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
@@ -474,6 +498,9 @@ void main_main (c_FerroX& rFerroX)
             //Poisson Solve
             pMLMG->solve({&Nodal_PoissonPhi}, {&Nodal_PoissonRHS}, 1.e-10, -1);
 	    
+	    //Fill inhomogenous Dirichlet BC in boundary nodes after the solve
+	    SetPhiBC_z_after_solve(Nodal_PoissonPhi, n_cell); 
+
 	    Nodal_PoissonPhi.FillBoundary(geom.periodicity());
             
 	    // Calculate rho from Phi in SC region
@@ -528,8 +555,17 @@ void main_main (c_FerroX& rFerroX)
             // iterate to compute Phi^{n+1}
             while(err > tol){
    
-                // Compute RHS of Poisson equation
-                ComputePoissonRHS(Nodal_PoissonRHS, P_new, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+                //Compute x_H	
+    	        SetPhiBC_z(Nodal_PoissonPhi_BC, n_cell); 
+
+                //Compute A x_H	
+	        pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
+	        
+	        //Compute b
+	        ComputePoissonRHS(Nodal_PoissonRHS, P_new, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+	        //Compute b - A x_H
+	        MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
 
                 //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
@@ -546,6 +582,10 @@ void main_main (c_FerroX& rFerroX)
 
                 //Poisson Solve
                 pMLMG->solve({&Nodal_PoissonPhi}, {&Nodal_PoissonRHS}, 1.e-10, -1);
+	    
+	    	//Fill inhomogenous Dirichlet BC in boundary nodes after the solve
+	        SetPhiBC_z_after_solve(Nodal_PoissonPhi, n_cell); 
+
 	        Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 	
                 // Calculate rho from Phi in SC region
@@ -673,7 +713,7 @@ void main_main (c_FerroX& rFerroX)
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
 
             // Set Dirichlet BC for Phi in z
-            SetPhiBC_z(Nodal_PoissonPhi, n_cell);
+            //SetPhiBC_z(Nodal_PoissonPhi, n_cell);
 
            // set Dirichlet BC by reading in the ghost cell values
 //#ifdef AMREX_USE_EB
@@ -688,8 +728,17 @@ void main_main (c_FerroX& rFerroX)
            // iterate to compute Phi^{n+1} with new Dirichlet value
            while(err > tol){
    
-               // Compute RHS of Poisson equation
-               ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+                //Compute x_H	
+    	        SetPhiBC_z(Nodal_PoissonPhi_BC, n_cell); 
+
+                //Compute A x_H	
+	        pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
+	        
+	        //Compute b
+	        ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+	        //Compute b - A x_H
+	        MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
 
                //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
@@ -706,6 +755,10 @@ void main_main (c_FerroX& rFerroX)
 
                //Poisson Solve
                pMLMG->solve({&Nodal_PoissonPhi}, {&Nodal_PoissonRHS}, 1.e-10, -1);
+	    
+	       //Fill inhomogenous Dirichlet BC in boundary nodes after the solve
+	       SetPhiBC_z_after_solve(Nodal_PoissonPhi, n_cell); 
+
 	       Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 	
                // Calculate rho from Phi in SC region

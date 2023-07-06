@@ -59,6 +59,10 @@ void ComputeAx_H(MultiFab& x_H, MultiFab& Ax_H, const amrex::GpuArray<int, AMREX
 
 void SetPhiBC_z(MultiFab& PossonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell);
 
+void SetPhiBC_z_after_solve(MultiFab& PossonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell);
+
+void average_cc_to_nodes(MultiFab& mf_nodal, const MultiFab& mf_cc, const Geometry& geom);
+	
 void SetPoissonBC(c_FerroX& rFerroX, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, bool& all_homogeneous_boundaries, bool& some_functionbased_inhomogeneous_boundaries, bool& some_constant_inhomogeneous_boundaries);
 
 void Fill_Constant_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi);
