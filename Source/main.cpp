@@ -348,6 +348,8 @@ void main_main (c_FerroX& rFerroX)
 
     int steady_state_step = 1000000; //Initialize to a large number. It will be overwritten by the time step at which steady state condition is satidfied
 
+    int sign = 1; //change sign to -1*sign whenever abs(Phi_Bc_hi) == Phi_Bc_hi_max to do triangular wave sweep
+    
     for (int step = 1; step <= nsteps; ++step)
     {
         Real step_strt_time = ParallelDescriptor::second();
@@ -587,7 +589,7 @@ void main_main (c_FerroX& rFerroX)
 
 	   amrex::Print() << "Applied voltage updated at time " << time << ", step = " << step << "\n";
            
-            Phi_Bc_hi += Phi_Bc_inc;
+            Phi_Bc_hi += sign*Phi_Bc_inc;
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
 
             // Set Dirichlet BC for Phi in z
@@ -651,6 +653,7 @@ void main_main (c_FerroX& rFerroX)
        
         }//end inc_step	
    
+        if (voltage_sweep == 1 && step == steady_state_step && std::abs(Phi_Bc_hi) == Phi_Bc_hi_max) sign *= -1;
         if (voltage_sweep == 0 && step == steady_state_step) break;
         if (voltage_sweep == 1 && Phi_Bc_hi > Phi_Bc_hi_max) break;
 
