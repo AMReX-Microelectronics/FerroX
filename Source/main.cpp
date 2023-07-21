@@ -154,12 +154,8 @@ void main_main (c_FerroX& rFerroX)
     //InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
-       //Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
-       //average_cc_to_nodes(Nodal_angle_alpha, angle_alpha, geom);
-       //average_cc_to_nodes(Nodal_angle_beta, angle_beta, geom);
-       //average_cc_to_nodes(Nodal_angle_theta, angle_theta, geom);
-
-       Initialize_nodal_Euler_angles(rFerroX, geom, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta);
+       Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta); //cell-centered
+       Initialize_Euler_angles(rFerroX, geom, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta); //nodal
     } else {
        tphaseMask.setVal(0.);
     }
@@ -401,7 +397,10 @@ void main_main (c_FerroX& rFerroX)
 
     amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
     amrex::average_node_to_cellcenter(PoissonRHS, 0, Nodal_PoissonRHS, 0, 1);
-    amrex::average_node_to_cellcenter(angle_beta, 0, Nodal_angle_beta, 0, 1);
+    amrex::average_node_to_cellcenter(hole_den, 0, Nodal_hole_den, 0, 1);
+    amrex::average_node_to_cellcenter(e_den, 0, Nodal_e_den, 0, 1);
+    amrex::average_node_to_cellcenter(charge_den, 0, Nodal_charge_den, 0, 1);
+    //amrex::average_node_to_cellcenter(angle_beta, 0, Nodal_angle_beta, 0, 1);
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
     {
@@ -478,7 +477,7 @@ void main_main (c_FerroX& rFerroX)
 	    pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	    
 	    //Compute b
-	    ComputePoissonRHS(Nodal_PoissonRHS, P_new_pre, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+	    ComputePoissonRHS(Nodal_PoissonRHS, P_new_pre, Nodal_charge_den, MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
 
 	    //Compute b - A x_H
 	    MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -562,7 +561,7 @@ void main_main (c_FerroX& rFerroX)
 	        pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	        
 	        //Compute b
-	        ComputePoissonRHS(Nodal_PoissonRHS, P_new, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+	        ComputePoissonRHS(Nodal_PoissonRHS, P_new, Nodal_charge_den, MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
 
 	        //Compute b - A x_H
 	        MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -673,6 +672,9 @@ void main_main (c_FerroX& rFerroX)
 
         amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
         amrex::average_node_to_cellcenter(PoissonRHS, 0, Nodal_PoissonRHS, 0, 1);
+        amrex::average_node_to_cellcenter(hole_den, 0, Nodal_hole_den, 0, 1);
+        amrex::average_node_to_cellcenter(e_den, 0, Nodal_e_den, 0, 1);
+        amrex::average_node_to_cellcenter(charge_den, 0, Nodal_charge_den, 0, 1);
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
         if (plot_int > 0 && (step%plot_int == 0 || step == steady_state_step))
         {
@@ -735,7 +737,7 @@ void main_main (c_FerroX& rFerroX)
 	        pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	        
 	        //Compute b
-	        ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+	        ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
 
 	        //Compute b - A x_H
 	        MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);

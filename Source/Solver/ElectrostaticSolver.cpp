@@ -33,9 +33,9 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                  //Convert Euler angles from degrees to radians 
                  amrex::Real Pi = 3.14159265358979323846; 
                  
-//                 amrex::Real alpha_rad = 0.*Pi/180.;//Pi/180.*angle_alpha_arr(i,j,k);
-//                 amrex::Real beta_rad =  45.*Pi/180.;//Pi/180.*angle_beta_arr(i,j,k);
-//                 amrex::Real theta_rad = 0.*Pi/180.;//Pi/180.*angle_theta_arr(i,j,k);
+       //          amrex::Real alpha_rad = 0.*Pi/180.;//Pi/180.*angle_alpha_arr(i,j,k);
+       //          amrex::Real beta_rad =  45.*Pi/180.;//Pi/180.*angle_beta_arr(i,j,k);
+       //          amrex::Real theta_rad = 0.*Pi/180.;//Pi/180.*angle_theta_arr(i,j,k);
 		 amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
                  amrex::Real beta_rad  = Pi/180.*angle_beta_arr(i,j,k);
                  amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
