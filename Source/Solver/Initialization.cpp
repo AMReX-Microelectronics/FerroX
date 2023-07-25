@@ -59,8 +59,8 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
          rngs[i] = amrex::Random(); // uniform [0,1] option
     }
 
-    // loop over boxes
-    for (MFIter mfi(rho); mfi.isValid(); ++mfi)
+    // loop over cc boxes for P
+    for (MFIter mfi(P_old[0]); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.validbox();
 
@@ -116,6 +116,18 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
             pOld_p(i,j,k) = 0.0;
             pOld_q(i,j,k) = 0.0;
         });
+    }
+
+    for (int i = 0; i < 3; i++){
+      // fill periodic ghost cells
+      P_old[i].FillBoundary(geom.periodicity());
+    }
+
+    // loop over nodal boxes for rho
+    for (MFIter mfi(rho); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
         // Calculate charge density from Phi, Nc, Nv, Ec, and Ev
 
 	MultiFab acceptor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
@@ -127,6 +139,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
         const Array4<Real>& acceptor_den_arr = acceptor_den.array(mfi);
         const Array4<Real>& donor_den_arr = donor_den.array(mfi);
 
+        const Array4<Real const>& mask = MaterialMask.array(mfi);
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
@@ -170,10 +183,6 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
              }
         });
-    }
-    for (int i = 0; i < 3; i++){
-      // fill periodic ghost cells
-      P_old[i].FillBoundary(geom.periodicity());
     }
 
  }

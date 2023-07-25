@@ -32,8 +32,12 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
                  //Convert Euler angles from degrees to radians 
                  amrex::Real Pi = 3.14159265358979323846; 
-                 amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
-                 amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
+                 
+       //          amrex::Real alpha_rad = 0.*Pi/180.;//Pi/180.*angle_alpha_arr(i,j,k);
+       //          amrex::Real beta_rad =  45.*Pi/180.;//Pi/180.*angle_beta_arr(i,j,k);
+       //          amrex::Real theta_rad = 0.*Pi/180.;//Pi/180.*angle_theta_arr(i,j,k);
+		 amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
+                 amrex::Real beta_rad  = Pi/180.*angle_beta_arr(i,j,k);
                  amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
 
                  amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
@@ -63,16 +67,19 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                  if(mask(i,j,k) >= 2.0){ //SC region
 
                    RHS(i,j,k) = charge_den_arr(i,j,k);
+                   RHS(i,j,k) *= -1.;
 
                  } else if(mask(i,j,k) == 1.0){ //DE region
 
                    RHS(i,j,k) = 0.;
 
                  } else { //mask(i,j,k) == 0.0 FE region
-                   RHS(i,j,k) = - (R_11*DPDx(pOld_p, mask, i, j, k, dx) + R_12*DPDy(pOld_p, mask, i, j, k, dx) + R_13*DPDz(pOld_p, mask, i, j, k, dx))
-                                - (R_21*DPDx(pOld_q, mask, i, j, k, dx) + R_22*DPDy(pOld_q, mask, i, j, k, dx) + R_23*DPDz(pOld_q, mask, i, j, k, dx))
-                                - (R_31*DPDx(pOld_r, mask, i, j, k, dx) + R_32*DPDy(pOld_r, mask, i, j, k, dx) + R_33*DPDz(pOld_r, mask, i, j, k, dx));
+                   RHS(i,j,k) = - (R_11*NodalDPDx(pOld_p, mask, i, j, k, dx) + R_12*NodalDPDy(pOld_p, mask, i, j, k, dx) + R_13*NodalDPDz(pOld_p, mask, i, j, k, dx))
+                                - (R_21*NodalDPDx(pOld_q, mask, i, j, k, dx) + R_22*NodalDPDy(pOld_q, mask, i, j, k, dx) + R_23*NodalDPDz(pOld_q, mask, i, j, k, dx))
+                                - (R_31*NodalDPDx(pOld_r, mask, i, j, k, dx) + R_32*NodalDPDy(pOld_r, mask, i, j, k, dx) + R_33*NodalDPDz(pOld_r, mask, i, j, k, dx));
 
+                   RHS(i,j,k) *= -1.;
+//                   RHS(i,j,k) = -0.;
                  }
 
             });
@@ -138,7 +145,7 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 {
        // Calculate E from Phi
 
-        for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
+        for ( MFIter mfi(E[0]); mfi.isValid(); ++mfi )
         {
             const Box& bx = mfi.validbox();
 
@@ -162,8 +169,11 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
                      //Convert Euler angles from degrees to radians
                      amrex::Real Pi = 3.14159265358979323846; 
+//                     amrex::Real alpha_rad = 0.*Pi/180.;//Pi/180.*angle_alpha_arr(i,j,k);
+//                     amrex::Real beta_rad =  45.*Pi/180.;//Pi/180.*angle_beta_arr(i,j,k);
+//                     amrex::Real theta_rad = 0.*Pi/180.;//Pi/180.*angle_theta_arr(i,j,k);
                      amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
-                     amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
+                     amrex::Real beta_rad  = Pi/180.*angle_beta_arr(i,j,k);
                      amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
 
                      amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
@@ -497,22 +507,70 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
     }
 }
 
+//A multifab filled with zeros, but boundary cells filled to respect bc's
 void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
 {
+    PoissonPhi.setVal(0.);
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
     {
-        const Box& bx = mfi.growntilebox(1);
+        const Box& bx = mfi.validbox();
 
         const Array4<Real>& Phi = PoissonPhi.array(mfi);
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-          if(k < 0) {
+          if(k == 0) {
             Phi(i,j,k) = Phi_Bc_lo;
-          } else if(k >= n_cell[2]){
+          } else if(k == n_cell[2]){
             Phi(i,j,k) = Phi_Bc_hi;
           }
         });
     }
+}
+
+
+//A multifab filled with zeros, but boundary cells filled to respect bc's
+void SetPhiBC_z_after_solve(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
+{
+    for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real>& Phi = PoissonPhi.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+          if(k == 0) {
+            Phi(i,j,k) = Phi_Bc_lo;
+          } else if(k == n_cell[2]){
+            Phi(i,j,k) = Phi_Bc_hi;
+          }
+        });
+    }
+}
+
+//Avergae cell-centered multifab to nodes
+void average_cc_to_nodes(MultiFab& mf_nodal, const MultiFab& mf_cc, const Geometry& geom)
+{
+    for (MFIter mfi(mf_nodal); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real const>& mf_cc_arr = mf_cc.array(mfi);
+        const Array4<Real      >& mf_nodal_arr = mf_nodal.array(mfi);
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        {
+	       mf_nodal_arr(i,j,k) = 1./8.*(mf_cc_arr(i-1, j-1, k-1)
+			                  + mf_cc_arr(i,   j-1, k-1)
+			                  + mf_cc_arr(i-1, j,   k-1)
+			                  + mf_cc_arr(i,   j,   k-1)
+			                  + mf_cc_arr(i-1, j-1, k  )
+			                  + mf_cc_arr(i,   j-1, k  )
+			                  + mf_cc_arr(i-1, j,   k  )
+			                  + mf_cc_arr(i,   j,   k  ));
+        });
+    }
+    mf_nodal.FillBoundary(geom.periodicity());
 }
 
