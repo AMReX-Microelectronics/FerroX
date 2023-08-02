@@ -18,5 +18,7 @@ void ComputeRho_DriftDiffusion(MultiFab&      PoissonPhi,
                                MultiFab&      rho,
                                MultiFab&      e_den,
                                MultiFab&      p_den,
+                               MultiFab&      e_den_old,
+                               MultiFab&      p_den_old,
                                const Geometry& geom,
                                const MultiFab& MaterialMask);

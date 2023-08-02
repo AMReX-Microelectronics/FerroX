@@ -78,6 +78,8 @@ void ComputeRho_DriftDiffusion(MultiFab&      PoissonPhi,
                                MultiFab&      rho,
                                MultiFab&      e_den,
                                MultiFab&      p_den,
+                               MultiFab&      e_den_old,
+                               MultiFab&      p_den_old,
                                const Geometry& geom,
 		               const MultiFab& MaterialMask)
 {
@@ -194,6 +196,8 @@ void ComputeRho_DriftDiffusion(MultiFab&      PoissonPhi,
 
         const Array4<Real>& hole_den_arr = p_den.array(mfi);
         const Array4<Real>& e_den_arr = e_den.array(mfi);
+        const Array4<Real>& hole_den_old_arr = p_den.array(mfi);
+        const Array4<Real>& e_den_old_arr = e_den.array(mfi);
         const Array4<Real>& charge_den_arr = rho.array(mfi);
         const Array4<Real>& phi = PoissonPhi.array(mfi);
 	const Array4<Real>& acceptor_den_arr = acceptor_den.array(mfi);
@@ -218,8 +222,8 @@ void ComputeRho_DriftDiffusion(MultiFab&      PoissonPhi,
                 div_Jn_arr(i,j,k) = DFDx(Jnx_arr, i,j,k,dx) + DFDy(Jny_arr, i,j,k,dx) + DFDz(Jnz_arr, i,j,k,dx);
                 div_Jp_arr(i,j,k) = DFDx(Jpx_arr, i,j,k,dx) + DFDy(Jpy_arr, i,j,k,dx) + DFDz(Jpz_arr, i,j,k,dx);
 
-                e_den_arr(i,j,k) += dt*div_Jn_arr(i,j,k);
-                hole_den_arr(i,j,k) -= dt*div_Jp_arr(i,j,k);
+                e_den_arr(i,j,k) = e_den_old_arr(i,j,k) + dt*div_Jn_arr(i,j,k);
+                hole_den_arr(i,j,k) = hole_den_old_arr(i,j,k) - dt*div_Jp_arr(i,j,k);
 
 	        //If in channel, set acceptor doping, else (Source/Drain) set donor doping
                 if (mask(i,j,k) == 3.0) {
