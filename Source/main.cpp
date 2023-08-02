@@ -125,6 +125,15 @@ void main_main (c_FerroX& rFerroX)
     MultiFab angle_beta(ba, dm, 1, 0);
     MultiFab angle_theta(ba, dm, 1, 0);
 
+    //Drift-Diffusion
+    Array<MultiFab, AMREX_SPACEDIM> Jn;
+    Array<MultiFab, AMREX_SPACEDIM> Jp;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        Jn[dir].define(ba, dm, Ncomp, 0);
+        Jp[dir].define(ba, dm, Ncomp, 0);
+    }
+
     //Initialize material mask
     InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
     //InitializeMaterialMask(rFerroX, geom, MaterialMask);
@@ -403,7 +412,9 @@ void main_main (c_FerroX& rFerroX)
 	    PoissonPhi.FillBoundary(geom.periodicity());
             
 	    // Calculate rho from Phi in SC region
-            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+            //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+
+            ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, geom, MaterialMask);
 
             if (contains_SC == 0) {
                 // no semiconductor region; set error to zero so the while loop terminates
@@ -473,7 +484,8 @@ void main_main (c_FerroX& rFerroX)
 	        PoissonPhi.FillBoundary(geom.periodicity());
 	
                 // Calculate rho from Phi in SC region
-                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+                //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+                ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, geom, MaterialMask);
 
                 if (contains_SC == 0) {
                     // no semiconductor region; set error to zero so the while loop terminates
@@ -609,7 +621,8 @@ void main_main (c_FerroX& rFerroX)
 	       PoissonPhi.FillBoundary(geom.periodicity());
 	
                // Calculate rho from Phi in SC region
-               ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+               //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+               ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, geom, MaterialMask);
 
                if (contains_SC == 0) {
                    // no semiconductor region; set error to zero so the while loop terminates

@@ -207,6 +207,12 @@ AMREX_GPU_MANAGED amrex::Real FerroX::T;
 AMREX_GPU_MANAGED amrex::Real FerroX::acceptor_doping;
 AMREX_GPU_MANAGED amrex::Real FerroX::donor_doping;
 
+//Drift-Diffusion
+AMREX_GPU_MANAGED amrex::Real FerroX::electron_mobility;
+AMREX_GPU_MANAGED amrex::Real FerroX::hole_mobility;
+AMREX_GPU_MANAGED amrex::Real FerroX::electron_affinity;
+AMREX_GPU_MANAGED amrex::Real FerroX::bandgap;
+
 // P and Phi Bc
 AMREX_GPU_MANAGED amrex::Real FerroX::lambda;
 AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::P_BC_flag_lo;
@@ -439,6 +445,16 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.query("acceptor_doping",acceptor_doping);
      donor_doping = 0.0;
      pp.query("donor_doping",donor_doping);
+
+     //Drift-Diffusion
+     electron_mobility = 0.0;
+     pp.query("electron_mobility",electron_mobility);
+     hole_mobility = 0.0;
+     pp.query("hole_mobility",hole_mobility);
+     electron_affinity = 0.0;
+     pp.query("electron_affinity",electron_affinity);
+     bandgap = 0.0;
+     pp.query("bandgap",bandgap);
 
      Coordinate_Transformation = 0;
      pp.query("Coordinate_Transformation",Coordinate_Transformation);
