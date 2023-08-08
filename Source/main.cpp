@@ -118,12 +118,23 @@ void main_main (c_FerroX& rFerroX)
 
     MultiFab hole_den(ba, dm, 1, 0);
     MultiFab e_den(ba, dm, 1, 0);
+    MultiFab hole_den_old(ba, dm, 1, 0);
+    MultiFab e_den_old(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
     MultiFab MaterialMask(ba, dm, 1, 1);
     MultiFab tphaseMask(ba, dm, 1, 1);
     MultiFab angle_alpha(ba, dm, 1, 0);
     MultiFab angle_beta(ba, dm, 1, 0);
     MultiFab angle_theta(ba, dm, 1, 0);
+
+    //Drift-Diffusion
+    Array<MultiFab, AMREX_SPACEDIM> Jn;
+    Array<MultiFab, AMREX_SPACEDIM> Jp;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        Jn[dir].define(ba, dm, Ncomp, 0);
+        Jp[dir].define(ba, dm, Ncomp, 0);
+    }
 
     //Initialize material mask
     InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
@@ -151,9 +162,9 @@ void main_main (c_FerroX& rFerroX)
     amrex::Print() << "contains_SC = " << contains_SC << "\n";
 
 #ifdef AMREX_USE_EB
-    MultiFab Plt(ba, dm, 18, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
+    MultiFab Plt(ba, dm, 24, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
 #else    
-    MultiFab Plt(ba, dm, 18, 0);
+    MultiFab Plt(ba, dm, 24, 0);
 #endif
 
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
@@ -337,10 +348,16 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, angle_beta, 0, 15, 1, 0);
         MultiFab::Copy(Plt, angle_theta, 0, 16, 1, 0);
         MultiFab::Copy(Plt, Phidiff, 0, 17, 1, 0);
+        MultiFab::Copy(Plt, Jn[0], 0, 18, 1, 0);
+        MultiFab::Copy(Plt, Jn[1], 0, 19, 1, 0);
+        MultiFab::Copy(Plt, Jn[2], 0, 20, 1, 0);
+        MultiFab::Copy(Plt, Jp[0], 0, 21, 1, 0);
+        MultiFab::Copy(Plt, Jp[1], 0, 22, 1, 0);
+        MultiFab::Copy(Plt, Jp[2], 0, 23, 1, 0);
 #ifdef AMREX_USE_EB
-	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff"}, geom, time, step);
+	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff", "Jnx", "Jny", "Jnz", "Jpx", "Jpy", "Jpz"}, geom, time, step);
 #else
-	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff"}, geom, time, step);
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff", "Jnx", "Jny", "Jnz", "Jpx", "Jpy", "Jpz"}, geom, time, step);
 #endif
     }
 
@@ -378,6 +395,8 @@ void main_main (c_FerroX& rFerroX)
 
         err = 1.0;
         iter = 0;
+        MultiFab::Copy(e_den_old, e_den, 0, 0, 1, 0);
+        MultiFab::Copy(hole_den_old, hole_den, 0, 0, 1, 0);
 
         // iterate to compute Phi^{n+1,*}
         while(err > tol){
@@ -404,6 +423,8 @@ void main_main (c_FerroX& rFerroX)
             
 	    // Calculate rho from Phi in SC region
             ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+
+            //ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, geom, MaterialMask);
 
             if (contains_SC == 0) {
                 // no semiconductor region; set error to zero so the while loop terminates
@@ -448,6 +469,8 @@ void main_main (c_FerroX& rFerroX)
         
             err = 1.0;
             iter = 0;
+            MultiFab::Copy(e_den_old, e_den, 0, 0, 1, 0);
+            MultiFab::Copy(hole_den_old, hole_den, 0, 0, 1, 0);
 
             // iterate to compute Phi^{n+1}
             while(err > tol){
@@ -474,6 +497,7 @@ void main_main (c_FerroX& rFerroX)
 	
                 // Calculate rho from Phi in SC region
                 ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+                //ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, geom, MaterialMask);
 
                 if (contains_SC == 0) {
                     // no semiconductor region; set error to zero so the while loop terminates
@@ -556,10 +580,16 @@ void main_main (c_FerroX& rFerroX)
             MultiFab::Copy(Plt, angle_beta, 0, 15, 1, 0);
             MultiFab::Copy(Plt, angle_theta, 0, 16, 1, 0);
             MultiFab::Copy(Plt, Phidiff, 0, 17, 1, 0);
+            MultiFab::Copy(Plt, Jn[0], 0, 18, 1, 0);
+            MultiFab::Copy(Plt, Jn[1], 0, 19, 1, 0);
+            MultiFab::Copy(Plt, Jn[2], 0, 20, 1, 0);
+            MultiFab::Copy(Plt, Jp[0], 0, 21, 1, 0);
+            MultiFab::Copy(Plt, Jp[1], 0, 22, 1, 0);
+            MultiFab::Copy(Plt, Jp[2], 0, 23, 1, 0);
 #ifdef AMREX_USE_EB
-	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff"}, geom, time, step);
+	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff", "Jnx", "Jny", "Jnz", "Jpx", "Jpy", "Jpz"}, geom, time, step);
 #else
-	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff"}, geom, time, step);
+	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff", "Jnx", "Jny", "Jnz", "Jpx", "Jpy", "Jpz"}, geom, time, step);
 #endif
         }
 
@@ -584,6 +614,8 @@ void main_main (c_FerroX& rFerroX)
 
            err = 1.0;
            iter = 0;
+           MultiFab::Copy(e_den_old, e_den, 0, 0, 1, 0);
+           MultiFab::Copy(hole_den_old, hole_den, 0, 0, 1, 0);
 
            // iterate to compute Phi^{n+1} with new Dirichlet value
            while(err > tol){
@@ -610,6 +642,7 @@ void main_main (c_FerroX& rFerroX)
 	
                // Calculate rho from Phi in SC region
                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+               //ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, geom, MaterialMask);
 
                if (contains_SC == 0) {
                    // no semiconductor region; set error to zero so the while loop terminates

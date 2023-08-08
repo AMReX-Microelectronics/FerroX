@@ -45,6 +45,10 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED amrex::Real T;
     extern AMREX_GPU_MANAGED amrex::Real acceptor_doping;
     extern AMREX_GPU_MANAGED amrex::Real donor_doping;
+    extern AMREX_GPU_MANAGED amrex::Real electron_mobility;
+    extern AMREX_GPU_MANAGED amrex::Real hole_mobility;
+    extern AMREX_GPU_MANAGED amrex::Real electron_affinity;
+    extern AMREX_GPU_MANAGED amrex::Real bandgap;
 
     // P and Phi Bc
     extern AMREX_GPU_MANAGED amrex::Real lambda;

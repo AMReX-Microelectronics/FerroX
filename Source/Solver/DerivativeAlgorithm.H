@@ -39,6 +39,15 @@ using namespace FerroX;
     return (F(i,j+1,k) - F(i,j-1,k))/(2.*dx[1]);
  }
 
+ /**
+  * Perform first derivative dF/dz */
+ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+ static amrex::Real DFDz (
+    amrex::Array4<amrex::Real> const& F,
+    int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx) {
+    return (F(i,j,k+1) - F(i,j,k-1))/(2.*dx[2]);
+ }
+
 /**
   * Perform first derivative dP/dx */
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
