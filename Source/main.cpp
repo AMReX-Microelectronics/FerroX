@@ -137,13 +137,16 @@ void main_main (c_FerroX& rFerroX)
     }
 
     //Initialize material mask
-    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
-    //InitializeMaterialMask(rFerroX, geom, MaterialMask);
+    //InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
+    InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
        Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
     } else {
        tphaseMask.setVal(0.);
+       angle_alpha.setVal(0.);
+       angle_beta.setVal(0.);
+       angle_theta.setVal(0.);
     }
 
     //Solver for Poisson equation
@@ -479,7 +482,8 @@ void main_main (c_FerroX& rFerroX)
                 // Compute RHS of Poisson equation
                 ComputePoissonRHS(PoissonRHS, P_new, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+                //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+                dF_dPhi_DD(alpha_cc, PoissonRHS, PoissonPhi, P_new, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
                 ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -624,7 +628,8 @@ void main_main (c_FerroX& rFerroX)
                // Compute RHS of Poisson equation
                ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-               dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+               //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+               dF_dPhi_DD(alpha_cc, PoissonRHS, PoissonPhi, P_old, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
