@@ -407,8 +407,8 @@ void main_main (c_FerroX& rFerroX)
             // Compute RHS of Poisson equation
             ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-            dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
-            //dF_dPhi_DD(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+            //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+            dF_dPhi_DD(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
             ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -426,9 +426,9 @@ void main_main (c_FerroX& rFerroX)
 	    PoissonPhi.FillBoundary(geom.periodicity());
             
 	    // Calculate rho from Phi in SC region
-            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+            //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
 
-            //ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, geom, MaterialMask);
+            ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, geom, MaterialMask);
 
             if (contains_SC == 0) {
                 // no semiconductor region; set error to zero so the while loop terminates
@@ -482,8 +482,8 @@ void main_main (c_FerroX& rFerroX)
                 // Compute RHS of Poisson equation
                 ComputePoissonRHS(PoissonRHS, P_new, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
-                //dF_dPhi_DD(alpha_cc, PoissonRHS, PoissonPhi, P_new, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+                //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+                dF_dPhi_DD(alpha_cc, PoissonRHS, PoissonPhi, P_new, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
                 ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -501,8 +501,8 @@ void main_main (c_FerroX& rFerroX)
 	        PoissonPhi.FillBoundary(geom.periodicity());
 	
                 // Calculate rho from Phi in SC region
-                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
-                //ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, geom, MaterialMask);
+                //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+                ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, geom, MaterialMask);
 
                 if (contains_SC == 0) {
                     // no semiconductor region; set error to zero so the while loop terminates
@@ -628,8 +628,8 @@ void main_main (c_FerroX& rFerroX)
                // Compute RHS of Poisson equation
                ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-               dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
-               //dF_dPhi_DD(alpha_cc, PoissonRHS, PoissonPhi, P_old, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+               //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+               dF_dPhi_DD(alpha_cc, PoissonRHS, PoissonPhi, P_old, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -647,8 +647,8 @@ void main_main (c_FerroX& rFerroX)
 	       PoissonPhi.FillBoundary(geom.periodicity());
 	
                // Calculate rho from Phi in SC region
-               ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
-               //ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, geom, MaterialMask);
+               //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+               ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, geom, MaterialMask);
 
                if (contains_SC == 0) {
                    // no semiconductor region; set error to zero so the while loop terminates
