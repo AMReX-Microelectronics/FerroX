@@ -102,13 +102,49 @@ void dF_dPhi(MultiFab&            alpha_cc,
         PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
 
         // Calculate rho from Phi in SC region
-        ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
+        ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, MaterialMask);
 
         //Compute RHS of Poisson equation
         ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
         MultiFab::LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 0);
 }
+
+void dF_dPhi_DD(MultiFab&            alpha_cc,
+             MultiFab&            PoissonRHS, 
+             MultiFab&            PoissonPhi, 
+	     Array<MultiFab, AMREX_SPACEDIM>& P_old,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jn,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jp,
+             MultiFab&            rho,
+             MultiFab&            e_den,
+             MultiFab&            p_den,
+             MultiFab&            e_den_old,
+             MultiFab&            p_den_old,
+	     MultiFab&            MaterialMask,
+             MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
+             const          Geometry& geom,
+	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+
+{
+   
+        MultiFab PoissonPhi_plus_delta(PoissonPhi.boxArray(), PoissonPhi.DistributionMap(), 1, 0); 
+        MultiFab PoissonRHS_phi_plus_delta(PoissonRHS.boxArray(), PoissonRHS.DistributionMap(), 1, 0); 
+ 
+        MultiFab::Copy(PoissonPhi_plus_delta, PoissonPhi, 0, 0, 1, 0); 
+        PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
+
+        // Calculate rho from Phi in SC region
+        //ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, MaterialMask);
+        ComputeRho_DriftDiffusion(PoissonPhi_plus_delta, Jn, Jp, rho, e_den, p_den, e_den_old, p_den_old, geom, MaterialMask);
+
+        //Compute RHS of Poisson equation
+        ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+        MultiFab::LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 0);
+}
+
 void ComputePoissonRHS_Newton(MultiFab& PoissonRHS, 
                               MultiFab& PoissonPhi, 
                               MultiFab& alpha_cc)
