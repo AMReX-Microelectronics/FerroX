@@ -133,6 +133,9 @@ void main_main (c_FerroX& rFerroX)
        Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
     } else {
        tphaseMask.setVal(0.);
+       angle_alpha.setVal(0.);
+       angle_beta.setVal(0.);
+       angle_theta.setVal(0.);
     }
 
     //Solver for Poisson equation
