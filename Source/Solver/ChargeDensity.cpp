@@ -30,36 +30,39 @@ void ComputeRho(MultiFab&      PoissonPhi,
 
              if (mask(i,j,k) >= 2.0) {
 
-                    //Maxwell-Boltzmann
-//                hole_den_arr(i,j,k) = Nv*exp(-(q*phi(i,j,k) - Ev*1.602e-19)/(kb*T));
-//                e_den_arr(i,j,k) = Nc*exp(-(Ec*1.602e-19 - q*phi(i,j,k))/(kb*T));
-//                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+                if(use_Fermi_Dirac == 1){
+                  //Fermi-Dirac
+                  Real eta_n = q*(phi(i,j,k) - Ec)/(kb*T);
+                  Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2)));
+                  Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
+                  Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
 
-                    //Fermi-Dirac
-                    Real eta_n = q*(phi(i,j,k) - Ec)/(kb*T);
-                    Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2)));
-                    Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
-                    Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
+                  e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
 
-                    e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
+                  Real eta_p = q*(Ev - phi(i,j,k))/(kb*T);
+                  Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2)));
+                  Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
+                  Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
 
-                    Real eta_p = q*(Ev - phi(i,j,k))/(kb*T);
-                    Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2)));
-                    Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
-                    Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
+                  hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
+                } else {
+                  //Maxwell-Boltzmann
+                  Real n_0 = intrinsic_carrier_concentration;
+                  Real p_0 = intrinsic_carrier_concentration;
+                  hole_den_arr(i,j,k) = n_0*exp(-(q*phi(i,j,k))/(kb*T));
+                  e_den_arr(i,j,k) =    p_0*exp(q*phi(i,j,k)/(kb*T));
+                }
 
-                    hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
+		//If in channel, set acceptor doping, else (Source/Drain) set donor doping
+                if (mask(i,j,k) == 3.0) {
+                   acceptor_den_arr(i,j,k) = acceptor_doping;
+                   donor_den_arr(i,j,k) = 0.0;
+                } else { // Source / Drain
+                   acceptor_den_arr(i,j,k) = 0.0;
+                   donor_den_arr(i,j,k) = donor_doping;
+                }
 
-		    //If in channel, set acceptor doping, else (Source/Drain) set donor doping
-                    if (mask(i,j,k) == 3.0) {
-                       acceptor_den_arr(i,j,k) = acceptor_doping;
-                       donor_den_arr(i,j,k) = 0.0;
-                    } else { // Source / Drain
-                       acceptor_den_arr(i,j,k) = 0.0;
-                       donor_den_arr(i,j,k) = donor_doping;
-                    }
-
-		    charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
+		charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
 
              } else {
 

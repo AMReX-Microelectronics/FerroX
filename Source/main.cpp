@@ -133,6 +133,9 @@ void main_main (c_FerroX& rFerroX)
        Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
     } else {
        tphaseMask.setVal(0.);
+       angle_alpha.setVal(0.);
+       angle_beta.setVal(0.);
+       angle_theta.setVal(0.);
     }
 
     //Solver for Poisson equation
@@ -348,6 +351,8 @@ void main_main (c_FerroX& rFerroX)
 
     int steady_state_step = 1000000; //Initialize to a large number. It will be overwritten by the time step at which steady state condition is satidfied
 
+    int sign = 1; //change sign to -1*sign whenever abs(Phi_Bc_hi) == Phi_Bc_hi_max to do triangular wave sweep
+    
     for (int step = 1; step <= nsteps; ++step)
     {
         Real step_strt_time = ParallelDescriptor::second();
@@ -504,11 +509,29 @@ void main_main (c_FerroX& rFerroX)
     	}
 
         // Check if steady state has reached 
-        MultiFab::Copy(Phidiff, PoissonPhi, 0, 0, 1, 0);
-        MultiFab::Subtract(Phidiff, PoissonPhi_Old, 0, 0, 1, 0);
-        Real phi_err = Phidiff.norm0();
+        //MultiFab::Copy(Phidiff, PoissonPhi, 0, 0, 1, 0);
+        //MultiFab::Subtract(Phidiff, PoissonPhi_Old, 0, 0, 1, 0);
 
-        if (phi_err < phi_tolerance) {
+        Real phi_max = PoissonPhi_Old.norm0();
+
+        for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
+        {   
+            const Box& bx = mfi.growntilebox(1);
+
+            const Array4<Real>& Phi = PoissonPhi.array(mfi);
+            const Array4<Real>& PhiOld = PoissonPhi_Old.array(mfi);
+            const Array4<Real>& Phi_err = Phidiff.array(mfi);
+
+
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
+            {   
+                Phi_err(i,j,k) = amrex::Math::abs(Phi(i,j,k) - PhiOld(i,j,k)) / phi_max;
+            }); 
+        }   
+ 
+        Real max_phi_err = Phidiff.norm0();
+
+        if (max_phi_err < phi_tolerance) {
                 steady_state_step = step;
                 inc_step = step;
         }
@@ -516,7 +539,7 @@ void main_main (c_FerroX& rFerroX)
         //Copy PoissonPhi to PoissonPhi_Old to calculate difference at the next iteration
         MultiFab::Copy(PoissonPhi_Old, PoissonPhi, 0, 0, 1, 0);
 
-        amrex::Print() << "Steady state check : (phi(t) - phi(t-1)).norm0() = " << phi_err << std::endl;
+        amrex::Print() << "Steady state check : (phi(t) - phi(t-1)).norm0() = " << max_phi_err << std::endl;
 
 
 	// Calculate E from Phi
@@ -569,7 +592,7 @@ void main_main (c_FerroX& rFerroX)
 
 	   amrex::Print() << "Applied voltage updated at time " << time << ", step = " << step << "\n";
            
-            Phi_Bc_hi += Phi_Bc_inc;
+            Phi_Bc_hi += sign*Phi_Bc_inc;
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
 
             // Set Dirichlet BC for Phi in z
@@ -633,6 +656,7 @@ void main_main (c_FerroX& rFerroX)
        
         }//end inc_step	
    
+        if (voltage_sweep == 1 && step == steady_state_step && std::abs(Phi_Bc_hi) == Phi_Bc_hi_max) sign *= -1;
         if (voltage_sweep == 0 && step == steady_state_step) break;
         if (voltage_sweep == 1 && Phi_Bc_hi > Phi_Bc_hi_max) break;
 
