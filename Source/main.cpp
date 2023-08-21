@@ -125,17 +125,30 @@ void main_main (c_FerroX& rFerroX)
     MultiFab angle_beta(ba, dm, 1, 0);
     MultiFab angle_theta(ba, dm, 1, 0);
 
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        P_old[dir].setVal(0.);
+        P_new[dir].setVal(0.);
+        P_new_pre[dir].setVal(0.);
+        GL_rhs[dir].setVal(0.);
+        GL_rhs_pre[dir].setVal(0.);
+        GL_rhs_avg[dir].setVal(0.);
+        E[dir].setVal(0.);
+    }
+
+    PoissonPhi.setVal(0.);
+    PoissonRHS.setVal(0.);
+    tphaseMask.setVal(0.);
+    angle_alpha.setVal(0.);
+    angle_beta.setVal(0.);
+    angle_theta.setVal(0.);
+
     //Initialize material mask
     InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
     //InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
        Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
-    } else {
-       tphaseMask.setVal(0.);
-       angle_alpha.setVal(0.);
-       angle_beta.setVal(0.);
-       angle_theta.setVal(0.);
     }
 
     //Solver for Poisson equation
@@ -531,9 +544,11 @@ void main_main (c_FerroX& rFerroX)
  
         Real max_phi_err = Phidiff.norm0();
 
-        if (max_phi_err < phi_tolerance) {
-                steady_state_step = step;
-                inc_step = step;
+        if(step > 1){
+          if (max_phi_err < phi_tolerance) {
+                  steady_state_step = step;
+                  inc_step = step;
+          }
         }
 
         //Copy PoissonPhi to PoissonPhi_Old to calculate difference at the next iteration
