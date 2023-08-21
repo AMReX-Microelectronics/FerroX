@@ -188,7 +188,7 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
     // loop over boxes
     for (MFIter mfi(MaterialMask); mfi.isValid(); ++mfi)
     {
-        const Box& bx = mfi.growntilebox(1);
+        const Box& bx = mfi.growntilebox(MaterialMask.nGrow());
         // extract dx from the geometry object
         GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
