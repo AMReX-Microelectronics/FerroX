@@ -680,10 +680,14 @@ void main_main (c_FerroX& rFerroX)
            amrex::Print() << "voltage_sweep == 0 && step == steady_state_step!" << "\n";   
            break;
         }
-        if (voltage_sweep == 1 && Phi_Bc_hi > Phi_Bc_hi_max) {
-           amrex::Print() << "voltage_sweep == 1 && Phi_Bc_hi > Phi_Bc_hi_max!" << "\n";
+        if (voltage_sweep == 1 && Phi_Bc_hi > 0. && Phi_Bc_hi - Phi_Bc_hi_max > tiny) {
+           amrex::Print() << "voltage_sweep == 1 && Phi_Bc_hi > 0. && Phi_Bc_hi - Phi_Bc_hi_max > tiny!" << "\n";
            break;
-        }
+        }        
+        if (voltage_sweep == 1 && Phi_Bc_hi < 0. && -Phi_Bc_hi - Phi_Bc_hi_max > tiny) {
+           amrex::Print() << "voltage_sweep == 1 && Phi_Bc_hi < 0. && -Phi_Bc_hi - Phi_Bc_hi_max > tiny!" << "\n";
+           break;
+        }   
         if (voltage_sweep == 1 && num_Vapp == num_Vapp_max) {
            amrex::Print() << "voltage_sweep == 1 && num_Vapp == num_Vapp_max!"  << "\n";
            break;
