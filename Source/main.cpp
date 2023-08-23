@@ -365,7 +365,9 @@ void main_main (c_FerroX& rFerroX)
     int steady_state_step = 1000000; //Initialize to a large number. It will be overwritten by the time step at which steady state condition is satidfied
 
     int sign = 1; //change sign to -1*sign whenever abs(Phi_Bc_hi) == Phi_Bc_hi_max to do triangular wave sweep
-    
+    int num_Vapp = 0;
+    Real tiny = 1.e-6;    
+ 
     for (int step = 1; step <= nsteps; ++step)
     {
         Real step_strt_time = ParallelDescriptor::second();
@@ -605,10 +607,13 @@ void main_main (c_FerroX& rFerroX)
         {
            //Update time-dependent Boundary Condition of Poisson's equation
 
-	   amrex::Print() << "Applied voltage updated at time " << time << ", step = " << step << "\n";
-           
             Phi_Bc_hi += sign*Phi_Bc_inc;
-            amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << std::endl;
+            num_Vapp += 1;
+            if(std::abs(std::abs(Phi_Bc_hi) - Phi_Bc_hi_max) <= tiny) {
+              sign *= -1;
+              amrex::Print() << "Direction of voltage sweep is reversed. Phi_Bc_hi = " << Phi_Bc_hi << ", and Phi_Bc_hi_max = " << Phi_Bc_hi_max << std::endl;
+            }
+            amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << ", num_Vapp = " << num_Vapp << ", sign = " << sign << std::endl;
 
             // Set Dirichlet BC for Phi in z
             SetPhiBC_z(PoissonPhi, n_cell);
@@ -671,9 +676,22 @@ void main_main (c_FerroX& rFerroX)
        
         }//end inc_step	
    
-        if (voltage_sweep == 1 && step == steady_state_step && std::abs(Phi_Bc_hi) == Phi_Bc_hi_max) sign *= -1;
-        if (voltage_sweep == 0 && step == steady_state_step) break;
-        if (voltage_sweep == 1 && Phi_Bc_hi > Phi_Bc_hi_max) break;
+        if (voltage_sweep == 0 && step == steady_state_step) {
+           amrex::Print() << "voltage_sweep == 0 && step == steady_state_step!" << "\n";   
+           break;
+        }
+        if (voltage_sweep == 1 && Phi_Bc_hi > 0. && Phi_Bc_hi - Phi_Bc_hi_max > tiny) {
+           amrex::Print() << "voltage_sweep == 1 && Phi_Bc_hi > 0. && Phi_Bc_hi - Phi_Bc_hi_max > tiny!" << "\n";
+           break;
+        }        
+        if (voltage_sweep == 1 && Phi_Bc_hi < 0. && -Phi_Bc_hi - Phi_Bc_hi_max > tiny) {
+           amrex::Print() << "voltage_sweep == 1 && Phi_Bc_hi < 0. && -Phi_Bc_hi - Phi_Bc_hi_max > tiny!" << "\n";
+           break;
+        }   
+        if (voltage_sweep == 1 && num_Vapp == num_Vapp_max) {
+           amrex::Print() << "voltage_sweep == 1 && num_Vapp == num_Vapp_max!"  << "\n";
+           break;
+        }
 
     } // end step
 
