@@ -145,11 +145,40 @@ void main_main (c_FerroX& rFerroX)
     MultiFab angle_theta(ba, dm, 1, 0);
 
     //Nodal angles
+    MultiFab Nodal_MaterialMask(ba, dm, 1, 1);
     MultiFab Nodal_angle_alpha(nba, dm, 1, 0);
     MultiFab Nodal_angle_beta(nba, dm, 1, 0);
     MultiFab Nodal_angle_theta(nba, dm, 1, 0);
 
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        P_old[dir].setVal(0.);
+        P_new[dir].setVal(0.);
+        P_new_pre[dir].setVal(0.);
+        GL_rhs[dir].setVal(0.);
+        GL_rhs_pre[dir].setVal(0.);
+        GL_rhs_avg[dir].setVal(0.);
+        E[dir].setVal(0.);
+    }
+
+    PoissonPhi.setVal(0.);
+    PoissonRHS.setVal(0.);
+    tphaseMask.setVal(0.);
+    angle_alpha.setVal(0.);
+    angle_beta.setVal(0.);
+    angle_theta.setVal(0.);
+
+    Nodal_PoissonPhi.setVal(0.);
+    Nodal_PoissonRHS.setVal(0.);
+    Nodal_angle_alpha.setVal(0.);
+    Nodal_angle_beta.setVal(0.);
+    Nodal_angle_theta.setVal(0.);
+    Nodal_hole_den.setVal(0.);
+    Nodal_e_den.setVal(0.);
+    Nodal_charge_den.setVal(0.);
+
     //Initialize material mask
+    InitializeMaterialMask_Nodal(Nodal_MaterialMask, geom, prob_lo, prob_hi);
     InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
     //InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
@@ -315,8 +344,8 @@ void main_main (c_FerroX& rFerroX)
     // INITIALIZE P in FE and rho in SC regions
 
     //InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);//old
-    InitializePandRho(P_old, Gamma, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);//mask based
-    
+    InitializePandRho(P_old, Gamma, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, Nodal_MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);//mask based
+   
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
     Real err = 1.0;
@@ -340,7 +369,7 @@ void main_main (c_FerroX& rFerroX)
 	pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	
 	//Compute b
-	ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
+	ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, Nodal_MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
 
 	//Compute b - A x_H
 	MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -368,7 +397,7 @@ void main_main (c_FerroX& rFerroX)
         // Calculate rho from Phi in SC region
         //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
         //Nodal 
-        ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, MaterialMask);
+        ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, Nodal_MaterialMask);
         
 	if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
@@ -391,7 +420,7 @@ void main_main (c_FerroX& rFerroX)
     }
     
     amrex::Print() << "\n ========= Self-Consistent Initialization of P and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
-
+    
     // Calculate E from Phi
     ComputeEfromPhi(Nodal_PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
@@ -477,7 +506,7 @@ void main_main (c_FerroX& rFerroX)
 	    pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	    
 	    //Compute b
-	    ComputePoissonRHS(Nodal_PoissonRHS, P_new_pre, Nodal_charge_den, MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
+	    ComputePoissonRHS(Nodal_PoissonRHS, P_new_pre, Nodal_charge_den, Nodal_MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
 
 	    //Compute b - A x_H
 	    MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -505,7 +534,7 @@ void main_main (c_FerroX& rFerroX)
 	    // Calculate rho from Phi in SC region
             //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
             //Nodal 
-            ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, MaterialMask);
+            ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, Nodal_MaterialMask);
 
             if (contains_SC == 0) {
                 // no semiconductor region; set error to zero so the while loop terminates
@@ -561,7 +590,7 @@ void main_main (c_FerroX& rFerroX)
 	        pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	        
 	        //Compute b
-	        ComputePoissonRHS(Nodal_PoissonRHS, P_new, Nodal_charge_den, MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
+	        ComputePoissonRHS(Nodal_PoissonRHS, P_new, Nodal_charge_den, Nodal_MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
 
 	        //Compute b - A x_H
 	        MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -590,7 +619,7 @@ void main_main (c_FerroX& rFerroX)
                 // Calculate rho from Phi in SC region
                 //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
                 //Nodal 
-                ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, MaterialMask);
+                ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, Nodal_MaterialMask);
 
                 if (contains_SC == 0) {
                     // no semiconductor region; set error to zero so the while loop terminates
@@ -737,7 +766,7 @@ void main_main (c_FerroX& rFerroX)
 	        pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	        
 	        //Compute b
-	        ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
+	        ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, Nodal_MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
 
 	        //Compute b - A x_H
 	        MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -766,7 +795,7 @@ void main_main (c_FerroX& rFerroX)
                // Calculate rho from Phi in SC region
                //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
                //Nodal 
-               ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, MaterialMask);
+               ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, Nodal_MaterialMask);
 
                if (contains_SC == 0) {
                    // no semiconductor region; set error to zero so the while loop terminates

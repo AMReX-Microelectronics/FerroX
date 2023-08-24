@@ -147,45 +147,96 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
              //SC region
              if (mask(i,j,k) >= 2.0) {
 
-                  Real Phi = 0.5*(Ec + Ev); //eV
-//                hole_den_arr(i,j,k) = Nv*exp(-(Phi - Ev)*1.602e-19/(kb*T));
-//                e_den_arr(i,j,k) = Nc*exp(-(Ec - Phi)*1.602e-19/(kb*T));
-//                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k));
+                if(use_Fermi_Dirac == 1){
+                  
+                   //Approximate FD integral
+                   Real Phi = 0.5*(Ec + Ev); //eV
+                   Real eta_n = q*(Phi - Ec)/(kb*T);
+                   Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2.0)));
+                   Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
+                   Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
 
-                  //Approximate FD integral
-                  Real eta_n = q*(Phi - Ec)/(kb*T);
-                  Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2.0)));
-                  Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
-                  Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
+                   e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
 
-                  e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
+                   Real eta_p = q*(Ev - Phi)/(kb*T);
+                   Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2.0)));
+                   Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
+                   Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
 
-                  Real eta_p = q*(Ev - Phi)/(kb*T);
-                  Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2.0)));
-                  Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
-                  Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
+                   hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
+           
+                } else {
 
-                  hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
+      	           acceptor_den_arr(i,j,k) = acceptor_doping; 
+                   donor_den_arr(i,j,k) = 0.0;
+                   hole_den_arr(i,j,k) = acceptor_doping;
+                   e_den_arr(i,j,k) = intrinsic_carrier_concentration*intrinsic_carrier_concentration/acceptor_doping;
 
-		  //If in channel, set acceptor doping, else (Source/Drain) set donor doping
-                  if (mask(i,j,k) == 3.0) {
-		     acceptor_den_arr(i,j,k) = acceptor_doping; 
-	             donor_den_arr(i,j,k) = 0.0;
-		  } else { // Source / Drain
-		     acceptor_den_arr(i,j,k) = 0.0; 
-	             donor_den_arr(i,j,k) = donor_doping;
-		  }
-                  charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
-
+                }
+	     	   charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
              } else {
+	           charge_den_arr(i,j,k) = 0.;
+	     }
 
-                charge_den_arr(i,j,k) = 0.0;
+//      	      //If in channel, set acceptor doping, else (Source/Drain) set donor doping
+//              if (mask(i,j,k) == 3.0) {
+//      	           acceptor_den_arr(i,j,k) = acceptor_doping; 
+//                   donor_den_arr(i,j,k) = 0.0;
+//              } else { // Source / Drain
+//		   acceptor_den_arr(i,j,k) = 0.0; 
+//	           donor_den_arr(i,j,k) = donor_doping;
+//	      }
 
-             }
         });
     }
+    rho.FillBoundary(geom.periodicity());
+    e_den.FillBoundary(geom.periodicity());
+    p_den.FillBoundary(geom.periodicity());
 
  }
+
+// create a mask filled with integers to idetify different material types
+void InitializeMaterialMask_Nodal(MultiFab& MaterialMask, 
+		            const Geometry& geom, 
+			    const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+{
+    // loop over boxes
+    for (MFIter mfi(MaterialMask); mfi.isValid(); ++mfi)
+    {
+        //const Box& bx = mfi.validbox();
+	const Box& bx = mfi.growntilebox(MaterialMask.nGrow());
+
+        // extract dx from the geometry object
+        GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+
+        const Array4<Real>& mask = MaterialMask.array(mfi);
+
+
+        amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+             Real x = prob_lo[0] + i* dx[0];
+             Real y = prob_lo[1] + j* dx[1];
+             Real z = prob_lo[2] + k* dx[2];
+
+             //FE:0, DE:1, Source/Drain:2, Channel:3
+             if (x <= FE_hi[0] && x >= FE_lo[0] && y <= FE_hi[1] && y >= FE_lo[1] && z <= FE_hi[2] && z >= FE_lo[2]) {
+                 mask(i,j,k) = 0.;
+             } else if (x <= DE_hi[0] && x >= DE_lo[0] && y <= DE_hi[1] && y >= DE_lo[1] && z <= DE_hi[2] && z >= DE_lo[2]) {
+                 mask(i,j,k) = 1.;
+             } else if (x <= SC_hi[0] && x >= SC_lo[0] && y <= SC_hi[1] && y >= SC_lo[1] && z <= SC_hi[2] && z >= SC_lo[2]) {
+                 mask(i,j,k) = 2.;
+                if (x <= Channel_hi[0] && x >= Channel_lo[0] && y <= Channel_hi[1] && y >= Channel_lo[1] && z <= Channel_hi[2] && z >= Channel_lo[2]){
+                    mask(i,j,k) = 3.;
+                }
+             } else {
+	         mask(i,j,k) = 1.; //spacer is DE
+	     }
+        });
+    }
+    MaterialMask.FillBoundary(geom.periodicity());
+}
+
 
 // create a mask filled with integers to idetify different material types
 void InitializeMaterialMask(MultiFab& MaterialMask, 
@@ -196,7 +247,8 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
     // loop over boxes
     for (MFIter mfi(MaterialMask); mfi.isValid(); ++mfi)
     {
-        const Box& bx = mfi.validbox();
+        //const Box& bx = mfi.validbox();
+	const Box& bx = mfi.growntilebox(MaterialMask.nGrow());
 
         // extract dx from the geometry object
         GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();

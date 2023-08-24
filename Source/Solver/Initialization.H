@@ -24,6 +24,11 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
                             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
+void InitializeMaterialMask_Nodal(MultiFab& MaterialMask,
+                            const Geometry& geom,
+                            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
+	
 void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& MaterialMask);
 void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& tphaseMask);
 void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta);
