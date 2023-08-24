@@ -73,95 +73,107 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                   R_33 = cos(alpha_rad)*cos(beta_rad);
                }
 
-                Real dFdPp_Landau = alpha*pOld_p(i,j,k) + beta*std::pow(pOld_p(i,j,k),3.) + FerroX::gamma*std::pow(pOld_p(i,j,k),5.)
-                                    + 2. * alpha_12 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),2.)
-                                    + 2. * alpha_12 * pOld_p(i,j,k) * std::pow(pOld_r(i,j,k),2.)
-                                    + 4. * alpha_112 * std::pow(pOld_p(i,j,k),3.) * (std::pow(pOld_q(i,j,k),2.) + std::pow(pOld_r(i,j,k),2.))
-                                    + 2. * alpha_112 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),4.)
-                                    + 2. * alpha_112 * pOld_p(i,j,k) * std::pow(pOld_r(i,j,k),4.)
-                                    + 2. * alpha_123 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),2.) * std::pow(pOld_r(i,j,k),2.);
+               //when coordinate transformation is OFF,
+               //alpha = beta = theta = 0.
+               //Therefore, R_11 = R_22 = R_33 = 1, R_12 = R_13 = R_21 = R_23 = R_31 = R_32 = 0.
 
-                Real dFdPq_Landau = alpha*pOld_q(i,j,k) + beta*std::pow(pOld_q(i,j,k),3.) + FerroX::gamma*std::pow(pOld_q(i,j,k),5.)
-                                    + 2. * alpha_12 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),2.)
-                                    + 2. * alpha_12 * pOld_q(i,j,k) * std::pow(pOld_r(i,j,k),2.)
-                                    + 4. * alpha_112 * std::pow(pOld_q(i,j,k),3.) * (std::pow(pOld_p(i,j,k),2.) + std::pow(pOld_r(i,j,k),2.))
-                                    + 2. * alpha_112 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),4.)
-                                    + 2. * alpha_112 * pOld_q(i,j,k) * std::pow(pOld_r(i,j,k),4.)
-                                    + 2. * alpha_123 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),2.) * std::pow(pOld_r(i,j,k),2.);
-                
-                Real dFdPr_Landau = alpha*pOld_r(i,j,k) + beta*std::pow(pOld_r(i,j,k),3.) + FerroX::gamma*std::pow(pOld_r(i,j,k),5.)
-                                    + 2. * alpha_12 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),2.)
-                                    + 2. * alpha_12 * pOld_r(i,j,k) * std::pow(pOld_q(i,j,k),2.)
-                                    + 4. * alpha_112 * std::pow(pOld_r(i,j,k),3.) * (std::pow(pOld_p(i,j,k),2.) + std::pow(pOld_q(i,j,k),2.))
-                                    + 2. * alpha_112 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),4.)
-                                    + 2. * alpha_112 * pOld_r(i,j,k) * std::pow(pOld_q(i,j,k),4.)
-                                    + 2. * alpha_123 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),2.) * std::pow(pOld_q(i,j,k),2.);
+               if (Coordinate_Transformation != 1){
+                  if (R_11 != 1.0 || R_12 != 0.0 || R_13 != 0.0 || 
+                      R_21 != 0.0 || R_22 != 1.0 || R_23 != 0.0 ||
+                      R_31 != 0.0 || R_32 != 0.0 || R_33 != 1.0  ){
+                      amrex::Abort("Coordinate transformation is turned OFF, but rotation matrix is not an identity matrix!");
+                  }
+               }
 
-                Real dFdPp_grad = - g11 * DoubleDPDx(pOld_p, mask, i, j, k, dx)
-                                  - (g44 + g44_p) * DoubleDPDy(pOld_p, mask, i, j, k, dx)
-                                  - (g44 + g44_p) * DoubleDPDz(pOld_p, mask, i, j, k, dx)
-                                  - (g12 + g44 - g44_p) * DoubleDPDxDy(pOld_q, mask, i, j, k, dx)  // d2P/dxdy
-                                  - (g12 + g44 - g44_p) * DoubleDPDxDz(pOld_r, mask, i, j, k, dx); // d2P/dxdz
-                
-                Real dFdPq_grad = - g11 * DoubleDPDy(pOld_q, mask, i, j, k, dx)
-                                  - (g44 - g44_p) * DoubleDPDx(pOld_q, mask, i, j, k, dx)
-                                  - (g44 - g44_p) * DoubleDPDz(pOld_q, mask, i, j, k, dx)
-                                  - (g12 + g44 + g44_p) * DoubleDPDxDy(pOld_p, mask, i, j, k, dx) // d2P/dxdy
-                                  - (g12 + g44 - g44_p) * DoubleDPDyDz(pOld_r, mask, i, j, k, dx);// d2P/dydz
+               Real dFdPp_Landau = alpha*pOld_p(i,j,k) + beta*std::pow(pOld_p(i,j,k),3.) + FerroX::gamma*std::pow(pOld_p(i,j,k),5.)
+                                   + 2. * alpha_12 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),2.)
+                                   + 2. * alpha_12 * pOld_p(i,j,k) * std::pow(pOld_r(i,j,k),2.)
+                                   + 4. * alpha_112 * std::pow(pOld_p(i,j,k),3.) * (std::pow(pOld_q(i,j,k),2.) + std::pow(pOld_r(i,j,k),2.))
+                                   + 2. * alpha_112 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),4.)
+                                   + 2. * alpha_112 * pOld_p(i,j,k) * std::pow(pOld_r(i,j,k),4.)
+                                   + 2. * alpha_123 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),2.) * std::pow(pOld_r(i,j,k),2.);
 
-		//Switch g11 and g44 temporarily for multiphase simulations. This will be generalized later
-                Real dFdPr_grad = - g44 * ( R_31*R_31*DoubleDPDx(pOld_r, mask, i, j, k, dx)
-                                           +R_32*R_32*DoubleDPDy(pOld_r, mask, i, j, k, dx)
-                                           +R_33*R_33*DoubleDPDz(pOld_r, mask, i, j, k, dx)
-                                           +2.*R_31*R_32*DoubleDPDxDy(pOld_r, mask, i, j, k, dx)
-                                           +2.*R_32*R_33*DoubleDPDyDz(pOld_r, mask, i, j, k, dx)
-                                           +2.*R_33*R_31*DoubleDPDxDz(pOld_r, mask, i, j, k, dx))
-                                           
-                                  - (g11 - g44_p) * ( R_11*R_11*DoubleDPDx(pOld_r, mask, i, j, k, dx) 
-                                                     +R_12*R_12*DoubleDPDy(pOld_r, mask, i, j, k, dx) 
-                                                     +R_13*R_13*DoubleDPDz(pOld_r, mask, i, j, k, dx) 
-                                                     +2.*R_11*R_12*DoubleDPDxDy(pOld_r, mask, i, j, k, dx) 
-                                                     +2.*R_12*R_13*DoubleDPDyDz(pOld_r, mask, i, j, k, dx) 
-                                                     +2.*R_13*R_11*DoubleDPDxDz(pOld_r, mask, i, j, k, dx))
+               Real dFdPq_Landau = alpha*pOld_q(i,j,k) + beta*std::pow(pOld_q(i,j,k),3.) + FerroX::gamma*std::pow(pOld_q(i,j,k),5.)
+                                   + 2. * alpha_12 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),2.)
+                                   + 2. * alpha_12 * pOld_q(i,j,k) * std::pow(pOld_r(i,j,k),2.)
+                                   + 4. * alpha_112 * std::pow(pOld_q(i,j,k),3.) * (std::pow(pOld_p(i,j,k),2.) + std::pow(pOld_r(i,j,k),2.))
+                                   + 2. * alpha_112 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),4.)
+                                   + 2. * alpha_112 * pOld_q(i,j,k) * std::pow(pOld_r(i,j,k),4.)
+                                   + 2. * alpha_123 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),2.) * std::pow(pOld_r(i,j,k),2.);
+               
+               Real dFdPr_Landau = alpha*pOld_r(i,j,k) + beta*std::pow(pOld_r(i,j,k),3.) + FerroX::gamma*std::pow(pOld_r(i,j,k),5.)
+                                   + 2. * alpha_12 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),2.)
+                                   + 2. * alpha_12 * pOld_r(i,j,k) * std::pow(pOld_q(i,j,k),2.)
+                                   + 4. * alpha_112 * std::pow(pOld_r(i,j,k),3.) * (std::pow(pOld_p(i,j,k),2.) + std::pow(pOld_q(i,j,k),2.))
+                                   + 2. * alpha_112 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),4.)
+                                   + 2. * alpha_112 * pOld_r(i,j,k) * std::pow(pOld_q(i,j,k),4.)
+                                   + 2. * alpha_123 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),2.) * std::pow(pOld_q(i,j,k),2.);
 
-                                  - (g44 - g44_p) * ( R_21*R_21*DoubleDPDx(pOld_r, mask, i, j, k, dx)
-                                                     +R_22*R_22*DoubleDPDy(pOld_r, mask, i, j, k, dx)
-                                                     +R_23*R_23*DoubleDPDz(pOld_r, mask, i, j, k, dx)
-                                                     +2.*R_21*R_22*DoubleDPDxDy(pOld_r, mask, i, j, k, dx)
-                                                     +2.*R_22*R_23*DoubleDPDyDz(pOld_r, mask, i, j, k, dx)
-                                                     +2.*R_23*R_21*DoubleDPDxDz(pOld_r, mask, i, j, k, dx))
+               Real dFdPp_grad = - g11 * DoubleDPDx(pOld_p, mask, i, j, k, dx)
+                                 - (g44 + g44_p) * DoubleDPDy(pOld_p, mask, i, j, k, dx)
+                                 - (g44 + g44_p) * DoubleDPDz(pOld_p, mask, i, j, k, dx)
+                                 - (g12 + g44 - g44_p) * DoubleDPDxDy(pOld_q, mask, i, j, k, dx)  // d2P/dxdy
+                                 - (g12 + g44 - g44_p) * DoubleDPDxDz(pOld_r, mask, i, j, k, dx); // d2P/dxdz
+               
+               Real dFdPq_grad = - g11 * DoubleDPDy(pOld_q, mask, i, j, k, dx)
+                                 - (g44 - g44_p) * DoubleDPDx(pOld_q, mask, i, j, k, dx)
+                                 - (g44 - g44_p) * DoubleDPDz(pOld_q, mask, i, j, k, dx)
+                                 - (g12 + g44 + g44_p) * DoubleDPDxDy(pOld_p, mask, i, j, k, dx) // d2P/dxdy
+                                 - (g12 + g44 - g44_p) * DoubleDPDyDz(pOld_r, mask, i, j, k, dx);// d2P/dydz
 
-                                  - (g44 + g44_p + g12) * DoubleDPDyDz(pOld_q, mask, i, j, k, dx) // d2P/dydz
-                                  - (g44 + g44_p + g12) * DoubleDPDxDz(pOld_p, mask, i, j, k, dx); // d2P/dxdz
+	       //Switch g11 and g44 temporarily for multiphase simulations. This will be generalized later
+               Real dFdPr_grad = - g44 * ( R_31*R_31*DoubleDPDx(pOld_r, mask, i, j, k, dx)
+                                          +R_32*R_32*DoubleDPDy(pOld_r, mask, i, j, k, dx)
+                                          +R_33*R_33*DoubleDPDz(pOld_r, mask, i, j, k, dx)
+                                          +2.*R_31*R_32*DoubleDPDxDy(pOld_r, mask, i, j, k, dx)
+                                          +2.*R_32*R_33*DoubleDPDyDz(pOld_r, mask, i, j, k, dx)
+                                          +2.*R_33*R_31*DoubleDPDxDz(pOld_r, mask, i, j, k, dx))
+                                          
+                                 - (g11 - g44_p) * ( R_11*R_11*DoubleDPDx(pOld_r, mask, i, j, k, dx) 
+                                                    +R_12*R_12*DoubleDPDy(pOld_r, mask, i, j, k, dx) 
+                                                    +R_13*R_13*DoubleDPDz(pOld_r, mask, i, j, k, dx) 
+                                                    +2.*R_11*R_12*DoubleDPDxDy(pOld_r, mask, i, j, k, dx) 
+                                                    +2.*R_12*R_13*DoubleDPDyDz(pOld_r, mask, i, j, k, dx) 
+                                                    +2.*R_13*R_11*DoubleDPDxDz(pOld_r, mask, i, j, k, dx))
 
-                GL_RHS_p(i,j,k)  = -1.0 * Gam(i,j,k) *
-                    (  dFdPp_Landau
-                     + dFdPp_grad
-		     - Ep(i,j,k)
-                     //+ DFDx(phi, i, j, k, dx)
-                    );
+                                 - (g44 - g44_p) * ( R_21*R_21*DoubleDPDx(pOld_r, mask, i, j, k, dx)
+                                                    +R_22*R_22*DoubleDPDy(pOld_r, mask, i, j, k, dx)
+                                                    +R_23*R_23*DoubleDPDz(pOld_r, mask, i, j, k, dx)
+                                                    +2.*R_21*R_22*DoubleDPDxDy(pOld_r, mask, i, j, k, dx)
+                                                    +2.*R_22*R_23*DoubleDPDyDz(pOld_r, mask, i, j, k, dx)
+                                                    +2.*R_23*R_21*DoubleDPDxDz(pOld_r, mask, i, j, k, dx))
 
-                GL_RHS_q(i,j,k)  = -1.0 * Gam(i,j,k) *
-                    (  dFdPq_Landau
-                     + dFdPq_grad
-		     - Eq(i,j,k)
-                     //+ DFDy(phi, i, j, k, dx)
-                    );
+                                 - (g44 + g44_p + g12) * DoubleDPDyDz(pOld_q, mask, i, j, k, dx) // d2P/dydz
+                                 - (g44 + g44_p + g12) * DoubleDPDxDz(pOld_p, mask, i, j, k, dx); // d2P/dxdz
 
-		GL_RHS_p(i,j,k)  = 0.0;
-		GL_RHS_q(i,j,k)  = 0.0;
-                GL_RHS_r(i,j,k)  = -1.0 * Gam(i,j,k) *
-                    (  dFdPr_Landau
-                     + dFdPr_grad
-		     - Er(i,j,k)
-                     //+ DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi)
-                    );
+               GL_RHS_p(i,j,k)  = -1.0 * Gam(i,j,k) *
+                   (  dFdPp_Landau
+                    + dFdPp_grad
+	            - Ep(i,j,k)
+                    //+ DFDx(phi, i, j, k, dx)
+                   );
 
-		//set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
-                //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
-                if(tphase(i,j,k) == 1.0){
-                  GL_RHS_r(i,j,k) = 0.0;
-                }
+               GL_RHS_q(i,j,k)  = -1.0 * Gam(i,j,k) *
+                   (  dFdPq_Landau
+                    + dFdPq_grad
+	            - Eq(i,j,k)
+                    //+ DFDy(phi, i, j, k, dx)
+                   );
+
+	       GL_RHS_p(i,j,k)  = 0.0;
+	       GL_RHS_q(i,j,k)  = 0.0;
+               GL_RHS_r(i,j,k)  = -1.0 * Gam(i,j,k) *
+                   (  dFdPr_Landau
+                    + dFdPr_grad
+	            - Er(i,j,k)
+                    //+ DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi)
+                   );
+
+	       //set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
+               //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+               if(tphase(i,j,k) == 1.0){
+                 GL_RHS_r(i,j,k) = 0.0;
+               }
             });
         }
 }

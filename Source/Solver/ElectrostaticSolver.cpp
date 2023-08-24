@@ -64,6 +64,18 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                     R_33 = cos(alpha_rad)*cos(beta_rad);
                  }
 
+                 //when coordinate transformation is OFF,
+                 //alpha = beta = theta = 0.
+                 //Therefore, R_11 = R_22 = R_33 = 1, R_12 = R_13 = R_21 = R_23 = R_31 = R_32 = 0.
+
+                 if (Coordinate_Transformation != 1){
+                    if (R_11 != 1.0 || R_12 != 0.0 || R_13 != 0.0 || 
+                        R_21 != 0.0 || R_22 != 1.0 || R_23 != 0.0 ||
+                        R_31 != 0.0 || R_32 != 0.0 || R_33 != 1.0  ){
+                        amrex::Abort("Coordinate transformation is turned OFF, but rotation matrix is not an identity matrix!");
+                    }
+                 }
+
                  if(mask(i,j,k) >= 2.0){ //SC region
 
                    RHS(i,j,k) = charge_den_arr(i,j,k);
@@ -196,6 +208,19 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                         R_31 = -sin(beta_rad);
                         R_32 = sin(alpha_rad)*cos(beta_rad);
                         R_33 = cos(alpha_rad)*cos(beta_rad);
+                     }
+
+                     //when coordinate transformation is OFF,
+                     //alpha = beta = theta = 0.
+                     //Therefore, R_11 = R_22 = R_33 = 1, R_12 = R_13 = R_21 = R_23 = R_31 = R_32 = 0.
+                     //So, Ep = Ex = -DFDx(phi), Eq = Ey = -DFDy(phi), Er = Ez = -DphiDz(phi)
+
+                     if (Coordinate_Transformation != 1){
+                        if (R_11 != 1.0 || R_12 != 0.0 || R_13 != 0.0 || 
+                            R_21 != 0.0 || R_22 != 1.0 || R_23 != 0.0 ||
+                            R_31 != 0.0 || R_32 != 0.0 || R_33 != 1.0  ){
+                            amrex::Abort("Coordinate transformation is turned OFF, but rotation matrix is not an identity matrix!");
+                        }
                      }
 
                      Ep_arr(i,j,k) = - (R_11*DFDx(phi, i, j, k, dx) + R_12*DFDy(phi, i, j, k, dx) + R_13*DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi));
