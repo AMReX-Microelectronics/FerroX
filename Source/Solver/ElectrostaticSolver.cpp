@@ -80,7 +80,8 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
                    RHS(i,j,k) = charge_den_arr(i,j,k);
                    RHS(i,j,k) *= -1.;
-
+                   //amrex::Print() << "RHS(i,j,k) = " << RHS(i,j,k) << "\n";
+		   //amrex::Print() << "charge_den_arr(i,j,k) = " << charge_den_arr(i,j,k) << "\n";
                  } else if(mask(i,j,k) == 1.0){ //DE region
 
                    RHS(i,j,k) = 0.;
@@ -95,6 +96,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
             });
         }
+    PoissonRHS.FillBoundary(geom.periodicity());
 }
 
 void dF_dPhi(MultiFab&            alpha_cc,

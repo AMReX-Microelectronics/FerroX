@@ -108,7 +108,7 @@ void main_main (c_FerroX& rFerroX)
         E[dir].define(ba, dm, Ncomp, 0);
     }
 
-    MultiFab PoissonRHS(ba, dm, 1, 0);
+    MultiFab PoissonRHS(ba, dm, 1, 1);
     MultiFab PoissonPhi(ba, dm, 1, 1);
     MultiFab PoissonPhi_Old(ba, dm, 1, 1);
     MultiFab PoissonPhi_Prev(ba, dm, 1, 1);
@@ -124,10 +124,6 @@ void main_main (c_FerroX& rFerroX)
     MultiFab APoissonPhi_BC(nba, dm, 1, 0);
     MultiFab Nodal_PhiErr(nba, dm, 1, 1);
     MultiFab Nodal_Phidiff(nba, dm, 1, 1);
-
-    MultiFab Ex(ba, dm, 1, 0);
-    MultiFab Ey(ba, dm, 1, 0);
-    MultiFab Ez(ba, dm, 1, 0);
 
     MultiFab hole_den(ba, dm, 1, 0);
     MultiFab e_den(ba, dm, 1, 0);
@@ -151,7 +147,7 @@ void main_main (c_FerroX& rFerroX)
     }
 
     PoissonPhi.setVal(0.);
-    PoissonRHS.setVal(0.);
+    PoissonRHS.setVal(0.,1);
     tphaseMask.setVal(0.);
     angle_alpha.setVal(0.);
     angle_beta.setVal(0.);
@@ -159,6 +155,10 @@ void main_main (c_FerroX& rFerroX)
 
     Nodal_PoissonPhi.setVal(0.);
     Nodal_PoissonRHS.setVal(0.);
+
+    hole_den.setVal(0.);
+    e_den.setVal(0.);
+    charge_den.setVal(0.);
 
     //Initialize material mask
     InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
@@ -290,7 +290,7 @@ void main_main (c_FerroX& rFerroX)
     //Nodal Poisson
     std::unique_ptr<amrex::MLNodeLaplacian> p_mlnode;
     p_mlnode = std::make_unique<amrex::MLNodeLaplacian>();
-    p_mlnode->define({geom}, {nba}, {dm}, info);
+    p_mlnode->define({geom}, {ba}, {dm}, info);
 
     //Force singular system to be solvable
     p_mlnode->setEnforceSingularSolvable(false); 
@@ -352,6 +352,7 @@ void main_main (c_FerroX& rFerroX)
 	//Compute b
 	ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
+	//amrex::Abort("compute cell centered Poisson RHS");
         average_cc_to_nodes(Nodal_PoissonRHS, PoissonRHS, geom);
 	//Compute b - A x_H
 	MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -389,13 +390,13 @@ void main_main (c_FerroX& rFerroX)
 
             // Calculate Error
             if (iter > 0){
-                MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 0);
-                MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 0);
+                MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 1);
+                MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 1);
                 err = Nodal_PhiErr.norm1(0, geom.periodicity())/Nodal_PoissonPhi.norm1(0, geom.periodicity());
             }
 
             //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
-            MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 0);
+            MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 1);
 
             iter = iter + 1;
             amrex::Print() << iter << " iterations :: err = " << err << std::endl;
@@ -408,7 +409,7 @@ void main_main (c_FerroX& rFerroX)
     ComputeEfromPhi(Nodal_PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
     amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
-    amrex::average_node_to_cellcenter(PoissonRHS, 0, Nodal_PoissonRHS, 0, 1);
+
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
     {
@@ -525,13 +526,13 @@ void main_main (c_FerroX& rFerroX)
                 
                 // Calculate Error
                 if (iter > 0){
-                    MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 0);
-                    MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 0);
+                    MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 1);
+                    MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 1);
                     err = Nodal_PhiErr.norm1(0, geom.periodicity())/Nodal_PoissonPhi.norm1(0, geom.periodicity());
                 }
 
                 //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
-                MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 0);
+                MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 1);
 
                 iter = iter + 1;
                 amrex::Print() << iter << " iterations :: err = " << err << std::endl;
@@ -613,13 +614,13 @@ void main_main (c_FerroX& rFerroX)
                     
                     // Calculate Error
                     if (iter > 0){
-                        MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 0);
-                        MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 0);
+                        MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 1);
+                        MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 1);
                         err = Nodal_PhiErr.norm1(0, geom.periodicity())/Nodal_PoissonPhi.norm1(0, geom.periodicity());
                     }
 
                     //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
-                    MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 0);
+                    MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 1);
 
                     iter = iter + 1;
                     amrex::Print() << iter << " iterations :: err = " << err << std::endl;
@@ -665,7 +666,7 @@ void main_main (c_FerroX& rFerroX)
         }
 
         //Copy PoissonPhi to PoissonPhi_Old to calculate difference at the next iteration
-        MultiFab::Copy(Nodal_PoissonPhi_Old, Nodal_PoissonPhi, 0, 0, 1, 0);
+        MultiFab::Copy(Nodal_PoissonPhi_Old, Nodal_PoissonPhi, 0, 0, 1, 1);
 
         amrex::Print() << "Steady state check : (phi(t) - phi(t-1)).norm0() = " << max_phi_err << std::endl;
 
@@ -685,7 +686,6 @@ void main_main (c_FerroX& rFerroX)
 
 
         amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
-        amrex::average_node_to_cellcenter(PoissonRHS, 0, Nodal_PoissonRHS, 0, 1);
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
         if (plot_int > 0 && (step%plot_int == 0 || step == steady_state_step))
         {
@@ -789,13 +789,13 @@ void main_main (c_FerroX& rFerroX)
                
                    // Calculate Error
                    if (iter > 0){
-                       MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 0);
-                       MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 0);
+                       MultiFab::Copy(Nodal_PhiErr, Nodal_PoissonPhi, 0, 0, 1, 1);
+                       MultiFab::Subtract(Nodal_PhiErr, Nodal_PoissonPhi_Prev, 0, 0, 1, 1);
                        err = Nodal_PhiErr.norm1(0, geom.periodicity())/Nodal_PoissonPhi.norm1(0, geom.periodicity());
                    }
 
                    //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
-                   MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 0);
+                   MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 1);
 
                    iter = iter + 1;
                    amrex::Print() << iter << " iterations :: err = " << err << std::endl;

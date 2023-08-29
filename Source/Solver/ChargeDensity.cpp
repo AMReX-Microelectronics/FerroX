@@ -87,7 +87,9 @@ void ComputeRho(MultiFab&      PoissonPhi,
         {
 
              if (mask(i,j,k) >= 2.0) {
-
+ 
+	        acceptor_den_arr(i,j,k) = acceptor_doping;
+                donor_den_arr(i,j,k) = donor_doping;
 		charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
 
              } else {

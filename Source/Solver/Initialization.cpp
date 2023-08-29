@@ -127,7 +127,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
     }
 
     // loop over nodal boxes for rho
-    for (MFIter mfi(rho); mfi.isValid(); ++mfi)
+    for (MFIter mfi(e_den); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.validbox();
 
@@ -213,9 +213,11 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
              //SC region
              if (mask(i,j,k) >= 2.0) {
 
-	     	  
+	     	   acceptor_den_arr(i,j,k) = acceptor_doping;  
+	     	   donor_den_arr(i,j,k) = donor_doping;  
                    charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
 
+		   //amrex::Print() << "Initialization :: charge_den_arr(i,j,k) = " << charge_den_arr(i,j,k) << "\n";
              } else {
 	           charge_den_arr(i,j,k) = 0.;
 	     }
