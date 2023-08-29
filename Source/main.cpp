@@ -133,22 +133,11 @@ void main_main (c_FerroX& rFerroX)
     MultiFab e_den(ba, dm, 1, 0);
     MultiFab charge_den(ba, dm, 1, 0);
  
-    //Nodal rho
-    MultiFab Nodal_hole_den(nba, dm, 1, 0);
-    MultiFab Nodal_e_den(nba, dm, 1, 0);
-    MultiFab Nodal_charge_den(nba, dm, 1, 0);
-
     MultiFab MaterialMask(ba, dm, 1, 1);
     MultiFab tphaseMask(ba, dm, 1, 1);
     MultiFab angle_alpha(ba, dm, 1, 0);
     MultiFab angle_beta(ba, dm, 1, 0);
     MultiFab angle_theta(ba, dm, 1, 0);
-
-    //Nodal angles
-    MultiFab Nodal_MaterialMask(ba, dm, 1, 1);
-    MultiFab Nodal_angle_alpha(nba, dm, 1, 0);
-    MultiFab Nodal_angle_beta(nba, dm, 1, 0);
-    MultiFab Nodal_angle_theta(nba, dm, 1, 0);
 
     for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
     {
@@ -170,21 +159,13 @@ void main_main (c_FerroX& rFerroX)
 
     Nodal_PoissonPhi.setVal(0.);
     Nodal_PoissonRHS.setVal(0.);
-    Nodal_angle_alpha.setVal(0.);
-    Nodal_angle_beta.setVal(0.);
-    Nodal_angle_theta.setVal(0.);
-    Nodal_hole_den.setVal(0.);
-    Nodal_e_den.setVal(0.);
-    Nodal_charge_den.setVal(0.);
 
     //Initialize material mask
-    InitializeMaterialMask_Nodal(Nodal_MaterialMask, geom, prob_lo, prob_hi);
     InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
     //InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
        Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta); //cell-centered
-       Initialize_Euler_angles(rFerroX, geom, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta); //nodal
     } else {
        tphaseMask.setVal(0.);
     }
@@ -309,7 +290,7 @@ void main_main (c_FerroX& rFerroX)
     //Nodal Poisson
     std::unique_ptr<amrex::MLNodeLaplacian> p_mlnode;
     p_mlnode = std::make_unique<amrex::MLNodeLaplacian>();
-    p_mlnode->define({geom}, {ba}, {dm}, info);
+    p_mlnode->define({geom}, {nba}, {dm}, info);
 
     //Force singular system to be solvable
     p_mlnode->setEnforceSingularSolvable(false); 
@@ -344,7 +325,7 @@ void main_main (c_FerroX& rFerroX)
     // INITIALIZE P in FE and rho in SC regions
 
     //InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);//old
-    InitializePandRho(P_old, Gamma, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, Nodal_MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);//mask based
+    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);//mask based
    
     //Obtain self consisten Phi and rho
     Real tol = 1.e-5;
@@ -369,8 +350,9 @@ void main_main (c_FerroX& rFerroX)
 	pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	
 	//Compute b
-	ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, Nodal_MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
+	ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
+        average_cc_to_nodes(Nodal_PoissonRHS, PoissonRHS, geom);
 	//Compute b - A x_H
 	MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
 
@@ -397,7 +379,8 @@ void main_main (c_FerroX& rFerroX)
         // Calculate rho from Phi in SC region
         //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
         //Nodal 
-        ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, Nodal_MaterialMask);
+        amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
+        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom, MaterialMask);
         
 	if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
@@ -426,10 +409,6 @@ void main_main (c_FerroX& rFerroX)
 
     amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
     amrex::average_node_to_cellcenter(PoissonRHS, 0, Nodal_PoissonRHS, 0, 1);
-    amrex::average_node_to_cellcenter(hole_den, 0, Nodal_hole_den, 0, 1);
-    amrex::average_node_to_cellcenter(e_den, 0, Nodal_e_den, 0, 1);
-    amrex::average_node_to_cellcenter(charge_den, 0, Nodal_charge_den, 0, 1);
-    //amrex::average_node_to_cellcenter(angle_beta, 0, Nodal_angle_beta, 0, 1);
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
     {
@@ -498,7 +477,7 @@ void main_main (c_FerroX& rFerroX)
 
         // iterate to compute Phi^{n+1,*}
         while(err > tol){
-   
+ 
             //Compute x_H	
     	    SetPhiBC_z(Nodal_PoissonPhi_BC, n_cell); 
 
@@ -506,7 +485,9 @@ void main_main (c_FerroX& rFerroX)
 	    pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	    
 	    //Compute b
-	    ComputePoissonRHS(Nodal_PoissonRHS, P_new_pre, Nodal_charge_den, Nodal_MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
+	    ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+            average_cc_to_nodes(Nodal_PoissonRHS, PoissonRHS, geom);
 
 	    //Compute b - A x_H
 	    MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -533,8 +514,9 @@ void main_main (c_FerroX& rFerroX)
             
 	    // Calculate rho from Phi in SC region
             //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
-            //Nodal 
-            ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, Nodal_MaterialMask);
+            //Nodal
+            amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1); 
+            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom, MaterialMask);
 
             if (contains_SC == 0) {
                 // no semiconductor region; set error to zero so the while loop terminates
@@ -590,7 +572,9 @@ void main_main (c_FerroX& rFerroX)
 	        pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	        
 	        //Compute b
-	        ComputePoissonRHS(Nodal_PoissonRHS, P_new, Nodal_charge_den, Nodal_MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
+	        ComputePoissonRHS(PoissonRHS, P_new, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+                average_cc_to_nodes(Nodal_PoissonRHS, PoissonRHS, geom);
 
 	        //Compute b - A x_H
 	        MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -619,7 +603,8 @@ void main_main (c_FerroX& rFerroX)
                 // Calculate rho from Phi in SC region
                 //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
                 //Nodal 
-                ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, Nodal_MaterialMask);
+                amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
+                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom, MaterialMask);
 
                 if (contains_SC == 0) {
                     // no semiconductor region; set error to zero so the while loop terminates
@@ -701,9 +686,6 @@ void main_main (c_FerroX& rFerroX)
 
         amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
         amrex::average_node_to_cellcenter(PoissonRHS, 0, Nodal_PoissonRHS, 0, 1);
-        amrex::average_node_to_cellcenter(hole_den, 0, Nodal_hole_den, 0, 1);
-        amrex::average_node_to_cellcenter(e_den, 0, Nodal_e_den, 0, 1);
-        amrex::average_node_to_cellcenter(charge_den, 0, Nodal_charge_den, 0, 1);
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
         if (plot_int > 0 && (step%plot_int == 0 || step == steady_state_step))
         {
@@ -766,7 +748,9 @@ void main_main (c_FerroX& rFerroX)
 	        pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
 	        
 	        //Compute b
-	        ComputePoissonRHS(Nodal_PoissonRHS, P_old, Nodal_charge_den, Nodal_MaterialMask, Nodal_angle_alpha, Nodal_angle_beta, Nodal_angle_theta, geom);
+	        ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+                average_cc_to_nodes(Nodal_PoissonRHS, PoissonRHS, geom);
 
 	        //Compute b - A x_H
 	        MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
@@ -794,8 +778,9 @@ void main_main (c_FerroX& rFerroX)
 	
                // Calculate rho from Phi in SC region
                //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
-               //Nodal 
-               ComputeRho(Nodal_PoissonPhi, Nodal_charge_den, Nodal_e_den, Nodal_hole_den, Nodal_MaterialMask);
+               //Nodal
+               amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1); 
+               ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom, MaterialMask);
 
                if (contains_SC == 0) {
                    // no semiconductor region; set error to zero so the while loop terminates
