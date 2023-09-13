@@ -1,0 +1,121 @@
+#################################
+###### PROBLEM DOMAIN ######
+#################################
+
+domain.prob_lo = -8.064e-9 -8.064e-9 0.e-9
+domain.prob_hi =  8.064e-9  8.064e-9 5.8e-9
+
+domain.n_cell = 64 64 32 #dx = dy = 5.04A, size of HZO unit cell 
+
+domain.max_grid_size = 64 64 32
+domain.blocking_factor = 64 64 32
+
+domain.coord_sys = cartesian 
+
+prob_type = 2
+
+TimeIntegratorOrder = 1
+
+nsteps = -1 #200 #200000
+plot_int = 500
+
+dt = 0.5e-13
+
+############################################
+###### COORDINATE TRANSFORMATION ###########
+############################################
+
+#Coordinate_Transformation = 0
+#
+#tphase_geom.tphase_geom_function(x,y,z) = "1. - 1.*(x > -7.5e-9)*(x < 7.5e-9) *(y > -7.5e-9)*(y < 7.5e-9)"
+#
+##Set different Euler angles in each o-phase in degrees. Note that o-phase is located at (x,y,z) where tphase_geom_function(x,y,z) = 0.0 
+##Copy the tphase_geom_function(x,y,z) above and specify the values where the coefficients of the logicals are zero to avoid mistakes.
+##It doesn't matter what you set the angles in the t_phase.
+#angle_alpha.alpha_function(x,y,z) = "0."
+#
+#angle_beta.beta_function(x,y,z) =   "0."
+#
+#angle_theta.theta_function(x,y,z) = "0."
+#
+#
+#epsilonX_fe_tphase = 40.0
+#
+############################################
+###### POLARIZATION BOUNDARY CONDITIONS ####
+############################################
+
+P_BC_flag_lo = 3 3 0
+P_BC_flag_hi = 3 3 1
+lambda = 3.0e-10
+
+############################################
+###### ELECTRICAL BOUNDARY CONDITIONS ######
+############################################
+
+domain.is_periodic = 1 1 0
+
+boundary.hi = per per dir(Zmax)
+boundary.lo = per per dir(Zmin)
+
+boundary.Zmax_function = "0.9"
+boundary.Zmin_function = "0.0"
+
+voltage_sweep = 1
+Phi_Bc_lo = 0.0
+Phi_Bc_hi = 0.9
+
+Phi_Bc_inc = 0.05
+Phi_Bc_hi_max = 1.
+phi_tolerance = 5.e-5
+num_Vapp_max = 20
+#mlmg_verbosity = 2
+
+#################################
+###### STACK GEOMETRY ###########
+#################################
+
+SC_lo = -8.064e-9 -8.064e-9 0.0e-9
+SC_hi =  8.064e-9  8.064e-9 5.0e-9
+
+DE_lo = -8.064e-9 -8.064e-9 5.0e-9
+DE_hi =  8.064e-9  8.064e-9 5.8e-9
+
+FE_lo = -1. -1. -1.
+FE_hi = -1. -1. -1.
+
+Channel_lo = -1. -1. -1.
+Channel_hi = -1. -1. -1.
+#FE_lo = -8.e-9 -8.e-9 4.0e-9
+#FE_hi =  8.e-9  8.e-9 9.0e-9
+##FE:0.0, DE:1.0, Source/Drain:2.0, Channel:3.0
+
+#device_geom.device_geom_function(x,y,z) = "0.*(x > -8.e-9)*(x < 8.e-9) * (y > -8.e-9)*(y < 8.e-9) * (z > 4.0e-9)*(z < 9.e-9)
+#                                         + 1.*(x > -8.e-9)*(x < 8.e-9) * (y > -8.e-9)*(y < 8.e-9) * (z > 0.0)*(z < 4.e-9)"
+
+#################################
+###### MATERIAL PROPERTIES ######
+#################################
+
+epsilon_0 = 8.85e-12
+epsilonX_fe = 25.0
+epsilonZ_fe = 25.0
+epsilon_de = 3.9
+epsilon_si = 11.7
+alpha = -2.5e9
+beta = 6.0e10
+gamma = 1.5e11
+BigGamma = 100
+g44 = 1.0e-10 #gy, gz
+g11 = 1.0e-10 #-1.0e-12 #gx
+#g11 = 1.0e-10
+g44_p = 0.0
+g12 = 0.0
+alpha_12 = 0.0
+alpha_112 = 0.0
+alpha_123 = 0.0
+
+acceptor_doping = 1.e21 #9.696e+15
+acceptor_doping = 9.696e+15
+donor_doping = 0.
+
