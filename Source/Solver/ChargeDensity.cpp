@@ -72,9 +72,10 @@ void ComputeRho(MultiFab&      PoissonPhi,
         const Box& bx = mfi.validbox();
 
         // Calculate charge density from Phi, Nc, Nv, Ec, and Ev
-	MultiFab acceptor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
-        MultiFab donor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
+	MultiFab acceptor_den(rho.boxArray(), rho.DistributionMap(), 1, 1);
+        MultiFab donor_den(rho.boxArray(), rho.DistributionMap(), 1, 1);
 
+        const Array4<Real>& phi = PoissonPhi.array(mfi);
         const Array4<Real>& hole_den_arr = p_den.array(mfi);
         const Array4<Real>& e_den_arr = e_den.array(mfi);
         const Array4<Real>& charge_den_arr = rho.array(mfi);
@@ -97,6 +98,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 charge_den_arr(i,j,k) = 0.0;
 
              }
+	     //if(std::abs(charge_den_arr(i,j,k) > 1.e20)) amrex::Print() << "ComputeRho :: charge_den_arr(i,j,k) = " << charge_den_arr(i,j,k) << ", phi(i,j,k) = " << phi(i,j,k) << ", e_den_arr = " << e_den_arr(i,j,k) << ", hole_den_arr = " << hole_den_arr(i,j,k) <<"\n";
         });
     }
     rho.FillBoundary(geom.periodicity());

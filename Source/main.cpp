@@ -112,6 +112,7 @@ void main_main (c_FerroX& rFerroX)
     MultiFab PoissonPhi(ba, dm, 1, 1);
     MultiFab PoissonPhi_Old(ba, dm, 1, 1);
     MultiFab PoissonPhi_Prev(ba, dm, 1, 1);
+    MultiFab PoissonPhi_Prev2(ba, dm, 1, 1);
     MultiFab PhiErr(ba, dm, 1, 1);
     MultiFab Phidiff(ba, dm, 1, 1);
 
@@ -120,20 +121,21 @@ void main_main (c_FerroX& rFerroX)
     MultiFab Nodal_PoissonPhi(nba, dm, 1, 1);
     MultiFab Nodal_PoissonPhi_Old(nba, dm, 1, 1);
     MultiFab Nodal_PoissonPhi_Prev(nba, dm, 1, 1);
+    MultiFab Nodal_PoissonPhi_Prev2(nba, dm, 1, 1);
     MultiFab Nodal_PoissonPhi_BC(nba, dm, 1, 0);
     MultiFab APoissonPhi_BC(nba, dm, 1, 0);
     MultiFab Nodal_PhiErr(nba, dm, 1, 1);
     MultiFab Nodal_Phidiff(nba, dm, 1, 1);
 
-    MultiFab hole_den(ba, dm, 1, 0);
-    MultiFab e_den(ba, dm, 1, 0);
-    MultiFab charge_den(ba, dm, 1, 0);
+    MultiFab hole_den(ba, dm, 1, 1);
+    MultiFab e_den(ba, dm, 1, 1);
+    MultiFab charge_den(ba, dm, 1, 1);
  
     MultiFab MaterialMask(ba, dm, 1, 1);
     MultiFab tphaseMask(ba, dm, 1, 1);
-    MultiFab angle_alpha(ba, dm, 1, 0);
-    MultiFab angle_beta(ba, dm, 1, 0);
-    MultiFab angle_theta(ba, dm, 1, 0);
+    MultiFab angle_alpha(ba, dm, 1, 1);
+    MultiFab angle_beta(ba, dm, 1, 1);
+    MultiFab angle_theta(ba, dm, 1, 1);
 
     for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
     {
@@ -147,6 +149,8 @@ void main_main (c_FerroX& rFerroX)
     }
 
     PoissonPhi.setVal(0.);
+    PoissonPhi_Prev.setVal(0.);
+    PoissonPhi_Prev2.setVal(0.);
     PoissonRHS.setVal(0.,1);
     tphaseMask.setVal(0.);
     angle_alpha.setVal(0.);
@@ -154,6 +158,8 @@ void main_main (c_FerroX& rFerroX)
     angle_theta.setVal(0.);
 
     Nodal_PoissonPhi.setVal(0.);
+    Nodal_PoissonPhi_Prev.setVal(0.);
+    Nodal_PoissonPhi_Prev2.setVal(0.);
     Nodal_PoissonRHS.setVal(0.);
 
     hole_den.setVal(0.);
@@ -194,7 +200,8 @@ void main_main (c_FerroX& rFerroX)
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
 
     // coefficients for solver
-    MultiFab alpha_cc(ba, dm, 1, 0);
+    MultiFab alpha_cc(ba, dm, 1, 1);
+    alpha_cc.setVal(0.);
     MultiFab beta_cc(ba, dm, 1, 1);
     std::array< MultiFab, AMREX_SPACEDIM > beta_face;
     AMREX_D_TERM(beta_face[0].define(convert(ba,IntVect(AMREX_D_DECL(1,0,0))), dm, 1, 0);,
@@ -333,6 +340,7 @@ void main_main (c_FerroX& rFerroX)
     int iter = 0;
     
     while(err > tol){
+    //while(iter < 2){
 
 /*
        We would like to solve A x = b with inhomogeneous bc's
@@ -352,14 +360,15 @@ void main_main (c_FerroX& rFerroX)
 	//Compute b
 	ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-	//amrex::Abort("compute cell centered Poisson RHS");
+	dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+
+	amrex::Print() << "iter = " << iter << "\n";
+        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, PoissonPhi_Prev2, alpha_cc, geom);
+
         average_cc_to_nodes(Nodal_PoissonRHS, PoissonRHS, geom);
+	
 	//Compute b - A x_H
 	MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
-
-        //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
-
-        //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 //#ifdef AMREX_USE_EB
 //        p_mlebabec->setACoeffs(0, alpha_cc);
@@ -382,7 +391,8 @@ void main_main (c_FerroX& rFerroX)
         //Nodal 
         amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom, MaterialMask);
-        
+        //if(iter > 0) amrex::Abort("abort after ComputeRho at iter = 1");
+
 	if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
@@ -395,8 +405,15 @@ void main_main (c_FerroX& rFerroX)
                 err = Nodal_PhiErr.norm1(0, geom.periodicity())/Nodal_PoissonPhi.norm1(0, geom.periodicity());
             }
 
-            //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
+	    if (iter == 0) {
+	       MultiFab::Copy(Nodal_PoissonPhi_Prev2, Nodal_PoissonPhi, 0, 0, 1, 1);
+	    } else { 
+	       MultiFab::Copy(Nodal_PoissonPhi_Prev2, Nodal_PoissonPhi_Prev, 0, 0, 1, 1);
+	    }
+
             MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 1);
+            
+	    amrex::average_node_to_cellcenter(PoissonPhi_Prev2, 0, Nodal_PoissonPhi_Prev2, 0, 1);
 
             iter = iter + 1;
             amrex::Print() << iter << " iterations :: err = " << err << std::endl;

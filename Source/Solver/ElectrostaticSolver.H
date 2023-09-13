@@ -53,7 +53,9 @@ void dF_dPhi(MultiFab&            alpha_cc,
 
 void ComputePoissonRHS_Newton(MultiFab& PoissonRHS, 
                               MultiFab& PoissonPhi, 
-                              MultiFab& alpha_cc);
+                              MultiFab& PoissonPhi_Prev2, 
+                              MultiFab& alpha_cc,
+                              const Geometry& geom);
 
 void ComputeAx_H(MultiFab& x_H, MultiFab& Ax_H, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell);
 

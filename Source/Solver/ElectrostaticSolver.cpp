@@ -72,7 +72,8 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                     if (R_11 != 1.0 || R_12 != 0.0 || R_13 != 0.0 || 
                         R_21 != 0.0 || R_22 != 1.0 || R_23 != 0.0 ||
                         R_31 != 0.0 || R_32 != 0.0 || R_33 != 1.0  ){
-                        amrex::Abort("Coordinate transformation is turned OFF, but rotation matrix is not an identity matrix!");
+			amrex::Print() << "alpha = " << alpha_rad << ", beta = " << beta_rad << ", theta = " << theta_rad << "\n";
+                        amrex::Abort("ComputePoissonRHS : Coordinate transformation is turned OFF, but rotation matrix is not an identity matrix!");
                     }
                  }
 
@@ -114,11 +115,11 @@ void dF_dPhi(MultiFab&            alpha_cc,
 
 {
    
-        MultiFab PoissonPhi_plus_delta(PoissonPhi.boxArray(), PoissonPhi.DistributionMap(), 1, 0); 
-        MultiFab PoissonRHS_phi_plus_delta(PoissonRHS.boxArray(), PoissonRHS.DistributionMap(), 1, 0); 
+        MultiFab PoissonPhi_plus_delta(PoissonPhi.boxArray(), PoissonPhi.DistributionMap(), 1, 1); 
+        MultiFab PoissonRHS_phi_plus_delta(PoissonRHS.boxArray(), PoissonRHS.DistributionMap(), 1, 1); 
  
-        MultiFab::Copy(PoissonPhi_plus_delta, PoissonPhi, 0, 0, 1, 0); 
-        PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
+        MultiFab::Copy(PoissonPhi_plus_delta, PoissonPhi, 0, 0, 1, 1); 
+        PoissonPhi_plus_delta.plus(delta, 0, 1, 1); 
 
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, geom, MaterialMask);
@@ -126,26 +127,50 @@ void dF_dPhi(MultiFab&            alpha_cc,
         //Compute RHS of Poisson equation
         ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-        MultiFab::LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 0);
+        MultiFab::LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 1);
+//
+//	for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
+//        {
+//            const Box& bx = mfi.validbox();
+//            //const Box& bx = mfi.growntilebox(1);
+//
+//            const Array4<Real>& alpha = alpha_cc.array(mfi);
+//            const Array4<Real>& phi_p_delta = PoissonPhi_plus_delta.array(mfi);
+//            const Array4<Real>& rhs_phi_p_delta = PoissonRHS_phi_plus_delta.array(mfi);
+//            const Array4<Real>& rhs = PoissonRHS.array(mfi);
+//
+//            amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+//            {
+//                   if(std::isnan(alpha(i,j,k))) amrex::Print() <<"alpha(" << i << ", " << j << ", " << k << ") = " << alpha(i,j,k) << ", phi_p_delta = " << phi_p_delta(i,j,k) << ", rhs_phi_p_delta = " << rhs_phi_p_delta(i,j,k) << ", rhs = " << rhs(i,j,k) << "\n";  
+//            });
+//        }
 }
 void ComputePoissonRHS_Newton(MultiFab& PoissonRHS, 
                               MultiFab& PoissonPhi, 
-                              MultiFab& alpha_cc)
+                              MultiFab& PoissonPhi_Prev2, 
+                              MultiFab& alpha_cc,
+			      const Geometry& geom)
 {
      
         for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
         {
             const Box& bx = mfi.validbox();
+            //const Box& bx = mfi.growntilebox(1);
 
             const Array4<Real>& phi = PoissonPhi.array(mfi);
+            const Array4<Real>& phi_prev2 = PoissonPhi_Prev2.array(mfi);
             const Array4<Real>& poissonRHS = PoissonRHS.array(mfi);
             const Array4<Real>& alpha = alpha_cc.array(mfi);
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                   poissonRHS(i,j,k) = poissonRHS(i,j,k) - alpha(i,j,k)*phi(i,j,k) ;
+                   //if(std::isnan(alpha(i,j,k))) amrex::Print() << "poissonRHS(i,j,k) = " << poissonRHS(i,j,k) << ", alpha(i,j,k) = " << alpha(i,j,k) << ", phi(i,j,k) = " << phi(i,j,k) << ", phi_prev2(i,j,k) = " << phi_prev2(i,j,k) << "\n";  
+                   amrex::Print() << "poissonRHS(i,j,k) = " << poissonRHS(i,j,k) << ", alpha(i,j,k) = " << alpha(i,j,k) << ", phi(i,j,k) = " << phi(i,j,k) << ", phi_prev2(i,j,k) = " << phi_prev2(i,j,k) << "\n";  
+                   poissonRHS(i,j,k) = poissonRHS(i,j,k) + alpha(i,j,k)*(phi(i,j,k) - phi_prev2(i,j,k)) ;
             });
         }
+
+        PoissonRHS.FillBoundary(geom.periodicity());
 }
 
 void ComputeEfromPhi(MultiFab&                 PoissonPhi,
