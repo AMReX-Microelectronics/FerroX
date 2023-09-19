@@ -109,15 +109,14 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                                   - (g12 + g44 + g44_p) * DoubleDPDxDy(pOld_p, mask, i, j, k, dx) // d2P/dxdy
                                   - (g12 + g44 - g44_p) * DoubleDPDyDz(pOld_r, mask, i, j, k, dx);// d2P/dydz
 
-		//Switch g11 and g44 temporarily for multiphase simulations. This will be generalized later
-                Real dFdPr_grad = - g44 * ( R_31*R_31*DoubleDPDx(pOld_r, mask, i, j, k, dx)
+                Real dFdPr_grad = - g11 * ( R_31*R_31*DoubleDPDx(pOld_r, mask, i, j, k, dx)
                                            +R_32*R_32*DoubleDPDy(pOld_r, mask, i, j, k, dx)
                                            +R_33*R_33*DoubleDPDz(pOld_r, mask, i, j, k, dx)
                                            +2.*R_31*R_32*DoubleDPDxDy(pOld_r, mask, i, j, k, dx)
                                            +2.*R_32*R_33*DoubleDPDyDz(pOld_r, mask, i, j, k, dx)
                                            +2.*R_33*R_31*DoubleDPDxDz(pOld_r, mask, i, j, k, dx))
                                            
-                                  - (g11 - g44_p) * ( R_11*R_11*DoubleDPDx(pOld_r, mask, i, j, k, dx) 
+                                  - (g44 - g44_p) * ( R_11*R_11*DoubleDPDx(pOld_r, mask, i, j, k, dx) 
                                                      +R_12*R_12*DoubleDPDy(pOld_r, mask, i, j, k, dx) 
                                                      +R_13*R_13*DoubleDPDz(pOld_r, mask, i, j, k, dx) 
                                                      +2.*R_11*R_12*DoubleDPDxDy(pOld_r, mask, i, j, k, dx) 
