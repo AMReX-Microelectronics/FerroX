@@ -133,33 +133,35 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                                   - (g44 + g44_p + g12) * DoubleDPDyDz(pOld_q, mask, i, j, k, dx) // d2P/dydz
                                   - (g44 + g44_p + g12) * DoubleDPDxDz(pOld_p, mask, i, j, k, dx); // d2P/dxdz
 
-                GL_RHS_p(i,j,k)  = -1.0 * Gam(i,j,k) *
+                GL_RHS_p(i,j,k) = -1.0 * Gam(i,j,k) *
                     (  dFdPp_Landau
                      + dFdPp_grad
 		     - Ep(i,j,k)
-                     //+ DFDx(phi, i, j, k, dx)
                     );
 
-                GL_RHS_q(i,j,k)  = -1.0 * Gam(i,j,k) *
+                GL_RHS_q(i,j,k) = -1.0 * Gam(i,j,k) *
                     (  dFdPq_Landau
                      + dFdPq_grad
 		     - Eq(i,j,k)
-                     //+ DFDy(phi, i, j, k, dx)
                     );
 
-		GL_RHS_p(i,j,k)  = 0.0;
-		GL_RHS_q(i,j,k)  = 0.0;
-                GL_RHS_r(i,j,k)  = -1.0 * Gam(i,j,k) *
+                GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) *
                     (  dFdPr_Landau
                      + dFdPr_grad
 		     - Er(i,j,k)
-                     //+ DphiDz(phi, z_hi, z_lo, i, j, k, dx, prob_lo, prob_hi)
                     );
+
+                if (is_polarization_scalar == 1){
+		   GL_RHS_p(i,j,k) = 0.0;
+		   GL_RHS_q(i,j,k) = 0.0;
+		}
 
 		//set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
                 //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
-                if(tphase(i,j,k) == 1.0){
-                  GL_RHS_r(i,j,k) = 0.0;
+                if (tphase(i,j,k) == 1.0){
+		   GL_RHS_p(i,j,k) = 0.0;
+		   GL_RHS_q(i,j,k) = 0.0;
+		   GL_RHS_r(i,j,k) = 0.0;
                 }
             });
         }

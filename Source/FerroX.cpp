@@ -213,9 +213,11 @@ AMREX_GPU_MANAGED int FerroX::use_Fermi_Dirac;
 AMREX_GPU_MANAGED amrex::Real FerroX::lambda;
 AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::P_BC_flag_lo;
 AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::P_BC_flag_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::Remnant_P;
 
 //problem type : initialization of P for 2D/3D/convergence problems
 AMREX_GPU_MANAGED int FerroX::prob_type;
+AMREX_GPU_MANAGED int FerroX::is_polarization_scalar;
 
 AMREX_GPU_MANAGED int FerroX::mlmg_verbosity;
 
@@ -269,6 +271,9 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
 
      pp.get("prob_type", prob_type);
+
+     is_polarization_scalar = 1;
+     pp.query("is_polarization_scalar",is_polarization_scalar);
 
      mlmg_verbosity = 1;
      pp.query("mlmg_verbosity",mlmg_verbosity);
@@ -367,6 +372,11 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 	 t_phase_hi[i] = 1.0;
      }
 
+     //Default values of Remnnant Polarization
+     Remnant_P[0] = 0.0;
+     Remnant_P[1] = 0.0;
+     Remnant_P[2] = 0.002;
+
      amrex::Vector<amrex::Real> temp(AMREX_SPACEDIM);
 
      pp.getarr("FE_lo",temp);
@@ -424,6 +434,12 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      if (pp.queryarr("t_phase_hi",temp)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
              t_phase_hi[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("Remnant_P",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             Remnant_P[i] = temp[i];
          }
      }
 
