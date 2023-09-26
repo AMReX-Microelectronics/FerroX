@@ -80,7 +80,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                  if(mask(i,j,k) >= 2.0){ //SC region
 
                    RHS(i,j,k) = charge_den_arr(i,j,k);
-                   RHS(i,j,k) *= -1.;
+//                   RHS(i,j,k) *= -1.;
                    //amrex::Print() << "RHS(i,j,k) = " << RHS(i,j,k) << "\n";
 		   //amrex::Print() << "charge_den_arr(i,j,k) = " << charge_den_arr(i,j,k) << "\n";
                  } else if(mask(i,j,k) == 1.0){ //DE region
@@ -92,7 +92,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                                 - (R_21*NodalDPDx(pOld_q, mask, i, j, k, dx) + R_22*NodalDPDy(pOld_q, mask, i, j, k, dx) + R_23*NodalDPDz(pOld_q, mask, i, j, k, dx))
                                 - (R_31*NodalDPDx(pOld_r, mask, i, j, k, dx) + R_32*NodalDPDy(pOld_r, mask, i, j, k, dx) + R_33*NodalDPDz(pOld_r, mask, i, j, k, dx));
 
-                   RHS(i,j,k) *= -1.;
+  ///                 RHS(i,j,k) *= -1.;
                  }
 
             });
@@ -144,12 +144,12 @@ void dF_dPhi(MultiFab&            alpha_cc,
 //                   if(std::isnan(alpha(i,j,k))) amrex::Print() <<"alpha(" << i << ", " << j << ", " << k << ") = " << alpha(i,j,k) << ", phi_p_delta = " << phi_p_delta(i,j,k) << ", rhs_phi_p_delta = " << rhs_phi_p_delta(i,j,k) << ", rhs = " << rhs(i,j,k) << "\n";  
 //            });
 //        }
+        alpha_cc.FillBoundary(geom.periodicity());
 }
 void ComputePoissonRHS_Newton(MultiFab& PoissonRHS, 
                               MultiFab& PoissonPhi, 
-                              MultiFab& PoissonPhi_Prev2, 
-                              MultiFab& alpha_cc,
-			      const Geometry& geom)
+                              const Geometry& geom,
+                              MultiFab& alpha_cc)
 {
      
         for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
@@ -158,15 +158,14 @@ void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
             //const Box& bx = mfi.growntilebox(1);
 
             const Array4<Real>& phi = PoissonPhi.array(mfi);
-            const Array4<Real>& phi_prev2 = PoissonPhi_Prev2.array(mfi);
             const Array4<Real>& poissonRHS = PoissonRHS.array(mfi);
             const Array4<Real>& alpha = alpha_cc.array(mfi);
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
                    //if(std::isnan(alpha(i,j,k))) amrex::Print() << "poissonRHS(i,j,k) = " << poissonRHS(i,j,k) << ", alpha(i,j,k) = " << alpha(i,j,k) << ", phi(i,j,k) = " << phi(i,j,k) << ", phi_prev2(i,j,k) = " << phi_prev2(i,j,k) << "\n";  
-                   amrex::Print() << "poissonRHS(i,j,k) = " << poissonRHS(i,j,k) << ", alpha(i,j,k) = " << alpha(i,j,k) << ", phi(i,j,k) = " << phi(i,j,k) << ", phi_prev2(i,j,k) = " << phi_prev2(i,j,k) << "\n";  
-                   poissonRHS(i,j,k) = poissonRHS(i,j,k) + alpha(i,j,k)*(phi(i,j,k) - phi_prev2(i,j,k)) ;
+                   //amrex::Print() << "poissonRHS(i,j,k) = " << poissonRHS(i,j,k) << ", alpha(i,j,k) = " << alpha(i,j,k) << ", phi(i,j,k) = " << phi(i,j,k) << ", phi_prev2(i,j,k) = " << phi_prev2(i,j,k) << "\n";  
+                   poissonRHS(i,j,k) = poissonRHS(i,j,k) - alpha(i,j,k)*phi(i,j,k) ;
             });
         }
 
@@ -565,7 +564,7 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
 //A multifab filled with zeros, but boundary cells filled to respect bc's
 void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
 {
-    PoissonPhi.setVal(0.);
+//    PoissonPhi.setVal(0.);
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.validbox();

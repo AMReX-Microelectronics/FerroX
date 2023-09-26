@@ -1,6 +1,7 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MLABecLaplacian.H>
+#include <AMReX_MLNodeABecLaplacian.H>
 #include <AMReX_MLNodeLaplacian.H>
 #ifdef AMREX_USE_EB
 #include <AMReX_MLEBABecLap.H>
@@ -151,7 +152,8 @@ void main_main (c_FerroX& rFerroX)
     PoissonPhi.setVal(0.);
     PoissonPhi_Prev.setVal(0.);
     PoissonPhi_Prev2.setVal(0.);
-    PoissonRHS.setVal(0.,1);
+    PoissonRHS.setVal(0.);
+    Phidiff.setVal(0.);
     tphaseMask.setVal(0.);
     angle_alpha.setVal(0.);
     angle_beta.setVal(0.);
@@ -192,9 +194,9 @@ void main_main (c_FerroX& rFerroX)
     amrex::Print() << "contains_SC = " << contains_SC << "\n";
 
 #ifdef AMREX_USE_EB
-    MultiFab Plt(ba, dm, 18, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
+    MultiFab Plt(ba, dm, 19, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
 #else    
-    MultiFab Plt(ba, dm, 18, 0);
+    MultiFab Plt(ba, dm, 19, 0);
 #endif
 
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
@@ -202,6 +204,10 @@ void main_main (c_FerroX& rFerroX)
     // coefficients for solver
     MultiFab alpha_cc(ba, dm, 1, 1);
     alpha_cc.setVal(0.);
+
+    MultiFab alpha_nd(nba, dm, 1, 0);
+    alpha_nd.setVal(0.);
+
     MultiFab beta_cc(ba, dm, 1, 1);
     std::array< MultiFab, AMREX_SPACEDIM > beta_face;
     AMREX_D_TERM(beta_face[0].define(convert(ba,IntVect(AMREX_D_DECL(1,0,0))), dm, 1, 0);,
@@ -295,35 +301,43 @@ void main_main (c_FerroX& rFerroX)
 //    pMLMG->setVerbose(mlmg_verbosity);
 
     //Nodal Poisson
-    std::unique_ptr<amrex::MLNodeLaplacian> p_mlnode;
-    p_mlnode = std::make_unique<amrex::MLNodeLaplacian>();
-    p_mlnode->define({geom}, {ba}, {dm}, info);
+    std::unique_ptr<amrex::MLNodeABecLaplacian> p_mlndabec;
+    p_mlndabec = std::make_unique<amrex::MLNodeABecLaplacian>();
+    p_mlndabec->define({geom}, {ba}, {dm}, info);
 
     //Force singular system to be solvable
-    p_mlnode->setEnforceSingularSolvable(false); 
+    p_mlndabec->setEnforceSingularSolvable(false); 
 
-    p_mlnode->setMaxOrder(linop_maxorder);  
+    p_mlndabec->setMaxOrder(linop_maxorder);  
 
-    p_mlnode->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
+    p_mlndabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
 
-    if(some_constant_inhomogeneous_boundaries)
-    {
-        Fill_Constant_Inhomogeneous_Boundaries(rFerroX, Nodal_PoissonPhi);
-    }
-    if(some_functionbased_inhomogeneous_boundaries)
-    {
-        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, Nodal_PoissonPhi, time);
-    }
-    Nodal_PoissonPhi.FillBoundary(geom.periodicity());
+    //if(some_constant_inhomogeneous_boundaries)
+    //{
+    //    Fill_Constant_Inhomogeneous_Boundaries(rFerroX, Nodal_PoissonPhi);
+    //}
+    //if(some_functionbased_inhomogeneous_boundaries)
+    //{
+    //    Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, Nodal_PoissonPhi, time);
+    //}
+    //Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 
+    //SetPhiBC_z(Nodal_PoissonPhi, n_cell); 
+    
     // set Dirichlet BC by reading in the ghost cell values
-    //p_mlnode->setLevelBC(amrlev, &Nodal_PoissonPhi);
+    //p_mlndabec->setLevelBC(amrlev, &Nodal_PoissonPhi);
     
     // (div beta grad) phi = rhs
-    p_mlnode->setSigma(amrlev, beta_cc);
+    //p_mlnode->setSigma(amrlev, beta_cc);
+ 
+   // (A*alpha_cc - B * div beta grad) phi = rhs where A, phi and rhs are nodal MultiFabs and B is cell-centered.
+    p_mlndabec->setScalars(-1.0, -1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
+    //p_mlndabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
+    p_mlndabec->setBCoeffs(amrlev, beta_cc);
+
 
     //Declare MLMG object
-    pMLMG = std::make_unique<MLMG>(*p_mlnode);
+    pMLMG = std::make_unique<MLMG>(*p_mlndabec);
     pMLMG->setVerbose(mlmg_verbosity);
 
 #endif
@@ -331,7 +345,6 @@ void main_main (c_FerroX& rFerroX)
 
     // INITIALIZE P in FE and rho in SC regions
 
-    //InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);//old
     InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);//mask based
    
     //Obtain self consisten Phi and rho
@@ -339,59 +352,39 @@ void main_main (c_FerroX& rFerroX)
     Real err = 1.0;
     int iter = 0;
     
-    while(err > tol){
-    //while(iter < 2){
+    //while(err > tol){
+    while(iter < 2){
 
-/*
-       We would like to solve A x = b with inhomogeneous bc's
-       Here, "A" is div sigma grad
-       This is equivalent to A_H x = b - A x_H, where
-       A   is the inhomogeneous operator
-       A_H is the homogeneous operator
-       x_H is a multifab filled with zeros, but boundary cells filled to respect bc's 
-*/
-
-        //Compute x_H	
-    	SetPhiBC_z(Nodal_PoissonPhi_BC, n_cell); 
-
-        //Compute A x_H	
-	pMLMG->apply ({&APoissonPhi_BC}, {&Nodal_PoissonPhi_BC});
-	
-	//Compute b
 	ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
 	dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
 	amrex::Print() << "iter = " << iter << "\n";
-        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, PoissonPhi_Prev2, alpha_cc, geom);
+        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, geom, alpha_cc);
 
         average_cc_to_nodes(Nodal_PoissonRHS, PoissonRHS, geom);
-	
-	//Compute b - A x_H
-	MultiFab::Subtract(Nodal_PoissonRHS, APoissonPhi_BC, 0, 0, 1, 0);
 
-//#ifdef AMREX_USE_EB
-//        p_mlebabec->setACoeffs(0, alpha_cc);
-//#else
-//        p_mlabec->setACoeffs(0, alpha_cc);
-//#endif
+        average_cc_to_nodes(alpha_nd, alpha_cc, geom);
+
+#ifdef AMREX_USE_EB
+        p_mlebabec->setACoeffs(0, alpha_cc);
+#else
+        p_mlndabec->setACoeffs(0, alpha_nd);
+#endif
+        
         //Initial guess for phi
         Nodal_PoissonPhi.setVal(0.);
+	SetPhiBC_z(Nodal_PoissonPhi, n_cell); 
 
         //Poisson Solve
         pMLMG->solve({&Nodal_PoissonPhi}, {&Nodal_PoissonRHS}, 1.e-10, -1);
         
-	//Fill inhomogenous Dirichlet BC in boundary nodes after the solve
-	SetPhiBC_z_after_solve(Nodal_PoissonPhi, n_cell); 
-
 	Nodal_PoissonPhi.FillBoundary(geom.periodicity());
 	
-        // Calculate rho from Phi in SC region
-        //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
-        //Nodal 
         amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
+        
+        // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, geom, MaterialMask);
-        //if(iter > 0) amrex::Abort("abort after ComputeRho at iter = 1");
 
 	if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
@@ -405,16 +398,8 @@ void main_main (c_FerroX& rFerroX)
                 err = Nodal_PhiErr.norm1(0, geom.periodicity())/Nodal_PoissonPhi.norm1(0, geom.periodicity());
             }
 
-	    if (iter == 0) {
-	       MultiFab::Copy(Nodal_PoissonPhi_Prev2, Nodal_PoissonPhi, 0, 0, 1, 1);
-	    } else { 
-	       MultiFab::Copy(Nodal_PoissonPhi_Prev2, Nodal_PoissonPhi_Prev, 0, 0, 1, 1);
-	    }
-
             MultiFab::Copy(Nodal_PoissonPhi_Prev, Nodal_PoissonPhi, 0, 0, 1, 1);
             
-	    amrex::average_node_to_cellcenter(PoissonPhi_Prev2, 0, Nodal_PoissonPhi_Prev2, 0, 1);
-
             iter = iter + 1;
             amrex::Print() << iter << " iterations :: err = " << err << std::endl;
         }
@@ -425,7 +410,7 @@ void main_main (c_FerroX& rFerroX)
     // Calculate E from Phi
     ComputeEfromPhi(Nodal_PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-    amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
+    //amrex::average_node_to_cellcenter(PoissonPhi, 0, Nodal_PoissonPhi, 0, 1);
 
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
@@ -451,10 +436,11 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, angle_beta, 0, 15, 1, 0);
         MultiFab::Copy(Plt, angle_theta, 0, 16, 1, 0);
         MultiFab::Copy(Plt, Phidiff, 0, 17, 1, 0);
+        MultiFab::Copy(Plt, alpha_cc, 0, 18, 1, 0);
 #ifdef AMREX_USE_EB
-	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff"}, geom, time, step);
+	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff", "alpha_cc"}, geom, time, step);
 #else
-	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff"}, geom, time, step);
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff", "alpha_cc"}, geom, time, step);
 #endif
     }
 
