@@ -626,7 +626,20 @@ void average_cc_to_nodes(MultiFab& mf_nodal, const MultiFab& mf_cc, const Geomet
 			                  + mf_cc_arr(i,   j-1, k  )
 			                  + mf_cc_arr(i-1, j,   k  )
 			                  + mf_cc_arr(i,   j,   k  ));
+               if(k == 0){
+                 mf_nodal_arr(i,j,k) = 1./4.*(mf_cc_arr(i-1, j-1, k  )
+                                           + mf_cc_arr(i,   j-1, k  )
+                                           + mf_cc_arr(i-1, j,   k  )
+                                           + mf_cc_arr(i,   j,   k  ));
+               }
+               if(k == 32){
+                 mf_nodal_arr(i,j,k) = 1./4.*(mf_cc_arr(i-1, j-1,k-1  )
+                                           + mf_cc_arr(i,   j-1, k-1  )
+                                           + mf_cc_arr(i-1, j,   k-1  )
+                                           + mf_cc_arr(i,   j,   k-1  ));
+               }
         });
+    
     }
     mf_nodal.FillBoundary(geom.periodicity());
 }

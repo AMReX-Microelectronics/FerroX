@@ -352,8 +352,7 @@ void main_main (c_FerroX& rFerroX)
     Real err = 1.0;
     int iter = 0;
     
-    //while(err > tol){
-    while(iter < 2){
+    while(err > tol){
 
 	ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
@@ -366,6 +365,9 @@ void main_main (c_FerroX& rFerroX)
 
         average_cc_to_nodes(alpha_nd, alpha_cc, geom);
 
+        VisMF::Write(PoissonRHS, "poissonrhs");       
+        VisMF::Write(alpha_cc, "alpha_cc"); 
+     
 #ifdef AMREX_USE_EB
         p_mlebabec->setACoeffs(0, alpha_cc);
 #else
