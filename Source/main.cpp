@@ -331,7 +331,7 @@ void main_main (c_FerroX& rFerroX)
     //p_mlnode->setSigma(amrlev, beta_cc);
  
    // (A*alpha_cc - B * div beta grad) phi = rhs where A, phi and rhs are nodal MultiFabs and B is cell-centered.
-    p_mlndabec->setScalars(-1.0, -1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
+    p_mlndabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
     //p_mlndabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
     p_mlndabec->setBCoeffs(amrlev, beta_cc);
 

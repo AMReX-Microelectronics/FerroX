@@ -88,9 +88,12 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                    RHS(i,j,k) = 0.;
 
                  } else { //mask(i,j,k) == 0.0 FE region
-                   RHS(i,j,k) = - (R_11*NodalDPDx(pOld_p, mask, i, j, k, dx) + R_12*NodalDPDy(pOld_p, mask, i, j, k, dx) + R_13*NodalDPDz(pOld_p, mask, i, j, k, dx))
-                                - (R_21*NodalDPDx(pOld_q, mask, i, j, k, dx) + R_22*NodalDPDy(pOld_q, mask, i, j, k, dx) + R_23*NodalDPDz(pOld_q, mask, i, j, k, dx))
-                                - (R_31*NodalDPDx(pOld_r, mask, i, j, k, dx) + R_32*NodalDPDy(pOld_r, mask, i, j, k, dx) + R_33*NodalDPDz(pOld_r, mask, i, j, k, dx));
+                   //RHS(i,j,k) = - (R_11*NodalDPDx(pOld_p, mask, i, j, k, dx) + R_12*NodalDPDy(pOld_p, mask, i, j, k, dx) + R_13*NodalDPDz(pOld_p, mask, i, j, k, dx))
+                   //             - (R_21*NodalDPDx(pOld_q, mask, i, j, k, dx) + R_22*NodalDPDy(pOld_q, mask, i, j, k, dx) + R_23*NodalDPDz(pOld_q, mask, i, j, k, dx))
+                   //             - (R_31*NodalDPDx(pOld_r, mask, i, j, k, dx) + R_32*NodalDPDy(pOld_r, mask, i, j, k, dx) + R_33*NodalDPDz(pOld_r, mask, i, j, k, dx));
+                   RHS(i,j,k) = - (R_11*DPDx(pOld_p, mask, i, j, k, dx) + R_12*DPDy(pOld_p, mask, i, j, k, dx) + R_13*DPDz(pOld_p, mask, i, j, k, dx))
+                                - (R_21*DPDx(pOld_q, mask, i, j, k, dx) + R_22*DPDy(pOld_q, mask, i, j, k, dx) + R_23*DPDz(pOld_q, mask, i, j, k, dx))
+                                - (R_31*DPDx(pOld_r, mask, i, j, k, dx) + R_32*DPDy(pOld_r, mask, i, j, k, dx) + R_33*DPDz(pOld_r, mask, i, j, k, dx));
 
   ///                 RHS(i,j,k) *= -1.;
                  }
