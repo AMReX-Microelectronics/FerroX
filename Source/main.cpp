@@ -405,7 +405,6 @@ void main_main (c_FerroX& rFerroX)
             iter = iter + 1;
             amrex::Print() << iter << " iterations :: err = " << err << std::endl;
         }
-    }
     
     amrex::Print() << "\n ========= Self-Consistent Initialization of P and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
     
@@ -417,7 +416,8 @@ void main_main (c_FerroX& rFerroX)
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
     {
-        int step = 0;
+        //int step = 0;
+        int step = iter;
         const std::string& pltfile = amrex::Concatenate("plt",step,8);
         MultiFab::Copy(Plt, P_old[0], 0, 0, 1, 0);
         MultiFab::Copy(Plt, P_old[1], 0, 1, 1, 0);
@@ -446,6 +446,7 @@ void main_main (c_FerroX& rFerroX)
 #endif
     }
 
+    }
     amrex::Print() << "\n ========= Advance Steps  ========== \n"<< std::endl;
 
     int steady_state_step = 1000000; //Initialize to a large number. It will be overwritten by the time step at which steady state condition is satidfied
