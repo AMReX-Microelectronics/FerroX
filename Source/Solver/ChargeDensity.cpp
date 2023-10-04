@@ -48,8 +48,10 @@ void ComputeRho(MultiFab&      PoissonPhi,
                   hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
                 } else {
                   //Maxwell-Boltzmann
-                  Real n_0 = intrinsic_carrier_concentration;
-                  Real p_0 = intrinsic_carrier_concentration;
+                  Real p_0 = acceptor_doping;
+                  Real n_0 = intrinsic_carrier_concentration*intrinsic_carrier_concentration/p_0;
+                  //Real n_0 = intrinsic_carrier_concentration;
+                  //Real p_0 = intrinsic_carrier_concentration;
                   hole_den_arr(i,j,k) = p_0*exp(-(q*phi(i,j,k))/(kb*T));
                   e_den_arr(i,j,k) =    n_0*exp(q*phi(i,j,k)/(kb*T));
                 }
