@@ -211,6 +211,8 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
                 if (x <= Channel_hi[0] && x >= Channel_lo[0] && y <= Channel_hi[1] && y >= Channel_lo[1] && z <= Channel_hi[2] && z >= Channel_lo[2]){
                     mask(i,j,k) = 3.;
                 }
+             } else if (x <= Metal_hi[0] && x >= Metal_lo[0] && y <= Metal_hi[1] && y >= Metal_lo[1] && z <= Metal_hi[2] && z >= Metal_lo[2]) {
+                 mask(i,j,k) = 4.;
              } else {
 	         mask(i,j,k) = 1.; //spacer is DE
 	     }

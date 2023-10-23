@@ -244,6 +244,8 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
              beta(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else if (mask(i,j,k) >= 2.0){
              beta(i,j,k) = epsilon_si * epsilon_0; //SC layer
+          } else if (mask(i,j,k) == 4.0){
+             beta(i,j,k) = epsilon_metal * epsilon_0; //Metal layer
           } else {
              beta(i,j,k) = epsilon_de * epsilon_0; //Spacer is same as DE
 	  }
