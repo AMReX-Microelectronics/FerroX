@@ -144,8 +144,8 @@ void main_main (c_FerroX& rFerroX)
     angle_theta.setVal(0.);
 
     //Initialize material mask
-    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
-    //InitializeMaterialMask(rFerroX, geom, MaterialMask);
+    //InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
+    InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
        Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);

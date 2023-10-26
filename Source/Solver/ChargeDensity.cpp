@@ -29,6 +29,36 @@ void ComputeRho(MultiFab&      PoissonPhi,
         const Array4<Real>& donor_den_arr = donor_den.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
 
+        // Calculate average P
+        //Calculate Qe based on eq 13 
+        //rhs  = Qe/screening_length*exp(-z/screening_lenth)
+
+        
+        // Calculate average Pr. We take the average only over the FE region
+        Real average_P_r = 0.;
+        Real total_P_r = 0.;
+        int FE_index_counter = 0;
+        amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            if (mask(i,j,k) == 0.0){
+               total_P_r += pOld_r(i,j,k);
+               FE_index_counter += 1; 
+            }
+        });
+
+        average_P_r = total_P_r/FE_index_counter;
+
+        //Calculate integrated electrode charge (Qe) based on eq 13 of https://pubs.aip.org/aip/jap/article/44/8/3379/6486/Depolarization-fields-in-thin-ferroelectric-films
+        Real FE_thickness = FE_hi[2] - FE_lo[2];
+        Real numerator = 0.5 * FE_thickness * average_P_r / epsilonX_fe;
+        Real denominator = metal_screening_length/
+        Real Qe = 
+ 
+        //amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        //{
+        //    Real coth = 
+        //    Real csch
+        //});
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
@@ -37,7 +67,9 @@ void ComputeRho(MultiFab&      PoissonPhi,
 
                 if (mask(i,j,k) == 4.0) { //Metal
 	    	
-                   charge_den_arr(i,j,k) = //TODO;
+                   Real z_metal_fe_lo
+                   Real z_metal_fe_lo
+                   charge_den_arr(i,j,k) = Qe/metal_screening_length*exp(-z/metal_screening_length);
                 
                 } else {
 
