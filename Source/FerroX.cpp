@@ -189,6 +189,7 @@ AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_de;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_si;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_metal;
 AMREX_GPU_MANAGED amrex::Real FerroX::metal_screening_length;
+AMREX_GPU_MANAGED amrex::Real FerroX::metal_thickness;
 AMREX_GPU_MANAGED amrex::Real FerroX::alpha; // alpha = 2*alpha_1
 AMREX_GPU_MANAGED amrex::Real FerroX::beta; // beta = 4*alpha_11
 AMREX_GPU_MANAGED amrex::Real FerroX::gamma; // gamma = 6*alpha_111
@@ -295,6 +296,9 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      metal_screening_length = 1.e5; 
      pp.query("metal_screening_length",metal_screening_length);// metal_screening_length
+
+     metal_thickness = 0.; 
+     pp.query("metal_thickness",metal_thickness);// metal_thickness
 
      pp.get("alpha",alpha);
      pp.get("beta",beta);

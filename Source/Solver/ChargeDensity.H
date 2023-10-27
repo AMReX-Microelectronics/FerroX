@@ -6,9 +6,13 @@
 using namespace amrex;
 using namespace FerroX;
 
+
 void ComputeRho(MultiFab&      PoissonPhi,
+                Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 MultiFab&      rho,
                 MultiFab&      e_den,
                 MultiFab&      p_den,
-                const MultiFab& MaterialMask);
-
+                const MultiFab& MaterialMask,
+                const Geometry& geom,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);

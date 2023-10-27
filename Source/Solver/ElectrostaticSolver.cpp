@@ -102,8 +102,8 @@ void dF_dPhi(MultiFab&            alpha_cc,
         PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
 
         // Calculate rho from Phi in SC region
-        ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, MaterialMask);
-
+        ComputeRho(PoissonPhi_plus_delta, P_old, rho, e_den, p_den, MaterialMask, geom, prob_lo, prob_hi);
+        
         //Compute RHS of Poisson equation
         ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
@@ -231,7 +231,7 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
 
 	  Real x = prob_lo[0] + (i+0.5) * dx[0];
 	  Real y = prob_lo[1] + (j+0.5) * dx[1];
-	  Real z = prob_lo[1] + (k+0.5) * dx[2];
+	  Real z = prob_lo[2] + (k+0.5) * dx[2];
 	
           if(mask(i,j,k) == 0.0) {
              beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer

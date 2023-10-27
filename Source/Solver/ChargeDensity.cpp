@@ -6,12 +6,18 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 MultiFab&      rho,
                 MultiFab&      e_den,
                 MultiFab&      p_den,
-		const MultiFab& MaterialMask)
+		const MultiFab& MaterialMask,
+                const Geometry& geom,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
     // loop over boxes
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.validbox();
+
+        // extract dx from the geometry object
+        GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
         // Calculate charge density from Phi, Nc, Nv, Ec, and Ev
 	MultiFab acceptor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
@@ -29,47 +35,45 @@ void ComputeRho(MultiFab&      PoissonPhi,
         const Array4<Real>& donor_den_arr = donor_den.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
 
-        // Calculate average P
-        //Calculate Qe based on eq 13 
-        //rhs  = Qe/screening_length*exp(-z/screening_lenth)
-
-        
         // Calculate average Pr. We take the average only over the FE region
         Real average_P_r = 0.;
         Real total_P_r = 0.;
         int FE_index_counter = 0;
-        amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
-            if (mask(i,j,k) == 0.0){
-               total_P_r += pOld_r(i,j,k);
-               FE_index_counter += 1; 
+            if (mask(i, j, k) == 0.0) {
+                total_P_r += pOld_r(i, j, k);
+                FE_index_counter += 1;
             }
         });
-
-        average_P_r = total_P_r/FE_index_counter;
+        
+        average_P_r = total_P_r / static_cast<Real>(FE_index_counter);
 
         //Calculate integrated electrode charge (Qe) based on eq 13 of https://pubs.aip.org/aip/jap/article/44/8/3379/6486/Depolarization-fields-in-thin-ferroelectric-films
         Real FE_thickness = FE_hi[2] - FE_lo[2];
+        Real z_metal = 0.;
+        Real coth = (exp(2.*metal_thickness/metal_screening_length) + 1.0) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
+        Real csch = (2.*exp(metal_thickness/metal_screening_length)) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
         Real numerator = 0.5 * FE_thickness * average_P_r / epsilonX_fe;
-        Real denominator = metal_screening_length/
-        Real Qe = 
+        Real denominator = metal_screening_length/epsilon_de*(coth - csch + FE_thickness/(2.*epsilonX_fe));
+        Real Qe = -numerator/denominator;
  
-        //amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-        //{
-        //    Real coth = 
-        //    Real csch
-        //});
-
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
+
+             Real z = prob_lo[2] + (k+0.5) * dx[2];
 
              if (mask(i,j,k) >= 2.0) {
 
                 if (mask(i,j,k) == 4.0) { //Metal
 	    	
-                   Real z_metal_fe_lo
-                   Real z_metal_fe_lo
-                   charge_den_arr(i,j,k) = Qe/metal_screening_length*exp(-z/metal_screening_length);
+                   if(z <= FE_lo[2]){
+                      z_metal = std::abs(FE_lo[2] - (k + 0.5) * dx[2]);
+                   } else if (z >= FE_hi[2]){ 
+                      z_metal = std::abs((k + 0.5) * dx[2] - FE_hi[2]);
+                   }
+                   charge_den_arr(i,j,k) = Qe/metal_screening_length*exp(-z_metal/metal_screening_length);
                 
                 } else {
 
