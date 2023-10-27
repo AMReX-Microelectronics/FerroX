@@ -11,6 +11,21 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
+    // Calculate average Pr. We take the average only over the FE region
+    Real average_P_r = 0.;
+    Real total_P_r = 0.;
+    Real FE_index_counter = 0.;
+    
+    Compute_P_av(P_old, total_P_r, MaterialMask, FE_index_counter, average_P_r);
+
+    //Calculate integrated electrode charge (Qe) based on eq 13 of https://pubs.aip.org/aip/jap/article/44/8/3379/6486/Depolarization-fields-in-thin-ferroelectric-films
+    Real FE_thickness = FE_hi[2] - FE_lo[2];
+    Real coth = (exp(2.*metal_thickness/metal_screening_length) + 1.0) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
+    Real csch = (2.*exp(metal_thickness/metal_screening_length)) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
+    Real numerator = 0.5 * FE_thickness * average_P_r / epsilonX_fe;
+    Real denominator = metal_screening_length/epsilon_de*(coth - csch + FE_thickness/(2.*epsilonX_fe));
+    Real Qe = -numerator/denominator;
+
     // loop over boxes
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
     {
@@ -35,20 +50,6 @@ void ComputeRho(MultiFab&      PoissonPhi,
         const Array4<Real>& donor_den_arr = donor_den.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
 
-        // Calculate average Pr. We take the average only over the FE region
-        Real average_P_r = 0.;
-        Real total_P_r = 0.;
-        Real FE_index_counter = 0.;
-        
-        Compute_P_av(P_old, total_P_r, MaterialMask, FE_index_counter, average_P_r);
-
-        //Calculate integrated electrode charge (Qe) based on eq 13 of https://pubs.aip.org/aip/jap/article/44/8/3379/6486/Depolarization-fields-in-thin-ferroelectric-films
-        Real FE_thickness = FE_hi[2] - FE_lo[2];
-        Real coth = (exp(2.*metal_thickness/metal_screening_length) + 1.0) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
-        Real csch = (2.*exp(metal_thickness/metal_screening_length)) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
-        Real numerator = 0.5 * FE_thickness * average_P_r / epsilonX_fe;
-        Real denominator = metal_screening_length/epsilon_de*(coth - csch + FE_thickness/(2.*epsilonX_fe));
-        Real Qe = -numerator/denominator;
  
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
