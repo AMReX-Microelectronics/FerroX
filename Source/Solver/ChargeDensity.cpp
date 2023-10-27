@@ -38,21 +38,12 @@ void ComputeRho(MultiFab&      PoissonPhi,
         // Calculate average Pr. We take the average only over the FE region
         Real average_P_r = 0.;
         Real total_P_r = 0.;
-        int FE_index_counter = 0;
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-        {
-            if (mask(i, j, k) == 0.0) {
-                total_P_r += pOld_r(i, j, k);
-                FE_index_counter += 1;
-            }
-        });
+        Real FE_index_counter = 0.;
         
-        average_P_r = total_P_r / static_cast<Real>(FE_index_counter);
+        Compute_P_av(P_old, total_P_r, MaterialMask, FE_index_counter, average_P_r);
 
         //Calculate integrated electrode charge (Qe) based on eq 13 of https://pubs.aip.org/aip/jap/article/44/8/3379/6486/Depolarization-fields-in-thin-ferroelectric-films
         Real FE_thickness = FE_hi[2] - FE_lo[2];
-        Real z_metal = 0.;
         Real coth = (exp(2.*metal_thickness/metal_screening_length) + 1.0) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
         Real csch = (2.*exp(metal_thickness/metal_screening_length)) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
         Real numerator = 0.5 * FE_thickness * average_P_r / epsilonX_fe;
@@ -63,6 +54,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
         {
 
              Real z = prob_lo[2] + (k+0.5) * dx[2];
+             Real z_metal = 0.;
 
              if (mask(i,j,k) >= 2.0) {
 
@@ -120,4 +112,75 @@ void ComputeRho(MultiFab&      PoissonPhi,
         });
     }
  }
+
+void Compute_P_Sum(const std::array<MultiFab, AMREX_SPACEDIM>& P, Real& sum)
+{
+
+     // Initialize to zero
+     sum = 0.;
+
+     ReduceOps<ReduceOpSum> reduce_op;
+
+     ReduceData<Real> reduce_data(reduce_op);
+     using ReduceTuple = typename decltype(reduce_data)::Type;
+
+     for (MFIter mfi(P[2],TilingIfNotGPU()); mfi.isValid(); ++mfi)
+     {
+         const Box& bx = mfi.tilebox();
+         const Box& bx_grid = mfi.validbox();
+
+         auto const& fab = P[2].array(mfi);
+
+         reduce_op.eval(bx, reduce_data,
+         [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
+         {
+             return {fab(i,j,k)};
+         });
+     }
+
+     sum = amrex::get<0>(reduce_data.value());
+     ParallelDescriptor::ReduceRealSum(sum);
+}
+
+
+void Compute_P_index_Sum(const MultiFab& MaterialMask, Real& count)
+{
+
+     // Initialize to zero
+     count = 0.;
+
+     ReduceOps<ReduceOpSum> reduce_op;
+
+     ReduceData<Real> reduce_data(reduce_op);
+     using ReduceTuple = typename decltype(reduce_data)::Type;
+
+     for (MFIter mfi(MaterialMask, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+     {
+         const Box& bx = mfi.tilebox();
+         const Box& bx_grid = mfi.validbox();
+
+         auto const& fab = MaterialMask.array(mfi);
+
+         reduce_op.eval(bx, reduce_data,
+         [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
+         {
+             if(fab(i,j,k) == 0.) {
+               return {1.};
+             } else {
+               return {0.};
+             }
+            
+         });
+     }
+
+     count = amrex::get<0>(reduce_data.value());
+     ParallelDescriptor::ReduceRealSum(count);
+}
+
+void Compute_P_av(const std::array<MultiFab, AMREX_SPACEDIM>& P, Real& sum, const MultiFab& MaterialMask, Real& count, Real& P_av_z)
+{
+     Compute_P_Sum(P, sum);
+     Compute_P_index_Sum(MaterialMask, count);
+     P_av_z = sum/count;
+}
 

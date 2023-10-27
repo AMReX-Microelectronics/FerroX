@@ -16,3 +16,9 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 const Geometry& geom,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
+
+void Compute_P_Sum(const std::array<MultiFab, AMREX_SPACEDIM>& P, Real& sum);
+
+void Compute_P_index_Sum(const MultiFab& MaterialMask, Real& count);
+
+void Compute_P_av(const std::array<MultiFab, AMREX_SPACEDIM>& P, Real& sum, const MultiFab& MaterialMask, Real& count, Real &P_av_z);
