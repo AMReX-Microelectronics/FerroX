@@ -23,7 +23,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
     Real coth = (exp(2.*metal_thickness/metal_screening_length) + 1.0) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
     Real csch = (2.*exp(metal_thickness/metal_screening_length)) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
     Real numerator = 0.5 * FE_thickness * average_P_r / epsilonX_fe;
-    Real denominator = metal_screening_length/epsilon_de*(coth - csch + FE_thickness/(2.*epsilonX_fe));
+    Real denominator = metal_screening_length/epsilon_de*(coth - csch) + FE_thickness/(2.*epsilonX_fe);
     Real Qe = -numerator/denominator;
 
     // loop over boxes
