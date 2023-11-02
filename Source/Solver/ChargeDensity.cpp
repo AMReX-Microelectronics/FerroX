@@ -25,6 +25,11 @@ void ComputeRho(MultiFab&      PoissonPhi,
     Real numerator = 0.5 * FE_thickness * average_P_r / epsilonX_fe;
     Real denominator = metal_screening_length/epsilon_de*(coth - csch) + FE_thickness/(2.*epsilonX_fe);
     Real Qe = -numerator/denominator;
+    
+    amrex::Print() << "ChargeDen average_P_r = " << average_P_r << "\n";
+    amrex::Print() << "ChargeDen numerator = " << numerator << "\n";
+    amrex::Print() << "ChargeDen denominator = " << denominator << "\n";
+    amrex::Print() << "ChargeDen Qe = " << Qe << "\n";
 
     // loop over boxes
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
@@ -66,6 +71,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
                    } else if (z >= FE_hi[2]){ 
                       z_metal = std::abs((k + 0.5) * dx[2] - FE_hi[2]);
                    }
+    //               amrex::Print() << "Qe = " << Qe << "\n";
                    charge_den_arr(i,j,k) = Qe/metal_screening_length*exp(-z_metal/metal_screening_length);
                 
                 } else {

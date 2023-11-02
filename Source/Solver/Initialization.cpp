@@ -1,4 +1,5 @@
 #include "Initialization.H"
+#include "ChargeDensity.H"
 #include "Utils/eXstaticUtils/eXstaticUtil.H"
 #include "../../Utils/SelectWarpXUtils/WarpXUtil.H"
 
@@ -58,6 +59,25 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
         //rngs[i] = amrex::RandomNormal(0.,1.); // zero mean, unit variance
          rngs[i] = amrex::Random(); // uniform [0,1] option
     }
+
+    Real average_P_r = 1.e-6;
+    //Real total_P_r = 0.;
+    //Real FE_index_counter = 0.;
+
+    //Compute_P_av(P_old, total_P_r, MaterialMask, FE_index_counter, average_P_r);
+
+    //Calculate integrated electrode charge (Qe) based on eq 13 of https://pubs.aip.org/aip/jap/article/44/8/3379/6486/Depolarization-fields-in-thin-ferroelectric-films
+    Real FE_thickness = FE_hi[2] - FE_lo[2];
+    Real coth = (exp(2.*metal_thickness/metal_screening_length) + 1.0) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
+    Real csch = (2.*exp(metal_thickness/metal_screening_length)) / (exp(2.*metal_thickness/metal_screening_length) - 1.0);
+    Real numerator = 0.5 * FE_thickness * average_P_r / epsilonX_fe;
+    Real denominator = metal_screening_length/epsilon_de*(coth - csch + FE_thickness/(2.*epsilonX_fe));
+    Real Qe = -numerator/denominator;
+
+    amrex::Print() << "average_P_r = " << average_P_r << "\n";
+    amrex::Print() << "numerator = " << numerator << "\n";
+    amrex::Print() << "denominator = " << denominator << "\n";
+    amrex::Print() << "Qe = " << Qe << "\n";
 
     // loop over boxes
     for (MFIter mfi(rho); mfi.isValid(); ++mfi)
@@ -131,45 +151,60 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
 
+             Real z = prob_lo[2] + (k+0.5) * dx[2];
+             Real z_metal = 0.;
+
              //SC region
              if (mask(i,j,k) >= 2.0) {
 
-                if(use_Fermi_Dirac == 1){
-                  
-                   //Approximate FD integral
-                   Real Phi = 0.5*(Ec + Ev); //eV
-                   Real eta_n = q*(Phi - Ec)/(kb*T);
-                   Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2.0)));
-                   Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
-                   Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
+                if (mask(i,j,k) == 4.0) { //Metal
 
-                   e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
+                   if(z <= FE_lo[2]){
+                      z_metal = std::abs(FE_lo[2] - (k + 0.5) * dx[2]);
+                   } else if (z >= FE_hi[2]){
+                      z_metal = std::abs((k + 0.5) * dx[2] - FE_hi[2]);
+                   }
+                   //if(Qe != 0.) amrex::Print() << "initialization : Qe = " << Qe << "\n";
+                   charge_den_arr(i,j,k) = Qe/metal_screening_length*exp(-z_metal/metal_screening_length);
 
-                   Real eta_p = q*(Ev - Phi)/(kb*T);
-                   Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2.0)));
-                   Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
-                   Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
-
-                   hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
-           
                 } else {
+                   if(use_Fermi_Dirac == 1){
+                  
+                      //Approximate FD integral
+                      Real Phi = 0.5*(Ec + Ev); //eV
+                      Real eta_n = q*(Phi - Ec)/(kb*T);
+                      Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2.0)));
+                      Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
+                      Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
 
-                   hole_den_arr(i,j,k) = intrinsic_carrier_concentration;
-                   e_den_arr(i,j,k) = intrinsic_carrier_concentration;
+                      e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
 
+                      Real eta_p = q*(Ev - Phi)/(kb*T);
+                      Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2.0)));
+                      Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
+                      Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
+
+                      hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
+           
+                   } else {
+
+                      hole_den_arr(i,j,k) = intrinsic_carrier_concentration;
+                      e_den_arr(i,j,k) = intrinsic_carrier_concentration;
+
+                   }
+
+      	           //If in channel, set acceptor doping, else (Source/Drain) set donor doping
+                   if (mask(i,j,k) == 3.0) {
+      	                acceptor_den_arr(i,j,k) = acceptor_doping; 
+                        donor_den_arr(i,j,k) = 0.0;
+                   } else { // Source / Drain
+	                acceptor_den_arr(i,j,k) = 0.0; 
+	                donor_den_arr(i,j,k) = donor_doping;
+	           }
+                   charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
                 }
              }
-
-      	      //If in channel, set acceptor doping, else (Source/Drain) set donor doping
-              if (mask(i,j,k) == 3.0) {
-      	           acceptor_den_arr(i,j,k) = acceptor_doping; 
-                   donor_den_arr(i,j,k) = 0.0;
-              } else { // Source / Drain
-		   acceptor_den_arr(i,j,k) = 0.0; 
-	           donor_den_arr(i,j,k) = donor_doping;
-	      }
-              charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
-
+  
         });
     }
     for (int i = 0; i < 3; i++){

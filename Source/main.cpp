@@ -285,9 +285,9 @@ void main_main (c_FerroX& rFerroX)
 	//Compute RHS of Poisson equation
 	ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+        //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+        //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
         p_mlebabec->setACoeffs(0, alpha_cc);
@@ -405,9 +405,9 @@ void main_main (c_FerroX& rFerroX)
             // Compute RHS of Poisson equation
             ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-            dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+            //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-            ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+            //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
             p_mlebabec->setACoeffs(0, alpha_cc);
@@ -475,9 +475,9 @@ void main_main (c_FerroX& rFerroX)
                 // Compute RHS of Poisson equation
                 ComputePoissonRHS(PoissonRHS, P_new, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+                //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+                //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
                 p_mlebabec->setACoeffs(0, alpha_cc);
@@ -634,9 +634,9 @@ void main_main (c_FerroX& rFerroX)
                // Compute RHS of Poisson equation
                ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-               dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+               //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-               ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+               //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
                p_mlebabec->setACoeffs(0, alpha_cc);
