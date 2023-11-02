@@ -184,6 +184,9 @@ AMREX_GPU_MANAGED amrex::Real FerroX::epsilonX_fe_tphase;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilonZ_fe;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_de;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_si;
+AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_metal;
+AMREX_GPU_MANAGED amrex::Real FerroX::metal_screening_length;
+AMREX_GPU_MANAGED amrex::Real FerroX::metal_thickness;
 AMREX_GPU_MANAGED amrex::Real FerroX::alpha; // alpha = 2*alpha_1
 AMREX_GPU_MANAGED amrex::Real FerroX::beta; // beta = 4*alpha_11
 AMREX_GPU_MANAGED amrex::Real FerroX::gamma; // gamma = 6*alpha_111
@@ -284,6 +287,16 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.get("epsilonZ_fe",epsilonZ_fe);// epsilon_r for FE
      pp.get("epsilon_de",epsilon_de);// epsilon_r for DE
      pp.get("epsilon_si",epsilon_si);// epsilon_r for SC
+
+     epsilon_metal = 1.;
+     pp.query("epsilon_metal",epsilon_metal);// epsilon_r for metal
+
+     metal_screening_length = 1.e5; 
+     pp.query("metal_screening_length",metal_screening_length);// metal_screening_length
+
+     metal_thickness = 0.; 
+     pp.query("metal_thickness",metal_thickness);// metal_thickness
+
      pp.get("alpha",alpha);
      pp.get("beta",beta);
      pp.get("gamma",FerroX::gamma);
