@@ -66,13 +66,22 @@ void ComputeRho(MultiFab&      PoissonPhi,
 
                 if (mask(i,j,k) == 4.0) { //Metal
 	    	
-                   if(z <= FE_lo[2]){
-                      z_metal = std::abs(FE_lo[2] - (k + 0.5) * dx[2]);
-                   } else if (z >= FE_hi[2]){ 
-                      z_metal = std::abs((k + 0.5) * dx[2] - FE_hi[2]);
-                   }
-    //               amrex::Print() << "Qe = " << Qe << "\n";
-                   charge_den_arr(i,j,k) = Qe/metal_screening_length*exp(-z_metal/metal_screening_length);
+                   //if(z <= FE_lo[2]){
+                   //   z_metal = std::abs(FE_lo[2] - (k + 0.5) * dx[2]);
+                   //} else if (z >= FE_hi[2]){ 
+                   //   z_metal = std::abs((k + 0.5) * dx[2] - FE_hi[2]);
+                   //}
+    //             //  amrex::Print() << "Qe = " << Qe << "\n";
+                   //charge_den_arr(i,j,k) = Qe/metal_screening_length*exp(-z_metal/metal_screening_length);
+                   
+                   //Treat Metal as SC
+                   Real n_0 = intrinsic_carrier_concentration;
+                   Real p_0 = intrinsic_carrier_concentration;
+                   hole_den_arr(i,j,k) = n_0*exp(-(q*phi(i,j,k))/(kb*T));
+                   e_den_arr(i,j,k) =    p_0*exp(q*phi(i,j,k)/(kb*T));
+                   acceptor_den_arr(i,j,k) = acceptor_doping;
+                   donor_den_arr(i,j,k) = donor_doping;
+		   charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
                 
                 } else {
 

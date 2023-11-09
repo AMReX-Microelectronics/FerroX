@@ -74,10 +74,10 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
     Real denominator = metal_screening_length/epsilon_de*(coth - csch + FE_thickness/(2.*epsilonX_fe));
     Real Qe = -numerator/denominator;
 
-    amrex::Print() << "average_P_r = " << average_P_r << "\n";
-    amrex::Print() << "numerator = " << numerator << "\n";
-    amrex::Print() << "denominator = " << denominator << "\n";
-    amrex::Print() << "Qe = " << Qe << "\n";
+    //amrex::Print() << "average_P_r = " << average_P_r << "\n";
+    //amrex::Print() << "numerator = " << numerator << "\n";
+    //amrex::Print() << "denominator = " << denominator << "\n";
+    //amrex::Print() << "Qe = " << Qe << "\n";
 
     // loop over boxes
     for (MFIter mfi(rho); mfi.isValid(); ++mfi)
@@ -159,13 +159,20 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
                 if (mask(i,j,k) == 4.0) { //Metal
 
-                   if(z <= FE_lo[2]){
-                      z_metal = std::abs(FE_lo[2] - (k + 0.5) * dx[2]);
-                   } else if (z >= FE_hi[2]){
-                      z_metal = std::abs((k + 0.5) * dx[2] - FE_hi[2]);
-                   }
-                   //if(Qe != 0.) amrex::Print() << "initialization : Qe = " << Qe << "\n";
-                   charge_den_arr(i,j,k) = Qe/metal_screening_length*exp(-z_metal/metal_screening_length);
+                   //if(z <= FE_lo[2]){
+                   //   z_metal = std::abs(FE_lo[2] - (k + 0.5) * dx[2]);
+                   //} else if (z >= FE_hi[2]){
+                   //   z_metal = std::abs((k + 0.5) * dx[2] - FE_hi[2]);
+                   //}
+                   ////if(Qe != 0.) amrex::Print() << "initialization : Qe = " << Qe << "\n";
+                   //charge_den_arr(i,j,k) = Qe/metal_screening_length*exp(-z_metal/metal_screening_length);
+                   
+                   //Treat Metal as Semiconductor
+                   hole_den_arr(i,j,k) = intrinsic_carrier_concentration;
+                   e_den_arr(i,j,k) = intrinsic_carrier_concentration;
+      	           acceptor_den_arr(i,j,k) = acceptor_doping; 
+                   donor_den_arr(i,j,k) = donor_doping;
+                   charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
 
                 } else {
                    if(use_Fermi_Dirac == 1){
