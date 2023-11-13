@@ -85,15 +85,21 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
             if (mask(i,j,k) == 0.0) { //FE mask is 0.0
                if (prob_type == 1) {  //2D : Initialize uniform P in y direction
 
-                 pOld_r(i,j,k) = (-1.0 + 2.0*rng[i + k*n_cell[2]])*0.002;
+                 pOld_p(i,j,k) = (-1.0 + 2.0*rng[i + k*n_cell[2]])*Remnant_P[0];
+                 pOld_q(i,j,k) = (-1.0 + 2.0*rng[i + k*n_cell[2]])*Remnant_P[1];
+                 pOld_r(i,j,k) = (-1.0 + 2.0*rng[i + k*n_cell[2]])*Remnant_P[2];
 
                } else if (prob_type == 2) { // 3D : Initialize random P
 
-                 pOld_r(i,j,k) = (-1.0 + 2.0*Random(engine))*0.002;
+                 pOld_p(i,j,k) = (-1.0 + 2.0*Random(engine))*Remnant_P[0];
+                 pOld_q(i,j,k) = (-1.0 + 2.0*Random(engine))*Remnant_P[1];
+                 pOld_r(i,j,k) = (-1.0 + 2.0*Random(engine))*Remnant_P[2];
 
                } else if (prob_type == 3) { // smooth P for convergence tests
 
-                 pOld_r(i,j,k) = 0.002*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi[2])*(z - 1.5*DE_hi[2])/(2.0*2.0e-9*2.0e-9)));
+                 pOld_p(i,j,k) = Remnant_P[0]*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi[2])*(z - 1.5*DE_hi[2])/(2.0*2.0e-9*2.0e-9)));
+                 pOld_q(i,j,k) = Remnant_P[1]*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi[2])*(z - 1.5*DE_hi[2])/(2.0*2.0e-9*2.0e-9)));
+                 pOld_r(i,j,k) = Remnant_P[2]*exp(-(x*x/(2.0*5.e-9*5.e-9) + y*y/(2.0*5.e-9*5.e-9) + (z-1.5*DE_hi[2])*(z - 1.5*DE_hi[2])/(2.0*2.0e-9*2.0e-9)));
 
                } else {
 
@@ -110,11 +116,16 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 	       }
 
             } else {
+               pOld_p(i,j,k) = 0.0;
+               pOld_q(i,j,k) = 0.0;
                pOld_r(i,j,k) = 0.0;
                Gam(i,j,k) = 0.0;
             }
-            pOld_p(i,j,k) = 0.0;
-            pOld_q(i,j,k) = 0.0;
+
+	    if (is_polarization_scalar == 1){
+               pOld_p(i,j,k) = 0.0;
+               pOld_q(i,j,k) = 0.0;
+	    }
         });
         // Calculate charge density from Phi, Nc, Nv, Ec, and Ev
 
