@@ -47,8 +47,11 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
     int nprocs = ParallelDescriptor::NProcs();
 
-    amrex::InitRandom(seed                             , nprocs, seed                             );  // give all MPI ranks the same seed
-    // amrex::InitRandom(seed+ParallelDescriptor::MyProc(), nprocs, seed+ParallelDescriptor::MyProc());  // give all MPI ranks a different seed
+    if (prob_type == 1) {
+       amrex::InitRandom(seed                             , nprocs, seed                             );  // give all MPI ranks the same seed
+    } else { 
+      amrex::InitRandom(seed+ParallelDescriptor::MyProc(), nprocs, seed+ParallelDescriptor::MyProc());  // give all MPI ranks a different seed
+    }
 
     int nrand = n_cell[0]*n_cell[2];
     amrex::Gpu::ManagedVector<Real> rngs(nrand, 0.0);
