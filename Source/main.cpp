@@ -136,6 +136,8 @@ void main_main (c_FerroX& rFerroX)
         E[dir].setVal(0.);
     }
 
+    e_den.setVal(0.);
+    hole_den.setVal(0.);
     PoissonPhi.setVal(0.);
     PoissonRHS.setVal(0.);
     tphaseMask.setVal(0.);
