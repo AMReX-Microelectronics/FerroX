@@ -1,0 +1,79 @@
+#################################
+###### PROBLEM DOMAIN ######
+#################################
+
+domain.prob_lo = -16.e-9 -16.e-9 0.e-9
+domain.prob_hi =  16.e-9  16.e-9 9.e-9
+
+domain.n_cell = 64 64 18
+
+domain.max_grid_size = 32 32 18
+
+domain.coord_sys = cartesian 
+
+prob_type = 2
+
+TimeIntegratorOrder = 1
+
+nsteps = 3 
+plot_int = 3
+
+dt = 2.0e-13
+
+############################################
+###### POLARIZATION BOUNDARY CONDITIONS ####
+############################################
+
+P_BC_flag_lo = 3 3 0
+P_BC_flag_hi = 3 3 1
+lambda = 3.0e-9
+
+############################################
+###### ELECTRICAL BOUNDARY CONDITIONS ######
+############################################
+
+domain.is_periodic = 1 1 0
+
+boundary.hi = per per dir(0.0)
+boundary.lo = per per dir(0.0)
+
+Phi_Bc_lo = 0.0
+Phi_Bc_hi = 0.0
+
+inc_step = 5000
+Phi_Bc_inc = 0.0
+
+#################################
+###### STACK GEOMETRY ###########
+#################################
+
+SC_lo = -1.0 -1.0 -1.0
+SC_hi = -1.0 -1.0 -1.0
+
+DE_lo = -16.e-9 -16.e-9 0.0e-9
+DE_hi =  16.e-9  16.e-9 4.0e-9
+
+FE_lo = -16.e-9 -16.e-9 4.0e-9
+FE_hi =  16.e-9  16.e-9 9.e-9
+
+#################################
+###### MATERIAL PROPERTIES ######
+#################################
+
+epsilon_0 = 8.85e-12
+epsilonX_fe = 24.0
+epsilonZ_fe = 24.0
+epsilon_de = 10.0
+epsilon_si = 11.7
+alpha = -2.5e9
+beta = 6.0e10
+gamma = 1.5e11
+BigGamma = 100
+g11 = 1.0e-9
+g44 = 1.0e-9
+g44_p = 0.0
+g12 = 0.0
+alpha_12 = 0.0
+alpha_112 = 0.0
+alpha_123 = 0.0
+
