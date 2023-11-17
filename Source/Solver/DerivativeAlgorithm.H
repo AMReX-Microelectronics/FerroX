@@ -58,14 +58,11 @@ using namespace FerroX;
             Real F_lo = F(i,j,k)/(1 + dx[0]/2/lambda);
             return (dx[0]*F_lo/lambda - F(i,j,k) + F(i+1,j,k))/(2.*dx[0]); // dP/dz = P_lo/lambda;
 
-            // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
-            // return  -(dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]);// dP/dz = P_lo/lambda;
-
         } else if (P_BC_flag_lo[0] == 2){
             return ( - F(i,j,k) + F(i+1,j,k))/(2.*dx[0]); //dPdx = 0.
 
         } else if (P_BC_flag_lo[0] == 3){
-            return (- F(i-1,j,k) + F(i+1,j,k))/(2.*dx[0]); //No BC
+            return (- F(i-1,j,k) + F(i+1,j,k))/(2.*dx[0]); //No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the lower x polarization boundary condition!!");
@@ -83,14 +80,11 @@ using namespace FerroX;
             Real F_hi = F(i,j,k)/(1 - dx[0]/2/lambda);
             return (dx[0]*F_hi/lambda + F(i,j,k) - F(i-1,j,k))/(2.*dx[0]);//dPdz = P_hi/lambda;
 
-            // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
-            // return  -(dx[2]*F_hi/lambda + F(i,j,k) - F(i,j,k-1))/(2.*dx[2]);//dPdz = P_hi/lambda;
-
         } else if (P_BC_flag_hi[0] == 2){
             return (F(i,j,k) - F(i-1,j,k))/(2.*dx[0]); //dPdx = 0.
 
         } else if (P_BC_flag_hi[0] == 3){
-            return (F(i+1,j,k) - F(i-1,j,k))/(2.*dx[0]); //No BC
+            return (F(i+1,j,k) - F(i-1,j,k))/(2.*dx[0]); //No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the higher x polarization boundary condition!!");
@@ -125,14 +119,11 @@ using namespace FerroX;
             Real F_lo = F(i,j,k)/(1 + dx[1]/2/lambda);
             return (dx[1]*F_lo/lambda - F(i,j,k) + F(i,j+1,k))/(2.*dx[1]); // dP/dz = P_lo/lambda;
 
-            // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
-            // return  -(dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]);// dP/dz = P_lo/lambda;
-
         } else if (P_BC_flag_lo[1] == 2){
             return ( - F(i,j,k) + F(i,j+1,k))/(2.*dx[1]); //dPdy = 0.
 
         } else if (P_BC_flag_lo[1] == 3){
-            return ( - F(i,j-1,k) + F(i,j+1,k))/(2.*dx[1]); //No BC
+            return ( - F(i,j-1,k) + F(i,j+1,k))/(2.*dx[1]); //No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
@@ -150,14 +141,11 @@ using namespace FerroX;
             Real F_hi = F(i,j,k)/(1 - dx[1]/2/lambda);
             return (dx[1]*F_hi/lambda + F(i,j,k) - F(i,j-1,k))/(2.*dx[1]);//dPdz = P_hi/lambda;
 
-            // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
-            // return  -(dx[2]*F_hi/lambda + F(i,j,k) - F(i,j,k-1))/(2.*dx[2]);//dPdz = P_hi/lambda;
-
         } else if (P_BC_flag_hi[1] == 2){
             return (F(i,j,k) - F(i,j-1,k))/(2.*dx[1]); //dPdy = 0.
 
         } else if (P_BC_flag_hi[1] == 3){
-            return (F(i,j+1,k) - F(i,j-1,k))/(2.*dx[1]); //No BC
+            return (F(i,j+1,k) - F(i,j-1,k))/(2.*dx[1]); //No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the higher y polarization boundary condition!!");
@@ -199,7 +187,7 @@ using namespace FerroX;
             return ( - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]); //dPdz = 0.
 
         } else if (P_BC_flag_lo[2] == 3){
-            return ( - F(i,j,k-1) + F(i,j,k+1))/(2.*dx[2]); //No BC
+            return ( - F(i,j,k-1) + F(i,j,k+1))/(2.*dx[2]); //No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
@@ -224,7 +212,7 @@ using namespace FerroX;
             return (F(i,j,k) - F(i,j,k-1))/(2.*dx[2]); //dPdz = 0.
 
         } else if (P_BC_flag_hi[2] == 3){
-            return (F(i,j,k+1) - F(i,j,k-1))/(2.*dx[2]); //No BC
+            return (F(i,j,k+1) - F(i,j,k-1))/(2.*dx[2]); //No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
@@ -280,14 +268,11 @@ using namespace FerroX;
             Real F_lo = F(i,j,k)/(1 + dx[0]/2/lambda);
             return (-dx[0]*F_lo/lambda - F(i,j,k) + F(i+1,j,k))/dx[0]/dx[0];//dPdx = P_lo/lambda;
 
-            // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
-            // return  (-dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];// dPdz = P_lo/lambda;
-
         } else if (P_BC_flag_lo[0] == 2){
             return ( - F(i,j,k) + F(i+1,j,k))/dx[0]/dx[0];//dPdx = 0.
 
         } else if (P_BC_flag_lo[0] == 3){
-            return ( F(i+1,j,k) - 2.*F(i,j,k) + F(i-1,j,k))/dx[0]/dx[0];//No BC
+            return ( F(i+1,j,k) - 2.*F(i,j,k) + F(i-1,j,k))/dx[0]/dx[0];//No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
@@ -305,14 +290,11 @@ using namespace FerroX;
             Real F_hi = F(i,j,k)/(1 - dx[0]/2/lambda);
             return (dx[0]*F_hi/lambda - F(i,j,k) + F(i-1,j,k))/dx[0]/dx[0];//dPdx = P_hi/lambda;
 
-            // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
-            // return (dx[2]*F_hi/lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2]; // dPdz = P_hi/lambda;
-
         } else if (P_BC_flag_hi[0] == 2){
             return ( - F(i,j,k) + F(i-1,j,k))/dx[0]/dx[0];//dPdx = 0.
 
         } else if (P_BC_flag_hi[0] == 3){
-            return ( F(i+1,j,k) - 2.*F(i,j,k) + F(i-1,j,k))/dx[0]/dx[0];//No BC
+            return ( F(i+1,j,k) - 2.*F(i,j,k) + F(i-1,j,k))/dx[0]/dx[0];//No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
@@ -348,14 +330,11 @@ using namespace FerroX;
             Real F_lo = F(i,j,k)/(1 + dx[1]/2/lambda);
             return (-dx[1]*F_lo/lambda - F(i,j,k) + F(i,j+1,k))/dx[1]/dx[1];//dPdz = P_lo/lambda;
 
-            // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
-            // return  (-dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];// dPdz = P_lo/lambda;
-
         } else if (P_BC_flag_lo[1] == 2){
             return ( - F(i,j,k) + F(i,j+1,k))/dx[1]/dx[1];//dPdy = 0.
 
         } else if (P_BC_flag_lo[1] == 3){
-            return ( F(i,j+1,k) - 2.*F(i,j,k) + F(i,j-1,k))/dx[1]/dx[1];//No BC
+            return ( F(i,j+1,k) - 2.*F(i,j,k) + F(i,j-1,k))/dx[1]/dx[1];//No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
@@ -373,14 +352,11 @@ using namespace FerroX;
             Real F_hi = F(i,j,k)/(1 - dx[1]/2/lambda);
             return (dx[1]*F_hi/lambda - F(i,j,k) + F(i,j-1,k))/dx[1]/dx[1];//dPdy = P_hi/lambda;
 
-            // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
-            // return (dx[2]*F_hi/lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2]; // dPdz = P_hi/lambda;
-
         } else if (P_BC_flag_hi[1] == 2){
             return ( - F(i,j,k) + F(i,j-1,k))/dx[1]/dx[1];//dPdy = 0.
 
         } else if (P_BC_flag_hi[1] == 3){
-            return ( F(i,j+1,k) - 2.*F(i,j,k) + F(i,j-1,k))/dx[1]/dx[1];//No BC
+            return ( F(i,j+1,k) - 2.*F(i,j,k) + F(i,j-1,k))/dx[1]/dx[1];//No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
@@ -422,7 +398,7 @@ using namespace FerroX;
             return ( - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = 0.
 
 	} else if (P_BC_flag_lo[2] == 3){
-            return ( F(i,j,k-1) - 2.*F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//No BC.
+            return ( F(i,j,k-1) - 2.*F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//No BC (extend outside FE)
 
         } else {
             amrex::Abort("Wrong flag of the lower polarization boundary condition!!");
@@ -447,7 +423,7 @@ using namespace FerroX;
             return ( - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = 0.
 
         } else if (P_BC_flag_hi[2] == 3){
-            return (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//No BC
+            return (F(i,j,k+1) - 2.*F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//No BC (extend outside FE)
 
 	} else {
             amrex::Abort("Wrong flag of the higher polarization boundary condition!!");
