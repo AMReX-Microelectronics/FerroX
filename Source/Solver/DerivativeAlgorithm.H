@@ -196,7 +196,7 @@ using namespace FerroX;
             Real F_lo = F(i,j,k)/(1 + dx[2]/2/lambda);
             return (dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]); // dP/dz = P_lo/lambda;
 
-            // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order 1st-order one-sided 1st derivative 
+            // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
             // return  -(dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/(2.*dx[2]);// dP/dz = P_lo/lambda;
 
         } else if (P_BC_flag_lo[2] == 2){
@@ -225,7 +225,7 @@ using namespace FerroX;
             Real F_hi = F(i,j,k)/(1 - dx[2]/2/lambda);
             return (dx[2]*F_hi/lambda + F(i,j,k) - F(i,j,k-1))/(2.*dx[2]);//dPdz = P_hi/lambda;
 
-            // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order 1st-order one-sided 1st derivative 
+            // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
             // return  -(dx[2]*F_hi/lambda + F(i,j,k) - F(i,j,k-1))/(2.*dx[2]);//dPdz = P_hi/lambda;
 
         } else if (P_BC_flag_hi[2] == 2){
@@ -410,7 +410,7 @@ using namespace FerroX;
             Real F_lo = F(i,j,k)/(1 + dx[2]/2/lambda);
             return (-dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];//dPdz = P_lo/lambda;
 
-            // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order 1st-order one-sided 1st derivative 
+            // Real F_lo = (9. * F(i,j,k) - F(i,j,k+1)) / (3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
             // return  (-dx[2]*F_lo/lambda - F(i,j,k) + F(i,j,k+1))/dx[2]/dx[2];// dPdz = P_lo/lambda;
 
         } else if (P_BC_flag_lo[2] == 2){
@@ -439,7 +439,7 @@ using namespace FerroX;
             Real F_hi = F(i,j,k)/(1 - dx[2]/2/lambda);
             return (dx[2]*F_hi/lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2];//dPdz = P_hi/lambda;
 
-            // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order 1st-order one-sided 1st derivative 
+            // Real F_hi = (9. * F(i,j,k) - F(i,j,k-1)) / ( - 3. * dx[2] / lambda + 8.); // derived with 2nd order one-sided 1st derivative 
             // return (dx[2]*F_hi/lambda - F(i,j,k) + F(i,j,k-1))/dx[2]/dx[2]; // dPdz = P_hi/lambda;
 
         } else if (P_BC_flag_hi[2] == 2){
