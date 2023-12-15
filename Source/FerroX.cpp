@@ -450,7 +450,7 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      // 1eV = 1.602e-19 J
 
      Nc = 2.8e25;
-     Nv = 1.04e25;
+     Nv = 1.83e25;
      Ec = 0.56;
      Ev = -0.56;
      q = 1.602e-19;
@@ -462,7 +462,7 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      donor_doping = 0.0;
      pp.query("donor_doping",donor_doping);
 
-     intrinsic_carrier_concentration = 9.696e+15;
+     intrinsic_carrier_concentration = 8.8747e+15;
      pp.query("intrinsic_carrier_concentration",intrinsic_carrier_concentration);
 
      use_Fermi_Dirac = 0;
