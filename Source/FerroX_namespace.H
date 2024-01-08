@@ -38,8 +38,8 @@ namespace FerroX {
     // Constants for SC layer calculations
     extern AMREX_GPU_MANAGED amrex::Real Nc;
     extern AMREX_GPU_MANAGED amrex::Real Nv;
-    extern AMREX_GPU_MANAGED amrex::Real Ec;
-    extern AMREX_GPU_MANAGED amrex::Real Ev;
+    extern AMREX_GPU_MANAGED amrex::Real bandgap;
+    extern AMREX_GPU_MANAGED amrex::Real affinity;
     extern AMREX_GPU_MANAGED amrex::Real q;
     extern AMREX_GPU_MANAGED amrex::Real kb;
     extern AMREX_GPU_MANAGED amrex::Real T;

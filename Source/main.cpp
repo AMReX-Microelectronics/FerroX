@@ -323,6 +323,7 @@ void main_main (c_FerroX& rFerroX)
 
             iter = iter + 1;
             amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+            if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
         }
     }
     
@@ -444,6 +445,7 @@ void main_main (c_FerroX& rFerroX)
 
                 iter = iter + 1;
                 amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+                if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
             }
         }
         
@@ -514,6 +516,7 @@ void main_main (c_FerroX& rFerroX)
 
                     iter = iter + 1;
                     amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+                    if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
                 }
             }
             
@@ -673,6 +676,7 @@ void main_main (c_FerroX& rFerroX)
 
                    iter = iter + 1;
                    amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+                   if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
                }
            }
        

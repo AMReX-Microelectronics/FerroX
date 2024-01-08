@@ -199,8 +199,8 @@ AMREX_GPU_MANAGED amrex::Real FerroX::alpha_123;
 // Constants for SC layer calculations
 AMREX_GPU_MANAGED amrex::Real FerroX::Nc;
 AMREX_GPU_MANAGED amrex::Real FerroX::Nv;
-AMREX_GPU_MANAGED amrex::Real FerroX::Ec;
-AMREX_GPU_MANAGED amrex::Real FerroX::Ev;
+AMREX_GPU_MANAGED amrex::Real FerroX::bandgap;
+AMREX_GPU_MANAGED amrex::Real FerroX::affinity;
 AMREX_GPU_MANAGED amrex::Real FerroX::q;
 AMREX_GPU_MANAGED amrex::Real FerroX::kb;
 AMREX_GPU_MANAGED amrex::Real FerroX::T;
@@ -451,8 +451,8 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      Nc = 2.8e25;
      Nv = 1.83e25;
-     Ec = 0.56;
-     Ev = -0.56;
+     bandgap = 1.12; //eV
+     affinity = 4.05; //eV
      q = 1.602e-19;
      kb = 1.38e-23; // Boltzmann constant
      T = 300; // Room Temp
