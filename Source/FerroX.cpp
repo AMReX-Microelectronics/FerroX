@@ -475,7 +475,7 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      intrinsic_carrier_concentration = std::sqrt(Nc*Nv)*exp(-0.5*bandgap/(kb*T));
 
-     use_Fermi_Dirac = 0;
+     use_Fermi_Dirac = 1;
      pp.query("use_Fermi_Dirac",use_Fermi_Dirac);
      
      use_work_function = 0;
