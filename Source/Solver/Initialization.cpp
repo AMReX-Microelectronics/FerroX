@@ -148,41 +148,13 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
              //SC region
              if (mask(i,j,k) >= 2.0) {
 
-                //if(use_Fermi_Dirac == 1){
-                //  
-                //   //Approximate FD integral
-                //   Real Phi = 0.5*(Ec + Ev); //eV
-                //   Real eta_n = q*(Phi - Ec)/(kb*T);
-                //   Real nu_n = std::pow(eta_n, 4.0) + 50.0 + 33.6 * eta_n * (1 - 0.68 * exp(-0.17 * std::pow((eta_n + 1), 2.0)));
-                //   Real xi_n = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_n, 3/8));
-                //   Real FD_half_n = std::pow(exp(-eta_n) + xi_n, -1.0);
-
-                //   e_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nc*FD_half_n;
-
-                //   Real eta_p = q*(Ev - Phi)/(kb*T);
-                //   Real nu_p = std::pow(eta_p, 4.0) + 50.0 + 33.6 * eta_p * (1 - 0.68 * exp(-0.17 * std::pow((eta_p + 1), 2.0)));
-                //   Real xi_p = 3.0 * sqrt(3.14)/(4.0 * std::pow(nu_p, 3/8));
-                //   Real FD_half_p = std::pow(exp(-eta_p) + xi_p, -1.0);
-
-                //   hole_den_arr(i,j,k) = 2.0/sqrt(3.14)*Nv*FD_half_p;
-           
-                //} else {
-
-                   hole_den_arr(i,j,k) = intrinsic_carrier_concentration;
-                   e_den_arr(i,j,k) = intrinsic_carrier_concentration;
-
-                //}
+                hole_den_arr(i,j,k) = intrinsic_carrier_concentration;
+                e_den_arr(i,j,k) = intrinsic_carrier_concentration;
+                acceptor_den_arr(i,j,k) = acceptor_doping;
+                donor_den_arr(i,j,k) = donor_doping;
              }
 
-      	      //If in channel, set acceptor doping, else (Source/Drain) set donor doping
-              if (mask(i,j,k) == 3.0) {
-      	           acceptor_den_arr(i,j,k) = acceptor_doping; 
-                   donor_den_arr(i,j,k) = 0.0;
-              } else { // Source / Drain
-		   acceptor_den_arr(i,j,k) = 0.0; 
-	           donor_den_arr(i,j,k) = donor_doping;
-	      }
-              charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
+             charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
 
         });
     }

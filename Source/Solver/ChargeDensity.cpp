@@ -65,12 +65,8 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 amrex::Real g_A = 4.0;
                 amrex::Real g_D = 2.0;
 
-                //The most common acceptor dopant in bulk Si is boron (B), which has Ea = 44 meV
-                //The most common donors in bulk Si are phosphorus (P) and arsenic (As), 
-                //which have ionization energies of Ed = 46 meV and 54 meV, respectively.
-
-                amrex::Real Ea = acceptor_ionization_energy; //44.0e-3; 
-                amrex::Real Ed = donor_ionization_energy; //46.0e-3; 
+                amrex::Real Ea = acceptor_ionization_energy;  
+                amrex::Real Ed = donor_ionization_energy; 
                           
                 if(use_Fermi_Dirac == 1){
                   //Fermi-Dirac
