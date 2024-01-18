@@ -47,6 +47,8 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED amrex::Real donor_doping;
     extern AMREX_GPU_MANAGED amrex::Real intrinsic_carrier_concentration;
     extern AMREX_GPU_MANAGED int use_Fermi_Dirac;
+    extern AMREX_GPU_MANAGED int use_work_function;
+    extern AMREX_GPU_MANAGED amrex::Real metal_work_function;
     
 
     // P and Phi Bc

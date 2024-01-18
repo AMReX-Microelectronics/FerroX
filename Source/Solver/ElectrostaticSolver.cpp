@@ -497,7 +497,7 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
     }
 }
 
-void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
+void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom)
 {
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
     {
@@ -510,9 +510,14 @@ void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>
           if(k < 0) {
             Phi(i,j,k) = Phi_Bc_lo;
           } else if(k >= n_cell[2]){
-            Phi(i,j,k) = Phi_Bc_hi;
+            amrex::Real Eg = bandgap;
+            amrex::Real Chi = affinity;
+            amrex::Real phi_ref = Chi + 0.5*Eg + 0.5*kb*T*log(Nc/Nv)/q;  
+            amrex::Real phi_m = use_work_function ? metal_work_function : phi_ref; //in eV When not used, applied voltgae is set as the potential on the metal interface 
+            Phi(i,j,k) = Phi_Bc_hi - (phi_m - phi_ref);
           }
         });
     }
+    PoissonPhi.FillBoundary(geom.periodicity());
 }
 

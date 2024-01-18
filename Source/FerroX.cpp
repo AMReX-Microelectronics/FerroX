@@ -208,6 +208,8 @@ AMREX_GPU_MANAGED amrex::Real FerroX::acceptor_doping;
 AMREX_GPU_MANAGED amrex::Real FerroX::donor_doping;
 AMREX_GPU_MANAGED amrex::Real FerroX::intrinsic_carrier_concentration;
 AMREX_GPU_MANAGED int FerroX::use_Fermi_Dirac;
+AMREX_GPU_MANAGED int FerroX::use_work_function;
+AMREX_GPU_MANAGED amrex::Real FerroX::metal_work_function;
 
 // P and Phi Bc
 AMREX_GPU_MANAGED amrex::Real FerroX::lambda;
@@ -468,6 +470,14 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      use_Fermi_Dirac = 0;
      pp.query("use_Fermi_Dirac",use_Fermi_Dirac);
      
+     use_work_function = 0;
+     pp.query("use_work_function",use_work_function);
+    
+     if (use_work_function == 1){
+        metal_work_function = 4.85; //eV
+        pp.query("metal_work_function", metal_work_function);
+     } 
+
      Coordinate_Transformation = 0;
      pp.query("Coordinate_Transformation",Coordinate_Transformation);
      
