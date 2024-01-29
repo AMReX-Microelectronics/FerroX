@@ -146,8 +146,8 @@ void main_main (c_FerroX& rFerroX)
     angle_theta.setVal(0.);
 
     //Initialize material mask
-    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
-    //InitializeMaterialMask(rFerroX, geom, MaterialMask);
+    //InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
+    InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
        Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
@@ -287,9 +287,9 @@ void main_main (c_FerroX& rFerroX)
 	//Compute RHS of Poisson equation
 	ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+        //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+        //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
         p_mlebabec->setACoeffs(0, alpha_cc);
@@ -304,7 +304,7 @@ void main_main (c_FerroX& rFerroX)
 	PoissonPhi.FillBoundary(geom.periodicity());
 	
         // Calculate rho from Phi in SC region
-        ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+        ComputeRho(PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
         
 	if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
@@ -407,9 +407,9 @@ void main_main (c_FerroX& rFerroX)
             // Compute RHS of Poisson equation
             ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-            dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+            //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-            ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+            //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
             p_mlebabec->setACoeffs(0, alpha_cc);
@@ -425,7 +425,7 @@ void main_main (c_FerroX& rFerroX)
 	    PoissonPhi.FillBoundary(geom.periodicity());
             
 	    // Calculate rho from Phi in SC region
-            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+            ComputeRho(PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
 
             if (contains_SC == 0) {
                 // no semiconductor region; set error to zero so the while loop terminates
@@ -477,9 +477,9 @@ void main_main (c_FerroX& rFerroX)
                 // Compute RHS of Poisson equation
                 ComputePoissonRHS(PoissonRHS, P_new, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+                //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+                //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
                 p_mlebabec->setACoeffs(0, alpha_cc);
@@ -495,7 +495,7 @@ void main_main (c_FerroX& rFerroX)
 	        PoissonPhi.FillBoundary(geom.periodicity());
 	
                 // Calculate rho from Phi in SC region
-                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+                ComputeRho(PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
 
                 if (contains_SC == 0) {
                     // no semiconductor region; set error to zero so the while loop terminates
@@ -636,9 +636,9 @@ void main_main (c_FerroX& rFerroX)
                // Compute RHS of Poisson equation
                ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-               dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+               //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-               ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+               //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
                p_mlebabec->setACoeffs(0, alpha_cc);
@@ -654,7 +654,7 @@ void main_main (c_FerroX& rFerroX)
 	       PoissonPhi.FillBoundary(geom.periodicity());
 	
                // Calculate rho from Phi in SC region
-               ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+               ComputeRho(PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, geom, prob_lo, prob_hi);
 
                if (contains_SC == 0) {
                    // no semiconductor region; set error to zero so the while loop terminates

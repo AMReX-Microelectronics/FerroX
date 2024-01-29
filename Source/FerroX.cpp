@@ -176,6 +176,9 @@ AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::FE_hi;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::SC_hi;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::Channel_hi;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::Channel_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::Metal_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::Metal_lo;
+
 
 // material parameters
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_0;
@@ -184,6 +187,9 @@ AMREX_GPU_MANAGED amrex::Real FerroX::epsilonX_fe_tphase;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilonZ_fe;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_de;
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_si;
+AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_metal;
+AMREX_GPU_MANAGED amrex::Real FerroX::metal_screening_length;
+AMREX_GPU_MANAGED amrex::Real FerroX::metal_thickness;
 AMREX_GPU_MANAGED amrex::Real FerroX::alpha; // alpha = 2*alpha_1
 AMREX_GPU_MANAGED amrex::Real FerroX::beta; // beta = 4*alpha_11
 AMREX_GPU_MANAGED amrex::Real FerroX::gamma; // gamma = 6*alpha_111
@@ -289,6 +295,16 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.get("epsilonZ_fe",epsilonZ_fe);// epsilon_r for FE
      pp.get("epsilon_de",epsilon_de);// epsilon_r for DE
      pp.get("epsilon_si",epsilon_si);// epsilon_r for SC
+
+     epsilon_metal = 1.;
+     pp.query("epsilon_metal",epsilon_metal);// epsilon_r for metal
+
+     metal_screening_length = 1.e5; 
+     pp.query("metal_screening_length",metal_screening_length);// metal_screening_length
+
+     metal_thickness = 0.; 
+     pp.query("metal_thickness",metal_thickness);// metal_thickness
+
      pp.get("alpha",alpha);
      pp.get("beta",beta);
      pp.get("gamma",FerroX::gamma);
@@ -422,6 +438,18 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      if (pp.queryarr("Channel_hi",temp)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
              Channel_hi[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("Metal_lo",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             Metal_lo[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("Metal_hi",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             Metal_hi[i] = temp[i];
          }
      }
 

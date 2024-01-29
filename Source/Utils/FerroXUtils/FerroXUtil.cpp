@@ -25,7 +25,7 @@ void FerroX_Util::Contains_sc(MultiFab& MaterialMask, bool& contains_SC)
             for (auto k = lo.z; k <= hi.z; ++k) {
             for (auto j = lo.y; j <= hi.y; ++j) {
             for (auto i = lo.x; i <= hi.x; ++i) {
-                  if (mask(i,j,k) >= 2.0) {
+                 if (mask(i,j,k) == 2.0 || mask(i,j,k) == 3.0) {
                           has_SC = 1;
                   }
             }
