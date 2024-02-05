@@ -473,7 +473,7 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      acceptor_ionization_energy = 44.0e-3; 
      donor_ionization_energy = 46.0e-3; 
 
-     intrinsic_carrier_concentration = std::sqrt(Nc*Nv)*exp(-0.5*bandgap/(kb*T));
+     intrinsic_carrier_concentration = std::sqrt(Nc*Nv)*exp(-0.5*q*bandgap/(kb*T));
 
      use_Fermi_Dirac = 1;
      pp.query("use_Fermi_Dirac",use_Fermi_Dirac);
