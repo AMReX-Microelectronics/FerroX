@@ -38,15 +38,19 @@ namespace FerroX {
     // Constants for SC layer calculations
     extern AMREX_GPU_MANAGED amrex::Real Nc;
     extern AMREX_GPU_MANAGED amrex::Real Nv;
-    extern AMREX_GPU_MANAGED amrex::Real Ec;
-    extern AMREX_GPU_MANAGED amrex::Real Ev;
+    extern AMREX_GPU_MANAGED amrex::Real bandgap;
+    extern AMREX_GPU_MANAGED amrex::Real affinity;
     extern AMREX_GPU_MANAGED amrex::Real q;
     extern AMREX_GPU_MANAGED amrex::Real kb;
     extern AMREX_GPU_MANAGED amrex::Real T;
     extern AMREX_GPU_MANAGED amrex::Real acceptor_doping;
     extern AMREX_GPU_MANAGED amrex::Real donor_doping;
+    extern AMREX_GPU_MANAGED amrex::Real acceptor_ionization_energy;
+    extern AMREX_GPU_MANAGED amrex::Real donor_ionization_energy;
     extern AMREX_GPU_MANAGED amrex::Real intrinsic_carrier_concentration;
     extern AMREX_GPU_MANAGED int use_Fermi_Dirac;
+    extern AMREX_GPU_MANAGED int use_work_function;
+    extern AMREX_GPU_MANAGED amrex::Real metal_work_function;
     
 
     // P and Phi Bc

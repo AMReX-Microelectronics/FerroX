@@ -218,7 +218,7 @@ void main_main (c_FerroX& rFerroX)
     PoissonPhi.FillBoundary(geom.periodicity());
 
     // Set Dirichlet BC for Phi in z
-    //SetPhiBC_z(PoissonPhi); 
+    SetPhiBC_z(PoissonPhi, n_cell, geom); 
     p_mlebabec->setLevelBC(amrlev, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
@@ -260,6 +260,7 @@ void main_main (c_FerroX& rFerroX)
     PoissonPhi.FillBoundary(geom.periodicity());
 
     // set Dirichlet BC by reading in the ghost cell values
+    SetPhiBC_z(PoissonPhi, n_cell, geom); 
     p_mlabec->setLevelBC(amrlev, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
@@ -323,6 +324,7 @@ void main_main (c_FerroX& rFerroX)
 
             iter = iter + 1;
             amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+            if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
         }
     }
     
@@ -444,6 +446,7 @@ void main_main (c_FerroX& rFerroX)
 
                 iter = iter + 1;
                 amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+                if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
             }
         }
         
@@ -514,6 +517,7 @@ void main_main (c_FerroX& rFerroX)
 
                     iter = iter + 1;
                     amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+                    if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
                 }
             }
             
@@ -618,7 +622,7 @@ void main_main (c_FerroX& rFerroX)
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << ", num_Vapp = " << num_Vapp << ", sign = " << sign << std::endl;
 
             // Set Dirichlet BC for Phi in z
-            SetPhiBC_z(PoissonPhi, n_cell);
+            SetPhiBC_z(PoissonPhi, n_cell, geom);
 
            // set Dirichlet BC by reading in the ghost cell values
 #ifdef AMREX_USE_EB
@@ -673,6 +677,7 @@ void main_main (c_FerroX& rFerroX)
 
                    iter = iter + 1;
                    amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+                   if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
                }
            }
        

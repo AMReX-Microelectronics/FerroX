@@ -199,15 +199,19 @@ AMREX_GPU_MANAGED amrex::Real FerroX::alpha_123;
 // Constants for SC layer calculations
 AMREX_GPU_MANAGED amrex::Real FerroX::Nc;
 AMREX_GPU_MANAGED amrex::Real FerroX::Nv;
-AMREX_GPU_MANAGED amrex::Real FerroX::Ec;
-AMREX_GPU_MANAGED amrex::Real FerroX::Ev;
+AMREX_GPU_MANAGED amrex::Real FerroX::bandgap;
+AMREX_GPU_MANAGED amrex::Real FerroX::affinity;
 AMREX_GPU_MANAGED amrex::Real FerroX::q;
 AMREX_GPU_MANAGED amrex::Real FerroX::kb;
 AMREX_GPU_MANAGED amrex::Real FerroX::T;
 AMREX_GPU_MANAGED amrex::Real FerroX::acceptor_doping;
 AMREX_GPU_MANAGED amrex::Real FerroX::donor_doping;
+AMREX_GPU_MANAGED amrex::Real FerroX::acceptor_ionization_energy;
+AMREX_GPU_MANAGED amrex::Real FerroX::donor_ionization_energy;
 AMREX_GPU_MANAGED amrex::Real FerroX::intrinsic_carrier_concentration;
 AMREX_GPU_MANAGED int FerroX::use_Fermi_Dirac;
+AMREX_GPU_MANAGED int FerroX::use_work_function;
+AMREX_GPU_MANAGED amrex::Real FerroX::metal_work_function;
 
 // P and Phi Bc
 AMREX_GPU_MANAGED amrex::Real FerroX::lambda;
@@ -445,14 +449,14 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      // For Silicon:
      // Nc = 2.8e25 m^-3
-     // Nv = 1.04e25 m^-3
+     // Nv = 1.83e25 m^-3
      // Band gap Eg = 1.12eV
      // 1eV = 1.602e-19 J
 
      Nc = 2.8e25;
-     Nv = 1.04e25;
-     Ec = 0.56;
-     Ev = -0.56;
+     Nv = 1.83e25;
+     bandgap = 1.12; //eV
+     affinity = 4.05; //eV
      q = 1.602e-19;
      kb = 1.38e-23; // Boltzmann constant
      T = 300; // Room Temp
@@ -462,12 +466,26 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      donor_doping = 0.0;
      pp.query("donor_doping",donor_doping);
 
-     intrinsic_carrier_concentration = 9.696e+15;
-     pp.query("intrinsic_carrier_concentration",intrinsic_carrier_concentration);
+     //The most common acceptor dopant in bulk Si is boron (B), which has Ea = 44 meV
+     //The most common donors in bulk Si are phosphorus (P) and arsenic (As), 
+     //which have ionization energies of Ed = 46 meV and 54 meV, respectively.
 
-     use_Fermi_Dirac = 0;
+     acceptor_ionization_energy = 44.0e-3; 
+     donor_ionization_energy = 46.0e-3; 
+
+     intrinsic_carrier_concentration = std::sqrt(Nc*Nv)*exp(-0.5*q*bandgap/(kb*T));
+
+     use_Fermi_Dirac = 1;
      pp.query("use_Fermi_Dirac",use_Fermi_Dirac);
      
+     use_work_function = 0;
+     pp.query("use_work_function",use_work_function);
+    
+     if (use_work_function == 1){
+        metal_work_function = 4.85; //eV
+        pp.query("metal_work_function", metal_work_function);
+     } 
+
      Coordinate_Transformation = 0;
      pp.query("Coordinate_Transformation",Coordinate_Transformation);
      
