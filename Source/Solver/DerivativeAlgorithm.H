@@ -40,6 +40,22 @@ using namespace FerroX;
  }
 
 /**
+  * Perform first derivative dF/dz */
+ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+ static amrex::Real DFDz (
+    amrex::Array4<amrex::Real> const& F,
+    amrex::Array4<amrex::Real> const& mask,
+    int const i, int const j, int const k, amrex::GpuArray<amrex::Real, 3> dx) {
+    if (mask(i, j, k+1) < 2.0 && mask(i,j,k) >= 2.0){ // SC higher boundary
+         return (F(i,j,k) - F(i,j,k-1))/(dx[2]);
+    } else if (mask(i, j, k-1) < 2.0 && mask(i,j,k) >= 2.0){ // SC lower boundary
+         return (F(i,j,k+1) - F(i,j,k))/(dx[2]);
+    } else {
+         return (F(i,j,k+1) - F(i,j,k-1))/(2.*dx[2]);
+    }
+ }
+
+/**
   * Perform first derivative dP/dx */
  AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
  static amrex::Real DPDx (

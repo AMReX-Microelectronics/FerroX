@@ -51,7 +51,12 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int use_Fermi_Dirac;
     extern AMREX_GPU_MANAGED int use_work_function;
     extern AMREX_GPU_MANAGED amrex::Real metal_work_function;
-    
+   
+    //Transport model
+    extern AMREX_GPU_MANAGED amrex::Real electron_mobility; 
+    extern AMREX_GPU_MANAGED amrex::Real hole_mobility; 
+    extern AMREX_GPU_MANAGED amrex::Real electron_diffusion_coefficient; 
+    extern AMREX_GPU_MANAGED amrex::Real hole_diffusion_coefficient; 
 
     // P and Phi Bc
     extern AMREX_GPU_MANAGED amrex::Real lambda;

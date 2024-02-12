@@ -213,6 +213,13 @@ AMREX_GPU_MANAGED int FerroX::use_Fermi_Dirac;
 AMREX_GPU_MANAGED int FerroX::use_work_function;
 AMREX_GPU_MANAGED amrex::Real FerroX::metal_work_function;
 
+
+//Transport Model
+AMREX_GPU_MANAGED amrex::Real FerroX::electron_mobility; 
+AMREX_GPU_MANAGED amrex::Real FerroX::hole_mobility; 
+AMREX_GPU_MANAGED amrex::Real FerroX::electron_diffusion_coefficient; 
+AMREX_GPU_MANAGED amrex::Real FerroX::hole_diffusion_coefficient;    
+
 // P and Phi Bc
 AMREX_GPU_MANAGED amrex::Real FerroX::lambda;
 AMREX_GPU_MANAGED amrex::GpuArray<int, AMREX_SPACEDIM> FerroX::P_BC_flag_lo;
@@ -473,8 +480,13 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      acceptor_ionization_energy = 44.0e-3; 
      donor_ionization_energy = 46.0e-3; 
 
-     intrinsic_carrier_concentration = std::sqrt(Nc*Nv)*exp(-0.5*bandgap/(kb*T));
+     intrinsic_carrier_concentration = std::sqrt(Nc*Nv)*exp(-0.5*q*bandgap/(kb*T));
 
+     electron_mobility = 1400.0*1.e-4;                 
+     hole_mobility = 450.0*1.e-4;  
+     electron_diffusion_coefficient = electron_mobility*kb*T/q; 
+     hole_diffusion_coefficient = hole_mobility*kb*T/q;    
+ 
      use_Fermi_Dirac = 1;
      pp.query("use_Fermi_Dirac",use_Fermi_Dirac);
      

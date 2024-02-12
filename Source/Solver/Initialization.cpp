@@ -148,10 +148,23 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
              //SC region
              if (mask(i,j,k) >= 2.0) {
 
+                amrex::Real Na, Nd;
+
+                if (mask(i,j,k) == 2.0) {//intrinsic
+                   Na = 0.0;
+                   Nd = 0.0;
+                } else if (mask(i,j,k) == 3.0) { // p-type
+                   Na = acceptor_doping;
+                   Nd = 0.0;
+                } else if (mask(i,j,k) == 4.0) { // n-type
+                   Na = 0.0;
+                   Nd = donor_doping;
+                }
+
                 hole_den_arr(i,j,k) = intrinsic_carrier_concentration;
                 e_den_arr(i,j,k) = intrinsic_carrier_concentration;
-                acceptor_den_arr(i,j,k) = acceptor_doping;
-                donor_den_arr(i,j,k) = donor_doping;
+                acceptor_den_arr(i,j,k) = Na;
+                donor_den_arr(i,j,k) = Nd;
              }
 
              charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
@@ -162,7 +175,8 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
       // fill periodic ghost cells
       P_old[i].FillBoundary(geom.periodicity());
     }
-
+    e_den.FillBoundary(geom.periodicity());
+    p_den.FillBoundary(geom.periodicity());
  }
 
 // create a mask filled with integers to idetify different material types

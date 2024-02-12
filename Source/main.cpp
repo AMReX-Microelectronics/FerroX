@@ -106,6 +106,15 @@ void main_main (c_FerroX& rFerroX)
         E[dir].define(ba, dm, Ncomp, 0);
     }
 
+    //Drift-Diffusion
+    Array<MultiFab, AMREX_SPACEDIM> Jn;
+    Array<MultiFab, AMREX_SPACEDIM> Jp;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        Jn[dir].define(ba, dm, Ncomp, 1);
+        Jp[dir].define(ba, dm, Ncomp, 1);
+    }
+
     MultiFab PoissonRHS(ba, dm, 1, 0);
     MultiFab PoissonPhi(ba, dm, 1, 1);
     MultiFab PoissonPhi_Old(ba, dm, 1, 1);
@@ -116,8 +125,10 @@ void main_main (c_FerroX& rFerroX)
     MultiFab Ey(ba, dm, 1, 0);
     MultiFab Ez(ba, dm, 1, 0);
 
-    MultiFab hole_den(ba, dm, 1, 0);
-    MultiFab e_den(ba, dm, 1, 0);
+    MultiFab hole_den(ba, dm, 1, 1);
+    MultiFab e_den(ba, dm, 1, 1);
+    MultiFab hole_den_old(ba, dm, 1, 1);
+    MultiFab e_den_old(ba, dm, 1, 1);
     MultiFab charge_den(ba, dm, 1, 0);
     MultiFab MaterialMask(ba, dm, 1, 1);
     MultiFab tphaseMask(ba, dm, 1, 1);
@@ -134,10 +145,14 @@ void main_main (c_FerroX& rFerroX)
         GL_rhs_pre[dir].setVal(0.);
         GL_rhs_avg[dir].setVal(0.);
         E[dir].setVal(0.);
+        Jn[dir].setVal(0.);
+        Jp[dir].setVal(0.);
     }
 
     e_den.setVal(0.);
     hole_den.setVal(0.);
+    e_den_old.setVal(0.);
+    hole_den_old.setVal(0.);
     PoissonPhi.setVal(0.);
     PoissonRHS.setVal(0.);
     tphaseMask.setVal(0.);
@@ -146,8 +161,8 @@ void main_main (c_FerroX& rFerroX)
     angle_theta.setVal(0.);
 
     //Initialize material mask
-    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
-    //InitializeMaterialMask(rFerroX, geom, MaterialMask);
+    //InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
+    InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
        Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
@@ -169,15 +184,16 @@ void main_main (c_FerroX& rFerroX)
     amrex::Print() << "contains_SC = " << contains_SC << "\n";
 
 #ifdef AMREX_USE_EB
-    MultiFab Plt(ba, dm, 18, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
+    MultiFab Plt(ba, dm, 24, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
 #else    
-    MultiFab Plt(ba, dm, 18, 0);
+    MultiFab Plt(ba, dm, 24, 0);
 #endif
 
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
 
     // coefficients for solver
     MultiFab alpha_cc(ba, dm, 1, 0);
+    alpha_cc.setVal(0.);
     MultiFab beta_cc(ba, dm, 1, 1);
     std::array< MultiFab, AMREX_SPACEDIM > beta_face;
     AMREX_D_TERM(beta_face[0].define(convert(ba,IntVect(AMREX_D_DECL(1,0,0))), dm, 1, 0);,
@@ -218,7 +234,7 @@ void main_main (c_FerroX& rFerroX)
     PoissonPhi.FillBoundary(geom.periodicity());
 
     // Set Dirichlet BC for Phi in z
-    SetPhiBC_z(PoissonPhi, n_cell, geom); 
+    //SetPhiBC_z(PoissonPhi, n_cell, geom); 
     p_mlebabec->setLevelBC(amrlev, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
@@ -306,6 +322,7 @@ void main_main (c_FerroX& rFerroX)
 	
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+        //ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, MaterialMask, geom);
         
 	if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
@@ -332,7 +349,11 @@ void main_main (c_FerroX& rFerroX)
 
     // Calculate E from Phi
     ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
-
+    MultiFab::Copy(e_den_old, e_den, 0, 0, 1, 0);
+    MultiFab::Copy(hole_den_old, hole_den, 0, 0, 1, 0);
+    e_den_old.FillBoundary(geom.periodicity());
+    hole_den_old.FillBoundary(geom.periodicity());
+ 
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
     {
@@ -357,10 +378,16 @@ void main_main (c_FerroX& rFerroX)
         MultiFab::Copy(Plt, angle_beta, 0, 15, 1, 0);
         MultiFab::Copy(Plt, angle_theta, 0, 16, 1, 0);
         MultiFab::Copy(Plt, Phidiff, 0, 17, 1, 0);
+        MultiFab::Copy(Plt, Jn[0], 0, 18, 1, 0);
+        MultiFab::Copy(Plt, Jn[1], 0, 19, 1, 0);
+        MultiFab::Copy(Plt, Jn[2], 0, 20, 1, 0);
+        MultiFab::Copy(Plt, Jp[0], 0, 21, 1, 0);
+        MultiFab::Copy(Plt, Jp[1], 0, 22, 1, 0);
+        MultiFab::Copy(Plt, Jp[2], 0, 23, 1, 0);
 #ifdef AMREX_USE_EB
-	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff"}, geom, time, step);
+	amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff", "Jnx", "Jny", "Jnz", "Jpx", "Jpy", "Jpz"}, geom, time, step);
 #else
-	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff"}, geom, time, step);
+	amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff", "Jnx", "Jny", "Jnz", "Jpx", "Jpy", "Jpz"}, geom, time, step);
 #endif
     }
 
@@ -406,12 +433,16 @@ void main_main (c_FerroX& rFerroX)
         // iterate to compute Phi^{n+1,*}
         while(err > tol){
    
+	    // Calculate rho from Phi in SC region
+            //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+            ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, geom);
+            
             // Compute RHS of Poisson equation
             ComputePoissonRHS(PoissonRHS, P_new_pre, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-            dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+            //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new_pre, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-            ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+            //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
             p_mlebabec->setACoeffs(0, alpha_cc);
@@ -426,13 +457,12 @@ void main_main (c_FerroX& rFerroX)
 	    
 	    PoissonPhi.FillBoundary(geom.periodicity());
             
-	    // Calculate rho from Phi in SC region
-            ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
 
             if (contains_SC == 0) {
                 // no semiconductor region; set error to zero so the while loop terminates
                 err = 0.;
             } else {
+                err = 0.;
                 
                 // Calculate Error
                 if (iter > 0){
@@ -459,6 +489,10 @@ void main_main (c_FerroX& rFerroX)
                 P_old[i].FillBoundary(geom.periodicity());
                 P_new_pre[i].FillBoundary(geom.periodicity());
             }
+            MultiFab::Copy(e_den_old, e_den, 0, 0, 1, 0);
+            MultiFab::Copy(hole_den_old, hole_den, 0, 0, 1, 0);
+            e_den_old.FillBoundary(geom.periodicity());
+            hole_den_old.FillBoundary(geom.periodicity());
             
         } else {
         
@@ -480,9 +514,9 @@ void main_main (c_FerroX& rFerroX)
                 // Compute RHS of Poisson equation
                 ComputePoissonRHS(PoissonRHS, P_new, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-                dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+                //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_new, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-                ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+                //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
                 p_mlebabec->setACoeffs(0, alpha_cc);
@@ -498,12 +532,14 @@ void main_main (c_FerroX& rFerroX)
 	        PoissonPhi.FillBoundary(geom.periodicity());
 	
                 // Calculate rho from Phi in SC region
-                ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+                //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+                ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, geom);
 
                 if (contains_SC == 0) {
                     // no semiconductor region; set error to zero so the while loop terminates
                     err = 0.;
                 } else {
+                    err = 0.;
                     
                     // Calculate Error
                     if (iter > 0){
@@ -527,6 +563,8 @@ void main_main (c_FerroX& rFerroX)
                 // fill periodic ghost cells
                 P_old[i].FillBoundary(geom.periodicity());
             }
+            MultiFab::Copy(e_den_old, e_den, 0, 0, 1, 0);
+            MultiFab::Copy(hole_den_old, hole_den, 0, 0, 1, 0);
     	}
 
         // Check if steady state has reached 
@@ -602,10 +640,16 @@ void main_main (c_FerroX& rFerroX)
             MultiFab::Copy(Plt, angle_beta, 0, 15, 1, 0);
             MultiFab::Copy(Plt, angle_theta, 0, 16, 1, 0);
             MultiFab::Copy(Plt, Phidiff, 0, 17, 1, 0);
+            MultiFab::Copy(Plt, Jn[0], 0, 18, 1, 0);
+            MultiFab::Copy(Plt, Jn[1], 0, 19, 1, 0);
+            MultiFab::Copy(Plt, Jn[2], 0, 20, 1, 0);
+            MultiFab::Copy(Plt, Jp[0], 0, 21, 1, 0);
+            MultiFab::Copy(Plt, Jp[1], 0, 22, 1, 0);
+            MultiFab::Copy(Plt, Jp[2], 0, 23, 1, 0);
 #ifdef AMREX_USE_EB
-	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff"}, geom, time, step);
+	    amrex::EB_WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff", "Jnx", "Jny", "Jnz", "Jpx", "Jpy", "Jpz"}, geom, time, step);
 #else
-	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff"}, geom, time, step);
+	    amrex::WriteSingleLevelPlotfile(pltfile, Plt, {"Px","Py","Pz","Phi","PoissonRHS","Ex","Ey","Ez","holes","electrons","charge","epsilon", "mask", "tphase","alpha", "beta", "theta", "PhiDiff", "Jnx", "Jny", "Jnz", "Jpx", "Jpy", "Jpz"}, geom, time, step);
 #endif
         }
 
@@ -627,6 +671,15 @@ void main_main (c_FerroX& rFerroX)
            // set Dirichlet BC by reading in the ghost cell values
 #ifdef AMREX_USE_EB
            p_mlebabec->setLevelBC(amrlev, &PoissonPhi);
+
+           if(rGprop.pEB->specify_inhomogeneous_dirichlet == 0)
+           {
+               p_mlebabec->setEBHomogDirichlet(amrlev, beta_cc);
+           }
+           else
+           {
+               p_mlebabec->setEBDirichlet(amrlev, *rGprop.pEB->p_surf_soln_union, beta_cc);
+           }
 #else 
            p_mlabec->setLevelBC(amrlev, &PoissonPhi);
 #endif
@@ -640,9 +693,9 @@ void main_main (c_FerroX& rFerroX)
                // Compute RHS of Poisson equation
                ComputePoissonRHS(PoissonRHS, P_old, charge_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-               dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+               //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, charge_den, e_den, hole_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-               ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+               //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 #ifdef AMREX_USE_EB
                p_mlebabec->setACoeffs(0, alpha_cc);
@@ -658,13 +711,15 @@ void main_main (c_FerroX& rFerroX)
 	       PoissonPhi.FillBoundary(geom.periodicity());
 	
                // Calculate rho from Phi in SC region
-               ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+               //ComputeRho(PoissonPhi, charge_den, e_den, hole_den, MaterialMask);
+               ComputeRho_DriftDiffusion(PoissonPhi, Jn, Jp, charge_den, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, geom);
 
                if (contains_SC == 0) {
                    // no semiconductor region; set error to zero so the while loop terminates
                    err = 0.;
                } else {
                
+                   err = 0.;
                    // Calculate Error
                    if (iter > 0){
                        MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
