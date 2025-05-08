@@ -719,10 +719,14 @@ void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const 
 
         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
+            // if (i == 1 && j == 1 && k == 32){
+            //     // amrex::Print()<<"\n"<<"pinned rand " << rng[i + k*n_cell[2]] << "\n";
+            //     printf("hard to switch rand %g \n", rng[i + k*n_cell[2]]);
+            // }
                if (mask(i,j,k) == 0.) {
                    if (prob_type == 1) {  //2D
-		                if (rng[i + k*n_cell[2]] <= 0.04){
-                           mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k) * 10.0; // hard to switch spots have alpha 10 times of the BTO value
+		                if (rng[i + k*n_cell[2]] <= 0.001){
+                           mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k) * 5.0; // hard to switch spots have alpha 10 times of the BTO value
 		                } else { 
                            mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k);
 		                }

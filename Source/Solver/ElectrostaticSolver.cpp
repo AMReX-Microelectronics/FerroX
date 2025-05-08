@@ -624,13 +624,17 @@ void SetNucleation(Array<MultiFab, AMREX_SPACEDIM> &P_old, MultiFab& NucleationM
 
         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k, amrex::RandomEngine const& engine) noexcept
         {
+            // if (i == 1 && j == 1 && k == 32){
+            //     // amrex::Print()<<"\n"<<"pinned rand " << rng[i + k*n_cell[2]] << "\n";
+            //     printf("pinned rand %g \n", rng[i + k*n_cell[2]]);
+            // }
                if (mask(i,j,k) == 0.) {
                    if (prob_type == 1) {  //2D
-		       if (rng[i + k*n_cell[2]] <= 0.02){
+		       if (rng[i + k*n_cell[2]] > 0.001 && rng[i + k*n_cell[2]] <= 0.0015){
                            pOld_p(i,j,k) = Remnant_P[0];
                            pOld_q(i,j,k) = Remnant_P[1];
                            pOld_r(i,j,k) = Remnant_P[2];
-		       } else if (rng[i + k*n_cell[2]] <= 0.04){
+		       } else if (rng[i + k*n_cell[2]] > 0.0015 && rng[i + k*n_cell[2]] <= 0.002){
                            pOld_p(i,j,k) = -Remnant_P[0];
                            pOld_q(i,j,k) = -Remnant_P[1];
                            pOld_r(i,j,k) = -Remnant_P[2];
