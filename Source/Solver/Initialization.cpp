@@ -687,7 +687,7 @@ void Initialize_MaterialProperties(c_FerroX& rFerroX, const Geometry& geom,
     alpha_123.FillBoundary(geom.periodicity());
 }
 
-void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
+void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, amrex::Real hardswitch_ratio, amrex::Real hardswitch_alpha_ratio)
 {
     int seed = random_seed;
 
@@ -725,8 +725,8 @@ void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const 
             // }
                if (mask(i,j,k) == 0.) {
                    if (prob_type == 1) {  //2D
-		                if (rng[i + k*n_cell[2]] <= 0.001){
-                           mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k) * 5.0; // hard to switch spots have alpha 10 times of the BTO value
+		                if (rng[i + k*n_cell[2]] <= hardswitch_ratio){
+                           mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k) * hardswitch_alpha_ratio / 2; // hard to switch spots have alpha 10 times of the BTO value
 		                } else { 
                            mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k);
 		                }
@@ -743,3 +743,62 @@ void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const 
     }
 
 }
+
+
+
+// void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
+// {
+//     int seed = random_seed;
+
+//     int nprocs = ParallelDescriptor::NProcs();
+
+//     if (prob_type == 1) {
+//        amrex::InitRandom(seed                             , nprocs, seed                             );  // give all MPI ranks the same seed
+//     } else {
+//       amrex::InitRandom(seed+ParallelDescriptor::MyProc(), nprocs, seed+ParallelDescriptor::MyProc());  // give all MPI ranks a different seed
+//     }
+
+//     int nrand = n_cell[0]*n_cell[2];
+//     amrex::Gpu::ManagedVector<Real> rngs(nrand, 0.0);
+
+//     // generate random numbers on the host
+//     for (int i=0; i<nrand; ++i) {
+//         //rngs[i] = amrex::RandomNormal(0.,1.); // zero mean, unit variance
+//          rngs[i] = amrex::Random(); // uniform [0,1] option
+//     }
+
+//     for (MFIter mfi(alpha); mfi.isValid(); ++mfi)
+//     {
+//         const Box& bx = mfi.tilebox();
+
+//         const Array4<Real> &mat_alpha_arr = alpha.array(mfi);
+//         const Array4<Real>& mask = NucleationMask.array(mfi);
+
+//         Real* rng = rngs.data();
+
+//         amrex::ParallelForRNG(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k, amrex::RandomEngine const& engine) noexcept
+//         {
+//             // if (i == 1 && j == 1 && k == 32){
+//             //     // amrex::Print()<<"\n"<<"pinned rand " << rng[i + k*n_cell[2]] << "\n";
+//             //     printf("hard to switch rand %g \n", rng[i + k*n_cell[2]]);
+//             // }
+//                if (mask(i,j,k) == 0.) {
+//                    if (prob_type == 1) {  //2D
+// 		                if (rng[i + k*n_cell[2]] <= 0.001){
+//                            mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k) * 5.0; // hard to switch spots have alpha 10 times of the BTO value
+// 		                } else { 
+//                            mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k);
+// 		                }
+//                    } else if (prob_type == 2) { //3D
+//                        Real rand = Random(engine);
+// 		                if (rand <= 0.04) {
+//                             mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k) * 10.0;
+// 		                } else {
+//                           mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k);
+//                         }
+// 		            }
+//               }
+//         });
+//     }
+
+// }

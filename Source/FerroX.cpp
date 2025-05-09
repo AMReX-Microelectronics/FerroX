@@ -31,8 +31,6 @@ c_FerroX& c_FerroX::GetInstance()
 }
 
 
-
-
 void
 c_FerroX::ResetInstance ()
 {
@@ -165,6 +163,19 @@ c_FerroX::InitData ()
 
 AMREX_GPU_MANAGED int FerroX::nsteps;
 AMREX_GPU_MANAGED int FerroX::plot_int;
+
+
+//hardtoswitch & nucleation mask
+AMREX_GPU_MANAGED int FerroX::hardswitch_flag;
+AMREX_GPU_MANAGED int FerroX::nucleation_flag;
+
+//hardtoswitch & nucleation ratio
+AMREX_GPU_MANAGED amrex::Real FerroX::hardswitch_ratio;
+AMREX_GPU_MANAGED amrex::Real FerroX::nucleation_ratio;
+
+//hardtoswitch & nucleation alpha
+AMREX_GPU_MANAGED amrex::Real FerroX::hardswitch_alpha_ratio;
+
 
 // time step
 AMREX_GPU_MANAGED amrex::Real FerroX::dt;
@@ -410,6 +421,26 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      //  If plot_int < 0 then no plot files will be written
      plot_int = -1;
      pp.query("plot_int",plot_int);
+
+
+     //hardswitch flag
+     hardswitch_flag = 0;
+     pp.query("hardswitch_flag",hardswitch_flag);
+
+     //hardswitch ratio
+     hardswitch_ratio = 0.05;
+     pp.query("hardswitch_ratio",hardswitch_ratio);
+     
+     hardswitch_alpha_ratio = 20.0;
+     pp.query("hardswitch_alpha_ratio",hardswitch_alpha_ratio);
+
+     //nucleation flag
+     nucleation_flag = 0;
+     pp.query("nucleation_flag",nucleation_flag);
+
+     //nucleation ratio
+     nucleation_ratio = 0.05;
+     pp.query("nucleation_ratio",nucleation_ratio);
 
      // time step
      pp.get("dt",dt);

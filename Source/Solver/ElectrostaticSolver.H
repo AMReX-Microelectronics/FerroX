@@ -80,7 +80,7 @@ void Fill_Constant_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Poisson
 void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi, amrex::Real& time);
 
 void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& Phidiff, Real phi_tolerance, int step, int& steady_state_step, int& inc_step);
-void SetNucleation(Array<MultiFab, AMREX_SPACEDIM> &P_old, MultiFab& NucleationMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell);
+void SetNucleation(Array<MultiFab, AMREX_SPACEDIM> &P_old, MultiFab& NucleationMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, amrex::Real hardswitch_ratio, amrex::Real nucleation_ratio);
 void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG, 
         std::unique_ptr<amrex::MLABecLaplacian>& p_mlabec,
         std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d,
