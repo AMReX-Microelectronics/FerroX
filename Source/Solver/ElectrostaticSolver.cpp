@@ -595,9 +595,9 @@ void SetNucleation(Array<MultiFab, AMREX_SPACEDIM> &P_old, MultiFab& NucleationM
     int seed = random_seed; 
 
     //process values
-    amrex::Real lower_bd = hardswitch_ratio;
-    amrex::Real mid_bd = hardswitch_ratio + nucleation_ratio / 2;
-    amrex::Real higer_bd = hardswitch_ratio + nucleation_ratio;
+    amrex::Real lower_bd = hardswitch_ratio;   //  0.01
+    amrex::Real mid_bd = hardswitch_ratio + nucleation_ratio / 2;   //0.01 + 0.01 = 0.02
+    amrex::Real higer_bd = hardswitch_ratio + nucleation_ratio;   //0.01 + 0.02 = 0.03
 
     int nprocs = ParallelDescriptor::NProcs();
 
@@ -635,11 +635,11 @@ void SetNucleation(Array<MultiFab, AMREX_SPACEDIM> &P_old, MultiFab& NucleationM
             // }
                if (mask(i,j,k) == 0.) {
                    if (prob_type == 1) {  //2D
-		       if (rng[i + k*n_cell[2]] > 0.001 && rng[i + k*n_cell[2]] <= 0.0015){
+		       if (rng[i + k*n_cell[2]] > lower_bd && rng[i + k*n_cell[2]] <= mid_bd){
                            pOld_p(i,j,k) = Remnant_P[0];
                            pOld_q(i,j,k) = Remnant_P[1];
                            pOld_r(i,j,k) = Remnant_P[2];
-		       } else if (rng[i + k*n_cell[2]] > 0.0015 && rng[i + k*n_cell[2]] <= 0.002){
+		       } else if (rng[i + k*n_cell[2]] > mid_bd && rng[i + k*n_cell[2]] <= higer_bd){
                            pOld_p(i,j,k) = -Remnant_P[0];
                            pOld_q(i,j,k) = -Remnant_P[1];
                            pOld_r(i,j,k) = -Remnant_P[2];
