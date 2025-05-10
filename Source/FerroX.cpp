@@ -428,8 +428,11 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.query("hardswitch_flag",hardswitch_flag);
 
      //hardswitch ratio
-     hardswitch_ratio = 0.05;
-     pp.query("hardswitch_ratio",hardswitch_ratio);
+if (hardswitch_flag == 1){
+     pp.get("hardswitch_ratio",hardswitch_ratio);}
+    else {
+    amex::Abort("Hard to switch defects turned on but volume percentage undefined!");} 
+     
      
      hardswitch_alpha_ratio = 20.0;
      pp.query("hardswitch_alpha_ratio",hardswitch_alpha_ratio);
