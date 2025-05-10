@@ -707,7 +707,7 @@ void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const 
         //rngs[i] = amrex::RandomNormal(0.,1.); // zero mean, unit variance
          rngs[i] = amrex::Random(); // uniform [0,1] option
     }
-
+    // printf("Set Nucleation alpha\n");
     for (MFIter mfi(alpha); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
@@ -726,7 +726,9 @@ void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const 
                if (mask(i,j,k) == 0.) {
                    if (prob_type == 1) {  //2D
 		                if (rng[i + k*n_cell[2]] <= hardswitch_ratio){
-                           mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k) * hardswitch_alpha_ratio / 2; // hard to switch spots have alpha 10 times of the BTO value
+                        //    printf("mat_alpha_arr %g \n", mat_alpha_arr(i,j,k));
+                           mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k) * hardswitch_alpha_ratio; // hard to switch spots have alpha 10 times of the BTO value
+                        //    printf("mat_alpha_arr after %g \n", mat_alpha_arr(i,j,k));
 		                } else { 
                            mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k);
 		                }

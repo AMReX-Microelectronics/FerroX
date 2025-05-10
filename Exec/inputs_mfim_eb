@@ -8,6 +8,11 @@ domain.prob_hi =  64.e-8  4.e-8  6.0e-8
 
 domain.n_cell = 1024 64 64
 
+# domain.prob_lo = -4.e-8 -4.e-8  0.0e-8
+# domain.prob_hi =  4.e-8  4.e-8  6.0e-8
+
+# domain.n_cell = 64 64 64
+
 domain.max_grid_size = 64 64 64
 domain.blocking_factor = 64 64 64
 
@@ -15,8 +20,8 @@ prob_type = 1
 
 TimeIntegratorOrder = 1
 
-nsteps = 21
-plot_int = 20
+nsteps = 3
+plot_int = 1
 # plot_int = 10
 Remnant_P = 0.0 0.0 0.26
 noise_amplitude = 0.001
@@ -25,8 +30,8 @@ hardswitch_flag = 1
 nucleation_flag = 1
 hardswitch_ratio = 0.2
 nucleation_ratio = 0.3
-hardswitch_alpha_ratio = 5.0
-
+hardswitch_alpha_ratio = 13.0
+plot_mat_alpha = 1
 dt = 10.0e-8
 
 ############################################
