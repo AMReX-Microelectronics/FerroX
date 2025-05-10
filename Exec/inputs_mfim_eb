@@ -28,7 +28,7 @@ noise_amplitude = 0.001
 
 hardswitch_flag = 1
 nucleation_flag = 1
-hardswitch_ratio = 0.2
+hardswitch_ratio = 0.2 
 nucleation_ratio = 0.3
 hardswitch_alpha_ratio = 13.0
 plot_mat_alpha = 1
