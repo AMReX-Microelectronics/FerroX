@@ -429,15 +429,11 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      //hardswitch ratio
     if (hardswitch_flag == 1) {
-        if (!pp.query("hardswitch_ratio", hardswitch_ratio)) {
-            amrex::Abort("Hard to switch defects turned on but hardswitch_ratio is undefined!");
-        }
+        pp.get("hardswitch_ratio", hardswitch_ratio);
     }
 
     if (hardswitch_flag == 1) {
-        if (!pp.query("hardswitch_alpha_ratio", hardswitch_alpha_ratio)) {
-            amrex::Abort("Hard to switch defects turned on but hardswitch_alpha_ratio is undefined!");
-        }
+        pp.get("hardswitch_alpha_ratio", hardswitch_alpha_ratio);
     }
 
 
@@ -448,9 +444,7 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      //nucleation ratio
     
      if (nucleation_flag == 1) {
-        if (!pp.query("nucleation_ratio", nucleation_ratio)) {
-            amrex::Abort("Hard to switch defects turned on but nucleation_ratio is undefined!");
-        }
+        pp.get("nucleation_ratio", nucleation_ratio);
     }
 
      // time step
