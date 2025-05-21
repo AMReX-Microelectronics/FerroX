@@ -1,0 +1,135 @@
+#################################
+###### PROBLEM DOMAIN ######
+#################################
+amrex.the_arena_is_managed = 1
+
+domain.prob_lo = -64.e-8 -4.e-8  0.0e-8
+domain.prob_hi =  64.e-8  4.e-8  6.0e-8
+
+domain.n_cell = 1024 64 64
+
+# domain.prob_lo = -4.e-8 -4.e-8  0.0e-8
+# domain.prob_hi =  4.e-8  4.e-8  6.0e-8
+
+# domain.n_cell = 64 64 64
+
+domain.max_grid_size = 64 64 64
+domain.blocking_factor = 64 64 64
+
+prob_type = 1
+
+TimeIntegratorOrder = 1
+
+nsteps = 3
+plot_int = 1
+# plot_int = 10
+Remnant_P = 0.0 0.0 0.26
+noise_amplitude = 0.001
+
+hardswitch_flag = 1
+nucleation_flag = 1
+hardswitch_ratio = 0.2 
+nucleation_ratio = 0.3
+hardswitch_alpha_ratio = 13.0
+plot_mat_alpha = 1
+dt = 10.0e-8
+
+############################################
+###### POLARIZATION BOUNDARY CONDITIONS ####
+############################################
+
+P_BC_flag_lo = 3 3 1 # dP/dz= P_lo/lambda;
+P_BC_flag_hi = 3 3 1 # dP/dz= P_hi/lambda;
+lambda = 5.e-9
+
+############################################
+###### ELECTRICAL BOUNDARY CONDITIONS ######
+############################################
+
+domain.is_periodic = 1 1 0
+
+boundary.hi = per per dir(0.3)
+boundary.lo = per per dir(0.0)
+
+voltage_sweep = 1
+Phi_Bc_lo = 0.0
+Phi_Bc_hi = 0.3
+
+Phi_Bc_inc = -0.03
+Phi_Bc_hi_max = 0.3
+phi_tolerance = 1.e-6
+num_Vapp_max = 41 #121
+theta_dep = 0.80
+
+use_Fermi_Dirac = 1
+use_work_function = 0 #1
+#################################
+###### STACK GEOMETRY ###########
+#################################
+
+#unused 
+SC_lo = -1.0 -1.0 -1.0
+SC_hi = -1.0 -1.0 -1.0
+
+DE_lo = -64.0e-8 -4.0e-8 0.0
+DE_hi =  64.0e-8  4.0e-8 5.0e-9
+
+DE1_lo = -64.0e-8 -4.0e-8 55.0e-9
+DE1_hi =  64.0e-8  4.0e-8 60.0e-9
+
+FE_lo = -64.e-8 -4.e-8 5.0e-9
+FE_hi =  64.e-8  4.e-8 55.0e-9
+
+#device_geom.device_geom_function(x,y,z) = "0.0" 
+#nucleation_geom.nucleation_geom_function(x,y,z) = "0.0" 
+#device_geom.device_geom_function(x,y,z) = "0.0 + 1.0*(z < 5.0e-9)" 
+#device_geom.device_geom_function(x,y,z) = "0.0 + 1.0*(z < 2.5e-9) + 1.0*(z > 52.5e-9)*(z < 55.0e-9)" 
+#nucleation_geom.nucleation_geom_function(x,y,z) = "1.0 - 1.0*(z < 2.5e-9) - 1.0*(z > 52.5e-9)*(z < 55.0e-9)" 
+
+#nucleation_geom.nucleation_geom_function(x,y,z) = "0.0" #"-1.*(x > 4.0e-8) * (x < 4.25e-8) * (z > 4.84375e-8) * (z < 5.0e-8)
+                                                  # +1.*(x > -4.255e-8) * (x < -4.0e-8) * (z > 0.) * (z < 1.5625e-9)"
+
+#################################
+###### MATERIAL PROPERTIES ######
+#################################
+
+epsilon_0 = 8.85e-12
+# epsilonX_fe = 600.0
+# epsilonZ_fe = 600.0
+# epsilon_de = 300.0
+# epsilon_si = 80.0
+# # -13860999.999999998 -1618875000.0 32016000000.0 0
+# #-7423200.0 -209700000.0 7764000000.0 0 --> Ec=15 kV/cm
+# #-18558000.0 -209700000.0 10352000000.0 0 --> Ec=30kV/cm
+# alpha = -18558000.0 #-3.7116e7 #-1.386e7 #-7.588e7 # 3.34*(T-381)*1e5*2; T=298; ref: Rabe book
+# beta = -209700000.0 #-2.097e8 #-1.618875e9 #-8.388e8 #-2.5902e9 # (4.69*(T-393)-202)*1e6*4
+# gamma = 10352000000.0 #1.0352e10 #3.2e10 #7.764e9 # 4.8024e10 # (-5.52*(298-393) + 276)*1e7*6
+# BigGamma = 1.e-3
+# g11 = 20.e-11 # zz
+# g44 = 1.e-11
+# g44_p = 0.0
+# g12 = 0.0
+# alpha_12 = 0.0
+# alpha_112 = 0.0
+# alpha_123 = 0.0
+
+material_properties.BigGamma_function(x,y,z) = 1.e-3 * (z<=55.e-9 ) * ( z >= 5.e-9)
+material_properties.landau_alpha_function(x,y,z) = -18558000.0 * (z<=55.e-9 ) * ( z >= 5.e-9)
+material_properties.landau_beta_function(x,y,z) = -209700000.0 * (z<=55.e-9 ) * ( z >= 5.e-9)
+material_properties.landau_gamma_function(x,y,z) = 10352000000.0 * (z<=55.e-9 ) * ( z >= 5.e-9)
+material_properties.g11_function(x,y,z) = 20.e-11 * (z<=55.e-9 ) * ( z >= 5.e-9)
+material_properties.g44_function(x,y,z) = 1.e-11 * (z<=55.e-9 ) * ( z >= 5.e-9)
+material_properties.g44_p_function(x,y,z) = 0.0 * (z<=55.e-9 ) * ( z >= 5.e-9)
+material_properties.g12_function(x,y,z) = 0.0
+material_properties.alpha_12_function(x,y,z) = 0.0
+material_properties.alpha_112_function(x,y,z) = 0.0
+material_properties.alpha_123_function(x,y,z) = 0.0
+
+material_properties.epsilonX_fe_function(x,y,z) = 600.0 * (z<=55.e-9 ) * ( z >= 5.e-9) + 1.0 * (z>55.e-9 ) + 1.0*(z<5.e-9 )
+material_properties.epsilonZ_fe_function(x,y,z) = 600.0 * (z<=55.e-9 ) * ( z >= 5.e-9) + 1.0 * (z>55.e-9 ) + 1.0*(z<5.e-9 )
+material_properties.epsilon_de_function(x,y,z) = 300.0 * (z>55.e-9) + 300.0 * (z<5.e-9) + 1.0 * (z<=55.e-9 ) * ( z >= 5.e-9)
+material_properties.epsilon_si_function(x,y,z) = 80.0
+
+
+donor_doping = 0.25e28
+acceptor_doping = 0.1e28

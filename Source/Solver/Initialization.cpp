@@ -687,7 +687,7 @@ void Initialize_MaterialProperties(c_FerroX& rFerroX, const Geometry& geom,
     alpha_123.FillBoundary(geom.periodicity());
 }
 
-void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell)
+void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, amrex::Real hardswitch_ratio, amrex::Real hardswitch_alpha_ratio)
 {
     int seed = random_seed;
 
@@ -707,7 +707,7 @@ void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const 
         //rngs[i] = amrex::RandomNormal(0.,1.); // zero mean, unit variance
          rngs[i] = amrex::Random(); // uniform [0,1] option
     }
-
+    // printf("Set Nucleation alpha\n");
     for (MFIter mfi(alpha); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
@@ -725,8 +725,10 @@ void SetHardToSwitchNucleation(MultiFab& alpha, MultiFab& NucleationMask, const 
             // }
                if (mask(i,j,k) == 0.) {
                    if (prob_type == 1) {  //2D
-		                if (rng[i + k*n_cell[2]] <= 0.001){
-                           mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k) * 5.0; // hard to switch spots have alpha 10 times of the BTO value
+		                if (rng[i + k*n_cell[2]] <= hardswitch_ratio){
+                        //    printf("mat_alpha_arr %g \n", mat_alpha_arr(i,j,k));
+                           mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k) * hardswitch_alpha_ratio; // hard to switch spots have alpha 10 times of the BTO value
+                        //    printf("mat_alpha_arr after %g \n", mat_alpha_arr(i,j,k));
 		                } else { 
                            mat_alpha_arr(i,j,k) = mat_alpha_arr(i,j,k);
 		                }
