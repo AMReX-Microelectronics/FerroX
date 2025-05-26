@@ -18,6 +18,7 @@
 #include "Solver/Initialization.H"
 #include "Solver/ChargeDensity.H"
 #include "Solver/TotalEnergyDensity.H"
+#include "Solver/Energy_Calculation.H"
 #include "Input/BoundaryConditions/BoundaryConditions.H"
 #include "Input/GeometryProperties/GeometryProperties.H"
 #include "Utils/SelectWarpXUtils/WarpXUtil.H"
@@ -258,7 +259,23 @@ void main_main (c_FerroX& rFerroX)
 
             // Calculate E from Phi
             ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+            Real Landau_Energy = ComputeLandauEnergy(P_old, MaterialMask, geom, alpha, beta, FerroX::gamma);
+            Real Gradient_Energy = ComputeGradientEnergy(P_old, MaterialMask, geom, g11, g44);
+            Real Electrostatic_Energy = ComputeElectrostaticEnergy(P_old, E, MaterialMask, geom);
+            Real Total_Energy = Landau_Energy + Gradient_Energy + Electrostatic_Energy;
+            printf("g11_1 value is:%g \n", g11);
+            printf("g44_1 value is:%g \n", g44);
+            printf("alpha value is:%g \n", alpha);
+            printf("beta value is:%g \n", beta);
+            printf("gamma value is:%g \n", FerroX::gamma);
+            printf("dx is:%g \n", geom.CellSize(0));
+            printf("Landau_Energy value is:%g \n", Landau_Energy);
+            printf("Gradient_Energy value is:%g \n", Gradient_Energy);
+            printf("Electrostatic_Energy value is:%g \n", Electrostatic_Energy);
+            printf("Total_Energy value is:%g \n", Total_Energy);
 
+
+            
             // compute f^n = f(P^n,Phi^n)
             CalculateTDGL_RHS(GL_rhs, P_old, E, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
@@ -291,7 +308,7 @@ void main_main (c_FerroX& rFerroX)
 
                 //update E using PoissonPhi computed with P_new_pre
                 ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
-
+                printf("g11_2 value is:%g", g11);
                 // compute f^{n+1,*} = f(P^{n+1,*},Phi^{n+1,*})
                 CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, E, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
