@@ -4,15 +4,145 @@
 
 
 void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
+                Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_Landau,
+                Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_grad,
+                Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_elec,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 Array<MultiFab, AMREX_SPACEDIM> &E,
                 MultiFab&                       Gamma,
                 MultiFab&                 MaterialMask,
                 MultiFab&                 tphaseMask,
                 MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
-                const Geometry& geom,
-		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+                const Geometry& geom)
+{
+//        if (include_Landau == 1){
+//           Calculate_Landau(GL_rhs_Landau, P_old, Gamma, tphaseMask);
+//        }
+//        if (include_Grad == 1){
+//           Calculate_Grad(GL_rhs_grad, P_old, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom);
+//        }
+//        if (include_Elec == 1){
+//           Calculate_Elec(GL_rhs_elec, E, Gamma, tphaseMask);
+//        }
+
+        // loop over boxes
+        for ( MFIter mfi(P_old[0]); mfi.isValid(); ++mfi )
+        {
+            const Box& bx = mfi.validbox();
+
+            const Array4<Real> &GL_RHS_p = GL_rhs[0].array(mfi);
+            const Array4<Real> &GL_RHS_q = GL_rhs[1].array(mfi);
+            const Array4<Real> &GL_RHS_r = GL_rhs[2].array(mfi);
+
+            const Array4<Real> &GL_RHS_p_Landau = GL_rhs_Landau[0].array(mfi);
+            const Array4<Real> &GL_RHS_q_Landau = GL_rhs_Landau[1].array(mfi);
+            const Array4<Real> &GL_RHS_r_Landau = GL_rhs_Landau[2].array(mfi);
+
+            const Array4<Real> &GL_RHS_p_grad = GL_rhs_grad[0].array(mfi);
+            const Array4<Real> &GL_RHS_q_grad = GL_rhs_grad[1].array(mfi);
+            const Array4<Real> &GL_RHS_r_grad = GL_rhs_grad[2].array(mfi);
+
+            const Array4<Real> &GL_RHS_p_elec = GL_rhs_elec[0].array(mfi);
+            const Array4<Real> &GL_RHS_q_elec = GL_rhs_elec[1].array(mfi);
+            const Array4<Real> &GL_RHS_r_elec = GL_rhs_elec[2].array(mfi);
+
+
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+
+               if (include_Landau == 1){
+                  GL_RHS_p(i,j,k) +=  GL_RHS_p_Landau(i,j,k); 
+                  GL_RHS_q(i,j,k) +=  GL_RHS_q_Landau(i,j,k); 
+                  GL_RHS_r(i,j,k) +=  GL_RHS_r_Landau(i,j,k); 
+               }
+               if (include_Grad == 1){
+                  GL_RHS_p(i,j,k) +=  GL_RHS_p_grad(i,j,k); 
+                  GL_RHS_q(i,j,k) +=  GL_RHS_q_grad(i,j,k); 
+                  GL_RHS_r(i,j,k) +=  GL_RHS_r_grad(i,j,k); 
+               }
+               if (include_Elec == 1){
+                  GL_RHS_p(i,j,k) +=  GL_RHS_p_elec(i,j,k); 
+                  GL_RHS_q(i,j,k) +=  GL_RHS_q_elec(i,j,k); 
+                  GL_RHS_r(i,j,k) +=  GL_RHS_r_elec(i,j,k); 
+               }
+            });
+        }
+}
+
+
+void Calculate_Landau(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_Landau,
+                Array<MultiFab, AMREX_SPACEDIM> &P_old,
+                MultiFab&                       Gamma,
+                MultiFab&                 tphaseMask)
+{
+        // loop over boxes
+        for ( MFIter mfi(P_old[0]); mfi.isValid(); ++mfi )
+        {
+            const Box& bx = mfi.validbox();
+
+            const Array4<Real> &GL_RHS_p = GL_rhs_Landau[0].array(mfi);
+            const Array4<Real> &GL_RHS_q = GL_rhs_Landau[1].array(mfi);
+            const Array4<Real> &GL_RHS_r = GL_rhs_Landau[2].array(mfi);
+            const Array4<Real> &pOld_p = P_old[0].array(mfi);
+            const Array4<Real> &pOld_q = P_old[1].array(mfi);
+            const Array4<Real> &pOld_r = P_old[2].array(mfi);
+            const Array4<Real>& Gam = Gamma.array(mfi);
+            const Array4<Real>& tphase = tphaseMask.array(mfi);
+
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                Real dFdPp_Landau = alpha*pOld_p(i,j,k) + beta*std::pow(pOld_p(i,j,k),3.) + FerroX::gamma*std::pow(pOld_p(i,j,k),5.)
+                                    + 2. * alpha_12 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),2.)
+                                    + 2. * alpha_12 * pOld_p(i,j,k) * std::pow(pOld_r(i,j,k),2.)
+                                    + 4. * alpha_112 * std::pow(pOld_p(i,j,k),3.) * (std::pow(pOld_q(i,j,k),2.) + std::pow(pOld_r(i,j,k),2.))
+                                    + 2. * alpha_112 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),4.)
+                                    + 2. * alpha_112 * pOld_p(i,j,k) * std::pow(pOld_r(i,j,k),4.)
+                                    + 2. * alpha_123 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),2.) * std::pow(pOld_r(i,j,k),2.);
+
+                Real dFdPq_Landau = alpha*pOld_q(i,j,k) + beta*std::pow(pOld_q(i,j,k),3.) + FerroX::gamma*std::pow(pOld_q(i,j,k),5.)
+                                    + 2. * alpha_12 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),2.)
+                                    + 2. * alpha_12 * pOld_q(i,j,k) * std::pow(pOld_r(i,j,k),2.)
+                                    + 4. * alpha_112 * std::pow(pOld_q(i,j,k),3.) * (std::pow(pOld_p(i,j,k),2.) + std::pow(pOld_r(i,j,k),2.))
+                                    + 2. * alpha_112 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),4.)
+                                    + 2. * alpha_112 * pOld_q(i,j,k) * std::pow(pOld_r(i,j,k),4.)
+                                    + 2. * alpha_123 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),2.) * std::pow(pOld_r(i,j,k),2.);
+                
+                Real dFdPr_Landau = alpha*pOld_r(i,j,k) + beta*std::pow(pOld_r(i,j,k),3.) + FerroX::gamma*std::pow(pOld_r(i,j,k),5.)
+                                    + 2. * alpha_12 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),2.)
+                                    + 2. * alpha_12 * pOld_r(i,j,k) * std::pow(pOld_q(i,j,k),2.)
+                                    + 4. * alpha_112 * std::pow(pOld_r(i,j,k),3.) * (std::pow(pOld_p(i,j,k),2.) + std::pow(pOld_q(i,j,k),2.))
+                                    + 2. * alpha_112 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),4.)
+                                    + 2. * alpha_112 * pOld_r(i,j,k) * std::pow(pOld_q(i,j,k),4.)
+                                    + 2. * alpha_123 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),2.) * std::pow(pOld_q(i,j,k),2.);
+
+                GL_RHS_p(i,j,k) = -1.0 * Gam(i,j,k) * dFdPp_Landau;
+                GL_RHS_q(i,j,k) = -1.0 * Gam(i,j,k) * dFdPq_Landau;
+                GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) * dFdPr_Landau;
+
+                if (is_polarization_scalar == 1){
+		   GL_RHS_p(i,j,k) = 0.0;
+		   GL_RHS_q(i,j,k) = 0.0;
+		}
+
+		//set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
+                //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+                if (tphase(i,j,k) == 1.0){
+		   GL_RHS_p(i,j,k) = 0.0;
+		   GL_RHS_q(i,j,k) = 0.0;
+		   GL_RHS_r(i,j,k) = 0.0;
+                }
+            });
+        }
+}
+
+
+void Calculate_Grad(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_grad,
+                Array<MultiFab, AMREX_SPACEDIM> &P_old,
+                MultiFab&                       Gamma,
+                MultiFab&                 MaterialMask,
+                MultiFab&                 tphaseMask,
+                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
+                const Geometry& geom)
 {
         // loop over boxes
         for ( MFIter mfi(P_old[0]); mfi.isValid(); ++mfi )
@@ -22,15 +152,12 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
             // extract dx from the geometry object
             GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
-            const Array4<Real> &GL_RHS_p = GL_rhs[0].array(mfi);
-            const Array4<Real> &GL_RHS_q = GL_rhs[1].array(mfi);
-            const Array4<Real> &GL_RHS_r = GL_rhs[2].array(mfi);
+            const Array4<Real> &GL_RHS_p = GL_rhs_grad[0].array(mfi);
+            const Array4<Real> &GL_RHS_q = GL_rhs_grad[1].array(mfi);
+            const Array4<Real> &GL_RHS_r = GL_rhs_grad[2].array(mfi);
             const Array4<Real> &pOld_p = P_old[0].array(mfi);
             const Array4<Real> &pOld_q = P_old[1].array(mfi);
             const Array4<Real> &pOld_r = P_old[2].array(mfi);
-            const Array4<Real> &Ep = E[0].array(mfi);
-            const Array4<Real> &Eq = E[1].array(mfi);
-            const Array4<Real> &Er = E[2].array(mfi);
             const Array4<Real>& Gam = Gamma.array(mfi);
             const Array4<Real>& mask = MaterialMask.array(mfi);
             const Array4<Real>& tphase = tphaseMask.array(mfi);
@@ -73,30 +200,6 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                   R_33 = cos(alpha_rad)*cos(beta_rad);
                }
 
-                Real dFdPp_Landau = alpha*pOld_p(i,j,k) + beta*std::pow(pOld_p(i,j,k),3.) + FerroX::gamma*std::pow(pOld_p(i,j,k),5.)
-                                    + 2. * alpha_12 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),2.)
-                                    + 2. * alpha_12 * pOld_p(i,j,k) * std::pow(pOld_r(i,j,k),2.)
-                                    + 4. * alpha_112 * std::pow(pOld_p(i,j,k),3.) * (std::pow(pOld_q(i,j,k),2.) + std::pow(pOld_r(i,j,k),2.))
-                                    + 2. * alpha_112 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),4.)
-                                    + 2. * alpha_112 * pOld_p(i,j,k) * std::pow(pOld_r(i,j,k),4.)
-                                    + 2. * alpha_123 * pOld_p(i,j,k) * std::pow(pOld_q(i,j,k),2.) * std::pow(pOld_r(i,j,k),2.);
-
-                Real dFdPq_Landau = alpha*pOld_q(i,j,k) + beta*std::pow(pOld_q(i,j,k),3.) + FerroX::gamma*std::pow(pOld_q(i,j,k),5.)
-                                    + 2. * alpha_12 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),2.)
-                                    + 2. * alpha_12 * pOld_q(i,j,k) * std::pow(pOld_r(i,j,k),2.)
-                                    + 4. * alpha_112 * std::pow(pOld_q(i,j,k),3.) * (std::pow(pOld_p(i,j,k),2.) + std::pow(pOld_r(i,j,k),2.))
-                                    + 2. * alpha_112 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),4.)
-                                    + 2. * alpha_112 * pOld_q(i,j,k) * std::pow(pOld_r(i,j,k),4.)
-                                    + 2. * alpha_123 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),2.) * std::pow(pOld_r(i,j,k),2.);
-                
-                Real dFdPr_Landau = alpha*pOld_r(i,j,k) + beta*std::pow(pOld_r(i,j,k),3.) + FerroX::gamma*std::pow(pOld_r(i,j,k),5.)
-                                    + 2. * alpha_12 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),2.)
-                                    + 2. * alpha_12 * pOld_r(i,j,k) * std::pow(pOld_q(i,j,k),2.)
-                                    + 4. * alpha_112 * std::pow(pOld_r(i,j,k),3.) * (std::pow(pOld_p(i,j,k),2.) + std::pow(pOld_q(i,j,k),2.))
-                                    + 2. * alpha_112 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),4.)
-                                    + 2. * alpha_112 * pOld_r(i,j,k) * std::pow(pOld_q(i,j,k),4.)
-                                    + 2. * alpha_123 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),2.) * std::pow(pOld_q(i,j,k),2.);
-
                 Real dFdPp_grad = - g11 * DoubleDPDx(pOld_p, mask, i, j, k, dx)
                                   - (g44 + g44_p) * DoubleDPDy(pOld_p, mask, i, j, k, dx)
                                   - (g44 + g44_p) * DoubleDPDz(pOld_p, mask, i, j, k, dx)
@@ -133,23 +236,52 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                                   - (g44 + g44_p + g12) * DoubleDPDyDz(pOld_q, mask, i, j, k, dx) // d2P/dydz
                                   - (g44 + g44_p + g12) * DoubleDPDxDz(pOld_p, mask, i, j, k, dx); // d2P/dxdz
 
-                GL_RHS_p(i,j,k) = -1.0 * Gam(i,j,k) *
-                    (  dFdPp_Landau
-                     + dFdPp_grad
-		     - Ep(i,j,k)
-                    );
+                GL_RHS_p(i,j,k) = -1.0 * Gam(i,j,k) * dFdPp_grad;
+                GL_RHS_q(i,j,k) = -1.0 * Gam(i,j,k) * dFdPq_grad;
+                GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) * dFdPr_grad;
 
-                GL_RHS_q(i,j,k) = -1.0 * Gam(i,j,k) *
-                    (  dFdPq_Landau
-                     + dFdPq_grad
-		     - Eq(i,j,k)
-                    );
+                if (is_polarization_scalar == 1){
+		   GL_RHS_p(i,j,k) = 0.0;
+		   GL_RHS_q(i,j,k) = 0.0;
+		}
 
-                GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) *
-                    (  dFdPr_Landau
-                     + dFdPr_grad
-		     - Er(i,j,k)
-                    );
+		//set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
+                //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+                if (tphase(i,j,k) == 1.0){
+		   GL_RHS_p(i,j,k) = 0.0;
+		   GL_RHS_q(i,j,k) = 0.0;
+		   GL_RHS_r(i,j,k) = 0.0;
+                }
+            });
+        }
+}
+
+
+void Calculate_Elec(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_elec,
+                Array<MultiFab, AMREX_SPACEDIM> &E,
+                MultiFab&                       Gamma,
+                MultiFab&                 tphaseMask)
+{
+        // loop over boxes
+        for ( MFIter mfi(E[0]); mfi.isValid(); ++mfi )
+        {
+            const Box& bx = mfi.validbox();
+
+            const Array4<Real> &GL_RHS_p = GL_rhs_elec[0].array(mfi);
+            const Array4<Real> &GL_RHS_q = GL_rhs_elec[1].array(mfi);
+            const Array4<Real> &GL_RHS_r = GL_rhs_elec[2].array(mfi);
+            const Array4<Real> &Ep = E[0].array(mfi);
+            const Array4<Real> &Eq = E[1].array(mfi);
+            const Array4<Real> &Er = E[2].array(mfi);
+            const Array4<Real>& Gam = Gamma.array(mfi);
+            const Array4<Real>& tphase = tphaseMask.array(mfi);
+
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+
+                GL_RHS_p(i,j,k) = -1.0 * Gam(i,j,k) * (-Ep(i,j,k));
+                GL_RHS_q(i,j,k) = -1.0 * Gam(i,j,k) * (-Eq(i,j,k));
+                GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) * (-Er(i,j,k));
 
                 if (is_polarization_scalar == 1){
 		   GL_RHS_p(i,j,k) = 0.0;

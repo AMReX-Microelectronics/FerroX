@@ -103,4 +103,13 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int num_Vapp_max;
 
     extern AMREX_GPU_MANAGED int random_seed;
+    
+    extern AMREX_GPU_MANAGED int include_Landau;
+    extern AMREX_GPU_MANAGED int include_Grad;
+    extern AMREX_GPU_MANAGED int include_Elec;
+    extern AMREX_GPU_MANAGED int fast_Landau;
+    extern AMREX_GPU_MANAGED int fast_Grad;
+    extern AMREX_GPU_MANAGED int fast_Elec;
+    extern AMREX_GPU_MANAGED int using_MRI;
+    extern AMREX_GPU_MANAGED amrex::Real fast_dt_ratio;
 }

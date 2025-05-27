@@ -90,6 +90,24 @@ void main_main (c_FerroX& rFerroX)
         P_new_pre[dir].define(ba, dm, Ncomp, Nghost);
     }
 
+    Array<MultiFab, AMREX_SPACEDIM> GL_rhs_Landau;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        GL_rhs_Landau[dir].define(ba, dm, Ncomp, Nghost);
+    }
+
+    Array<MultiFab, AMREX_SPACEDIM> GL_rhs_grad;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        GL_rhs_grad[dir].define(ba, dm, Ncomp, Nghost);
+    }
+
+    Array<MultiFab, AMREX_SPACEDIM> GL_rhs_elec;
+    for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
+    {
+        GL_rhs_elec[dir].define(ba, dm, Ncomp, Nghost);
+    }
+
     Array<MultiFab, AMREX_SPACEDIM> GL_rhs;
     for (int dir = 0; dir < AMREX_SPACEDIM; dir++)
     {
@@ -260,7 +278,17 @@ void main_main (c_FerroX& rFerroX)
             ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
             // compute f^n = f(P^n,Phi^n)
-            CalculateTDGL_RHS(GL_rhs, P_old, E, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+            if (include_Landau == 1){
+               Calculate_Landau(GL_rhs_Landau, P_old, Gamma, tphaseMask);
+            }
+            if (include_Grad == 1){
+               Calculate_Grad(GL_rhs_grad, P_old, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom);
+            }
+            if (include_Elec == 1){
+               Calculate_Elec(GL_rhs_elec, E, Gamma, tphaseMask);
+            }
+
+            CalculateTDGL_RHS(GL_rhs, GL_rhs_Landau, GL_rhs_grad, GL_rhs_elec, P_old, E, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom);
 
             // P^{n+1,*} = P^n + dt * f^n
             for (int i = 0; i < 3; i++){
@@ -293,7 +321,17 @@ void main_main (c_FerroX& rFerroX)
                 ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
                 // compute f^{n+1,*} = f(P^{n+1,*},Phi^{n+1,*})
-                CalculateTDGL_RHS(GL_rhs_pre, P_new_pre, E, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+                if (include_Landau == 1){
+                   Calculate_Landau(GL_rhs_Landau, P_new_pre, Gamma, tphaseMask);
+                }
+                if (include_Grad == 1){
+                   Calculate_Grad(GL_rhs_grad, P_new_pre, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom);
+                }
+                if (include_Elec == 1){
+                   Calculate_Elec(GL_rhs_elec, E, Gamma, tphaseMask);
+                }
+
+                CalculateTDGL_RHS(GL_rhs_pre, GL_rhs_Landau, GL_rhs_grad, GL_rhs_elec, P_new_pre, E, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom);
 
                 // P^{n+1} = P^n + dt/2 * f^n + dt/2 * f^{n+1,*}
                 for (int i = 0; i < 3; i++){
@@ -314,8 +352,12 @@ void main_main (c_FerroX& rFerroX)
 #ifdef AMREX_USE_SUNDIALS
 		// Create a RHS source function we will integrate
             	// for MRI this represents the slow processes
-            	auto rhs_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real ) {
+            	auto rhs_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real& time ) {
                 
+                BL_PROFILE_VAR("rhs_fun()",rhs_fast_fun);
+
+                Print() << "Calling rhs_fun at time = " << time << "\n";
+ 
                 // User function to calculate the rhs MultiFab given the state MultiFab
                 for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
                     rhs[idim].setVal(0.);
@@ -348,12 +390,112 @@ void main_main (c_FerroX& rFerroX)
 
                 ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
+                if (include_Landau == 1){
+                   if(using_MRI && fast_Landau == 1){ 
+                      for (int idim=0; idim<AMREX_SPACEDIM; ++idim) {
+                             GL_rhs_Landau[idim].setVal(0.);
+                      }
+                   } else {
+                      Calculate_Landau(GL_rhs_Landau, ar_state, Gamma, tphaseMask);
+                   }
+                }   
+                if (include_Grad == 1){ 
+                   if(using_MRI && fast_Grad == 1){
+                      for (int idim=0; idim<AMREX_SPACEDIM; ++idim) {
+                             GL_rhs_grad[idim].setVal(0.);
+                      }
+                   } else {
+                      Calculate_Grad(GL_rhs_grad, ar_state, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom);
+                   }
+                }   
+                if (include_Elec == 1){ 
+                   if(using_MRI && fast_Elec == 1){
+                      for (int idim=0; idim<AMREX_SPACEDIM; ++idim) {
+                             GL_rhs_elec[idim].setVal(0.);
+                      }
+                   } else {
+                      Calculate_Elec(GL_rhs_elec, E, Gamma, tphaseMask);
+                   }
+                }   
+
                 // Compute f^n = f(P^n, E^n) 
-        	CalculateTDGL_RHS(ar_rhs, ar_state, E, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+        	CalculateTDGL_RHS(ar_rhs, GL_rhs_Landau, GL_rhs_grad, GL_rhs_elec, ar_state, E, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom);
 
 
-            };
+                };
 
+                // Create a fast RHS source function we will integrate
+            	auto rhs_fast_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real& time) {
+               
+                BL_PROFILE_VAR("rhs_fast_fun()",rhs_fast_fun);
+
+                Print() << "Calling rhs_fast_fun at time = " << time << "\n";
+ 
+                // User function to calculate the rhs MultiFab given the state MultiFab
+                for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+                    rhs[idim].setVal(0.);
+                } 
+
+	        //alias rhs and state from vector of MultiFabs amrex::Vector<MultiFab> into Array<MultiFab, AMREX_SPACEDIM>
+		//This is needed since CalculateH_* and Compute_LLG_RHS function take Array<MultiFab, AMREX_SPACEDIM> as input param
+
+                Array<MultiFab, AMREX_SPACEDIM> ar_rhs{AMREX_D_DECL(MultiFab(rhs[0],amrex::make_alias,0,rhs[0].nComp()),
+		                                                    MultiFab(rhs[1],amrex::make_alias,0,rhs[1].nComp()),
+			       			                    MultiFab(rhs[2],amrex::make_alias,0,rhs[2].nComp()))};
+
+                Array<MultiFab, AMREX_SPACEDIM> ar_state{AMREX_D_DECL(MultiFab(state[0],amrex::make_alias,0,state[0].nComp()),
+                                                                      MultiFab(state[1],amrex::make_alias,0,state[1].nComp()),
+                                                                      MultiFab(state[2],amrex::make_alias,0,state[2].nComp()))};
+
+		for (int comp = 0; comp < 3; comp++) {
+                    ar_state[comp].FillBoundary(geom.periodicity());
+		}
+
+#ifdef AMREX_USE_EB
+                ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
+                                  ar_state, charge_den, e_den, hole_den, MaterialMask, 
+                                  angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+#else
+                ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
+                               ar_state, charge_den, e_den, hole_den, MaterialMask, 
+                               angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+#endif
+
+                ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+
+                if (include_Landau == 1){
+                   if(fast_Landau == 1){ 
+                      Calculate_Landau(GL_rhs_Landau, ar_state, Gamma, tphaseMask);
+                   } else {
+                      for (int idim=0; idim<AMREX_SPACEDIM; ++idim) {
+                             GL_rhs_Landau[idim].setVal(0.);
+                      }
+                   }
+                }   
+                if (include_Grad == 1){ 
+                   if(fast_Grad == 1){
+                      Calculate_Grad(GL_rhs_grad, ar_state, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom);
+                   } else {
+                      for (int idim=0; idim<AMREX_SPACEDIM; ++idim) {
+                             GL_rhs_grad[idim].setVal(0.);
+                      }
+                   }
+                }   
+                if (include_Elec == 1){ 
+                   if(fast_Elec == 1){
+                      Calculate_Elec(GL_rhs_elec, E, Gamma, tphaseMask);
+                   } else {
+                      for (int idim=0; idim<AMREX_SPACEDIM; ++idim) {
+                             GL_rhs_elec[idim].setVal(0.);
+                      }
+                   }
+                }   
+
+                // Compute f^n = f(P^n, E^n) 
+        	CalculateTDGL_RHS(ar_rhs, GL_rhs_Landau, GL_rhs_grad, GL_rhs_elec, ar_state, E, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom);
+
+
+                };
                 /*
 	    // Create a function to call after updating a state
             auto post_update_fun = [&](Vector<MultiFab>& state, const Real ) {
@@ -375,8 +517,15 @@ void main_main (c_FerroX& rFerroX)
 //            integrator.set_post_step_action(post_update_fun);
 
             integrator.set_time_step(dt);
+
+            if (using_MRI) {
+                integrator.set_fast_time_step(fast_dt_ratio*dt);
+                integrator.set_fast_rhs(rhs_fast_fun);
+            }
+
             // integrate forward one step from `time` by `dt` to fill S_new
-            integrator.advance(vP_old, vP_new, time, dt);
+            //integrator.advance(vP_old, vP_new, time, dt);
+            integrator.evolve(vP_new, time+dt);
 
 #endif
 

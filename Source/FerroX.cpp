@@ -260,6 +260,15 @@ AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_hi_max;
 AMREX_GPU_MANAGED amrex::Real FerroX::phi_tolerance;
 AMREX_GPU_MANAGED int FerroX::random_seed;
 AMREX_GPU_MANAGED int FerroX::num_Vapp_max; //Maximum number of applied voltage points to sweep
+AMREX_GPU_MANAGED int FerroX::include_Landau;
+AMREX_GPU_MANAGED int FerroX::include_Grad;
+AMREX_GPU_MANAGED int FerroX::include_Elec;
+
+AMREX_GPU_MANAGED int FerroX::using_MRI;
+AMREX_GPU_MANAGED int FerroX::fast_Landau;
+AMREX_GPU_MANAGED int FerroX::fast_Grad;
+AMREX_GPU_MANAGED int FerroX::fast_Elec;
+AMREX_GPU_MANAGED amrex::Real FerroX::fast_dt_ratio;
 
 void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi) {
@@ -402,6 +411,30 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      num_Vapp_max = 1;
      pp.query("num_Vapp_max",num_Vapp_max);
+
+     include_Landau = 1;
+     pp.query("include_Landau",include_Landau);
+
+     include_Grad = 1;
+     pp.query("include_Grad",include_Grad);
+
+     include_Elec = 1;
+     pp.query("include_Elec",include_Elec);
+
+     using_MRI = 0;
+     pp.query("using_MRI",using_MRI);
+     
+     fast_Landau = 0;
+     pp.query("fast_Landau",fast_Landau);
+
+     fast_Grad = 0;
+     pp.query("fast_Grad",fast_Grad);
+
+     fast_Elec = 0;
+     pp.query("fast_Elec",fast_Elec);
+
+     fast_dt_ratio = 0.1;
+     pp.query("fast_dt_ratio",fast_dt_ratio);
 
      //stack dimensions in 3D. This is an alternate way of initializing the device geometry, which works in simpler scenarios.
      //A more general way of initializing device geometry is accomplished through masks which use function parsers
