@@ -15,58 +15,52 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry& geom)
 {
-//        if (include_Landau == 1){
-//           Calculate_Landau(GL_rhs_Landau, P_old, Gamma, tphaseMask);
-//        }
-//        if (include_Grad == 1){
-//           Calculate_Grad(GL_rhs_grad, P_old, Gamma, MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, geom);
-//        }
-//        if (include_Elec == 1){
-//           Calculate_Elec(GL_rhs_elec, E, Gamma, tphaseMask);
-//        }
+    for (int dir=0; dir<AMREX_SPACEDIM; ++dir) {
+        GL_rhs[dir].setVal(0.);
+    }
 
-        // loop over boxes
-        for ( MFIter mfi(P_old[0]); mfi.isValid(); ++mfi )
+    // loop over boxes
+    for ( MFIter mfi(P_old[0]); mfi.isValid(); ++mfi )
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real> &GL_RHS_p = GL_rhs[0].array(mfi);
+        const Array4<Real> &GL_RHS_q = GL_rhs[1].array(mfi);
+        const Array4<Real> &GL_RHS_r = GL_rhs[2].array(mfi);
+
+        const Array4<Real> &GL_RHS_p_Landau = GL_rhs_Landau[0].array(mfi);
+        const Array4<Real> &GL_RHS_q_Landau = GL_rhs_Landau[1].array(mfi);
+        const Array4<Real> &GL_RHS_r_Landau = GL_rhs_Landau[2].array(mfi);
+
+        const Array4<Real> &GL_RHS_p_grad = GL_rhs_grad[0].array(mfi);
+        const Array4<Real> &GL_RHS_q_grad = GL_rhs_grad[1].array(mfi);
+        const Array4<Real> &GL_RHS_r_grad = GL_rhs_grad[2].array(mfi);
+
+        const Array4<Real> &GL_RHS_p_elec = GL_rhs_elec[0].array(mfi);
+        const Array4<Real> &GL_RHS_q_elec = GL_rhs_elec[1].array(mfi);
+        const Array4<Real> &GL_RHS_r_elec = GL_rhs_elec[2].array(mfi);
+
+
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
-            const Box& bx = mfi.validbox();
 
-            const Array4<Real> &GL_RHS_p = GL_rhs[0].array(mfi);
-            const Array4<Real> &GL_RHS_q = GL_rhs[1].array(mfi);
-            const Array4<Real> &GL_RHS_r = GL_rhs[2].array(mfi);
-
-            const Array4<Real> &GL_RHS_p_Landau = GL_rhs_Landau[0].array(mfi);
-            const Array4<Real> &GL_RHS_q_Landau = GL_rhs_Landau[1].array(mfi);
-            const Array4<Real> &GL_RHS_r_Landau = GL_rhs_Landau[2].array(mfi);
-
-            const Array4<Real> &GL_RHS_p_grad = GL_rhs_grad[0].array(mfi);
-            const Array4<Real> &GL_RHS_q_grad = GL_rhs_grad[1].array(mfi);
-            const Array4<Real> &GL_RHS_r_grad = GL_rhs_grad[2].array(mfi);
-
-            const Array4<Real> &GL_RHS_p_elec = GL_rhs_elec[0].array(mfi);
-            const Array4<Real> &GL_RHS_q_elec = GL_rhs_elec[1].array(mfi);
-            const Array4<Real> &GL_RHS_r_elec = GL_rhs_elec[2].array(mfi);
-
-
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-
-               if (include_Landau == 1){
-                  GL_RHS_p(i,j,k) +=  GL_RHS_p_Landau(i,j,k); 
-                  GL_RHS_q(i,j,k) +=  GL_RHS_q_Landau(i,j,k); 
-                  GL_RHS_r(i,j,k) +=  GL_RHS_r_Landau(i,j,k); 
-               }
-               if (include_Grad == 1){
-                  GL_RHS_p(i,j,k) +=  GL_RHS_p_grad(i,j,k); 
-                  GL_RHS_q(i,j,k) +=  GL_RHS_q_grad(i,j,k); 
-                  GL_RHS_r(i,j,k) +=  GL_RHS_r_grad(i,j,k); 
-               }
-               if (include_Elec == 1){
-                  GL_RHS_p(i,j,k) +=  GL_RHS_p_elec(i,j,k); 
-                  GL_RHS_q(i,j,k) +=  GL_RHS_q_elec(i,j,k); 
-                  GL_RHS_r(i,j,k) +=  GL_RHS_r_elec(i,j,k); 
-               }
-            });
-        }
+            if (include_Landau == 1){
+                GL_RHS_p(i,j,k) +=  GL_RHS_p_Landau(i,j,k); 
+                GL_RHS_q(i,j,k) +=  GL_RHS_q_Landau(i,j,k); 
+                GL_RHS_r(i,j,k) +=  GL_RHS_r_Landau(i,j,k); 
+            }
+            if (include_Grad == 1){
+                GL_RHS_p(i,j,k) +=  GL_RHS_p_grad(i,j,k); 
+                GL_RHS_q(i,j,k) +=  GL_RHS_q_grad(i,j,k); 
+                GL_RHS_r(i,j,k) +=  GL_RHS_r_grad(i,j,k); 
+            }
+            if (include_Elec == 1){
+                GL_RHS_p(i,j,k) +=  GL_RHS_p_elec(i,j,k); 
+                GL_RHS_q(i,j,k) +=  GL_RHS_q_elec(i,j,k); 
+                GL_RHS_r(i,j,k) +=  GL_RHS_r_elec(i,j,k); 
+            }
+        });
+    }
 }
 
 
