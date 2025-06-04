@@ -1,5 +1,6 @@
 CEXE_sources += main.cpp
 CEXE_sources += FerroX.cpp
+CEXE_sources += Plotfile.cpp
 
 CEXE_headers += FerroX.H
 

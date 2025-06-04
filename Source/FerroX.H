@@ -16,6 +16,7 @@
 #include <AMReX_Geometry.H>
 #include "FerroX_namespace.H"
 
+
 using namespace FerroX;
 using namespace amrex;
 
@@ -40,6 +41,8 @@ class c_FerroX
 {
 
 public:
+
+    
 
     c_FerroX (); //constructor
     ~c_FerroX (); //destructor
@@ -97,6 +100,7 @@ public:
     const amrex::Real get_time() { return m_time_instant;}
     const amrex::Real set_time(int n) { m_time_instant = n*m_timestep; return m_time_instant;}
 
+
 private:
 
     static c_FerroX* m_instance;
@@ -115,5 +119,27 @@ private:
 void main_main (c_FerroX& rFerroX);
 void InitializeFerroXNamespace (const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
+
+/*
+    Plotfile.cpp
+*/
+void WritePlotfile(c_FerroX& rFerroX,
+                   MultiFab& PoissonPhi,
+                   MultiFab& PoissonRHS,
+                   Array< MultiFab, AMREX_SPACEDIM>& P_old,
+                   Array< MultiFab, AMREX_SPACEDIM>& E,
+                   MultiFab& hole_den,
+                   MultiFab& e_den,
+                   MultiFab& charge_den,
+                   MultiFab& beta_cc,
+                   MultiFab& MaterialMask,
+                   MultiFab& tphaseMask,
+                   MultiFab& angle_alpha,
+                   MultiFab& angle_beta,
+                   MultiFab& angle_theta,
+                   MultiFab& Phidiff,
+                   const Geometry& geom,
+                   const Real& time,
+                   const int& plt_step);
 
 #endif

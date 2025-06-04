@@ -9,8 +9,10 @@ USE_CUDA     = TRUE
 COMP         = gnu
 DIM          = 3
 CXXSTD       = c++17
+TINY_PROFILE = TRUE
 
 USE_EB = FALSE
+USE_SUNDIALS = FALSE
 
 ifeq ($(USE_CUDA), TRUE)
  USE_OMP= FALSE
@@ -22,4 +24,3 @@ PRINT_HIGH   = FALSE
 TIME_DEPENDENT = FALSE
 
 include $(CODE_HOME)/Source/Make.FerroX
-

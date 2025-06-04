@@ -1,7 +1,21 @@
 namespace FerroX {
-
+    
     extern AMREX_GPU_MANAGED int nsteps;
     extern AMREX_GPU_MANAGED int plot_int;
+
+    extern int plot_Phi;
+    extern int plot_PoissonRHS;
+    extern int plot_E;
+    extern int plot_holes;
+    extern int plot_electrons;
+    extern int plot_charge;
+    extern int plot_epsilon;
+    extern int plot_mask;
+    extern int plot_tphase;
+    extern int plot_alpha;
+    extern int plot_beta;
+    extern int plot_theta;
+    extern int plot_PhiDiff;
 
     // time step
     extern AMREX_GPU_MANAGED amrex::Real dt;
@@ -73,6 +87,7 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int mlmg_verbosity;
 
     extern AMREX_GPU_MANAGED int TimeIntegratorOrder;
+    extern AMREX_GPU_MANAGED int use_sundials;
 
     extern AMREX_GPU_MANAGED amrex::Real delta;
 
@@ -93,4 +108,13 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int num_Vapp_max;
 
     extern AMREX_GPU_MANAGED int random_seed;
+    
+    extern AMREX_GPU_MANAGED int include_Landau;
+    extern AMREX_GPU_MANAGED int include_Grad;
+    extern AMREX_GPU_MANAGED int include_Elec;
+    extern AMREX_GPU_MANAGED int fast_Landau;
+    extern AMREX_GPU_MANAGED int fast_Grad;
+    extern AMREX_GPU_MANAGED int fast_Elec;
+    extern AMREX_GPU_MANAGED int using_MRI;
+    extern AMREX_GPU_MANAGED amrex::Real fast_dt_ratio;
 }

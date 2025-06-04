@@ -21,6 +21,10 @@ ifeq ($(TIME_DEPENDENT),TRUE)
 USERSuffix := $(USERSuffix).TD
 endif
 
+ifeq ($(USE_SUNDIALS),TRUE)
+USERSuffix := $(USERSuffix).SUNDIALS
+endif
+
 AMREX_pack   += $(foreach dir, $(AMREX_dirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
 include $(AMREX_pack)
 
@@ -44,4 +48,8 @@ endif
 
 ifeq ($(TIME_DEPENDENT), TRUE)
   DEFINES += -DTIME_DEPENDENT
+endif
+
+ifeq ($(USE_SUNDIALS), TRUE)
+  DEFINES += -DUSE_SUNDIALS
 endif

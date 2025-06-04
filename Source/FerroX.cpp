@@ -167,6 +167,21 @@ AMREX_GPU_MANAGED int FerroX::plot_int;
 // time step
 AMREX_GPU_MANAGED amrex::Real FerroX::dt;
 
+int FerroX::plot_Phi;
+int FerroX::plot_PoissonRHS;
+int FerroX::plot_E;
+int FerroX::plot_holes;
+int FerroX::plot_electrons;
+int FerroX::plot_charge;
+int FerroX::plot_epsilon;
+int FerroX::plot_mask;
+int FerroX::plot_tphase;
+int FerroX::plot_alpha;
+int FerroX::plot_beta;
+int FerroX::plot_theta;
+int FerroX::plot_PhiDiff;
+
+
 // multimaterial stack geometry
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::DE_lo;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::FE_lo;
@@ -233,6 +248,7 @@ AMREX_GPU_MANAGED int FerroX::is_polarization_scalar;
 AMREX_GPU_MANAGED int FerroX::mlmg_verbosity;
 
 AMREX_GPU_MANAGED int FerroX::TimeIntegratorOrder;
+AMREX_GPU_MANAGED int FerroX::use_sundials;
 
 AMREX_GPU_MANAGED amrex::Real FerroX::delta;
 
@@ -251,6 +267,15 @@ AMREX_GPU_MANAGED amrex::Real FerroX::Phi_Bc_hi_max;
 AMREX_GPU_MANAGED amrex::Real FerroX::phi_tolerance;
 AMREX_GPU_MANAGED int FerroX::random_seed;
 AMREX_GPU_MANAGED int FerroX::num_Vapp_max; //Maximum number of applied voltage points to sweep
+AMREX_GPU_MANAGED int FerroX::include_Landau;
+AMREX_GPU_MANAGED int FerroX::include_Grad;
+AMREX_GPU_MANAGED int FerroX::include_Elec;
+
+AMREX_GPU_MANAGED int FerroX::using_MRI;
+AMREX_GPU_MANAGED int FerroX::fast_Landau;
+AMREX_GPU_MANAGED int FerroX::fast_Grad;
+AMREX_GPU_MANAGED int FerroX::fast_Elec;
+AMREX_GPU_MANAGED amrex::Real FerroX::fast_dt_ratio;
 
 void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi) {
@@ -278,8 +303,37 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      if(P_BC_flag_lo[2] == 3 || P_BC_flag_hi[2] == 3){
        amrex::Warning("This boundary condition does not represent the accurate physical picture!!");
      }
+     
+     plot_Phi = 1;
+     pp.query("plot_Phi",plot_Phi);
+     plot_PoissonRHS = 1;
+     pp.query("plot_PoissonRHS",plot_PoissonRHS);
+     plot_E = 1;    
+     pp.query("plot_E",plot_E);    
+     plot_holes = 1;
+     pp.query("plot_holes",plot_holes); 
+     plot_electrons = 1;
+     pp.query("plot_electrons",plot_electrons); 
+     plot_charge = 1;
+     pp.query("plot_charge",plot_charge); 
+     plot_epsilon = 1;
+     pp.query("plot_epsilon",plot_epsilon); 
+     plot_mask = 1;
+     pp.query("plot_mask",plot_mask); 
+     plot_tphase = 1;
+     pp.query("plot_tphase",plot_tphase); 
+     plot_alpha = 1 ;
+     pp.query("plot_alpha",plot_alpha); 
+     plot_beta = 1;
+     pp.query("plot_beta",plot_beta); 
+     plot_theta = 1;
+     pp.query("plot_theta",plot_theta); 
+     plot_PhiDiff = 1;
+     pp.query("plot_PhiDiff",plot_PhiDiff); 
 
      pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
+     use_sundials = 0;
+     pp.query("use_sundials", use_sundials);
 
      pp.get("prob_type", prob_type);
 
@@ -364,6 +418,30 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      num_Vapp_max = 1;
      pp.query("num_Vapp_max",num_Vapp_max);
+
+     include_Landau = 1;
+     pp.query("include_Landau",include_Landau);
+
+     include_Grad = 1;
+     pp.query("include_Grad",include_Grad);
+
+     include_Elec = 1;
+     pp.query("include_Elec",include_Elec);
+
+     using_MRI = 0;
+     pp.query("using_MRI",using_MRI);
+     
+     fast_Landau = 0;
+     pp.query("fast_Landau",fast_Landau);
+
+     fast_Grad = 0;
+     pp.query("fast_Grad",fast_Grad);
+
+     fast_Elec = 0;
+     pp.query("fast_Elec",fast_Elec);
+
+     fast_dt_ratio = 0.1;
+     pp.query("fast_dt_ratio",fast_dt_ratio);
 
      //stack dimensions in 3D. This is an alternate way of initializing the device geometry, which works in simpler scenarios.
      //A more general way of initializing device geometry is accomplished through masks which use function parsers

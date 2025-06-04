@@ -1,0 +1,136 @@
+#################################
+###### PROBLEM DOMAIN ######
+#################################
+
+domain.prob_lo = -16.e-9 -16.e-9 0.e-9
+domain.prob_hi =  16.e-9  16.e-9 32.e-9
+
+domain.n_cell = 128 128 128
+
+domain.max_grid_size = 64 64 64
+
+domain.coord_sys = cartesian 
+
+prob_type = 3
+
+TimeIntegratorOrder = 2
+
+plot_int = 8 
+dt = 5.0e-14
+nsteps = 8 
+
+plot_int = 16 
+dt = 2.5e-14
+nsteps = 16 
+
+plot_int = 32 
+dt = 1.25e-14
+nsteps = 32 
+
+############################################
+###### POLARIZATION BOUNDARY CONDITIONS ####
+############################################
+
+P_BC_flag_lo = 3 3 1
+P_BC_flag_hi = 3 3 1
+lambda = 3.0e-9
+
+############################################
+###### ELECTRICAL BOUNDARY CONDITIONS ######
+############################################
+
+domain.is_periodic = 1 1 0
+
+boundary.hi = per per dir(0.0)
+boundary.lo = per per dir(0.0)
+
+Phi_Bc_lo = 0.0
+Phi_Bc_hi = 0.0
+
+inc_step = 5000
+Phi_Bc_inc = 0.0
+
+#################################
+###### STACK GEOMETRY ###########
+#################################
+
+SC_lo = -16.e-9 -16.e-9 0.0e-9
+SC_hi =  16.e-9  16.e-9 8.0e-9
+
+DE_lo = -16.e-9 -16.e-9 8.0e-9
+DE_hi =  16.e-9  16.e-9 16.0e-9
+
+FE_lo = -16.e-9 -16.e-9 16.0e-9
+FE_hi =  16.e-9  16.e-9 32.e-9
+
+#################################
+###### MATERIAL PROPERTIES ######
+#################################
+
+epsilon_0 = 8.85e-12
+epsilonX_fe = 24.0
+epsilonZ_fe = 24.0
+epsilon_de = 10.0
+epsilon_si = 11.7
+alpha = -2.5e9
+beta = 6.0e10
+gamma = 1.5e11
+BigGamma = 100
+g11 = 1.0e-9
+g44 = 1.0e-9
+g44_p = 0.0
+g12 = 0.0
+alpha_12 = 0.0
+alpha_112 = 0.0
+alpha_123 = 0.0
+
+#################################
+###### INTEGRATION ##############
+#################################
+use_sundials = 1
+
+## amrex/sundials backend integrators
+## *** Selecting the integrator backend ***
+## integration.type can take on the following string or int values:
+## (without the quotation marks)
+## "ForwardEuler" or "0" = Native Forward Euler Integrator
+## "RungeKutta" or "1"   = Native Explicit Runge Kutta controlled by integration.rk.type
+## "SUNDIALS" or "2"     = SUNDIALS Integrators controlled by integration.sundials.type
+integration.type = RungeKutta
+
+## *** Parameters Needed For Native Explicit Runge-Kutta ***
+#
+## integration.rk.type can take the following values:
+### 0 = User-specified Butcher Tableau
+### 1 = Forward Euler
+### 2 = Trapezoid Method
+### 3 = SSPRK3 Method
+### 4 = RK4 Method
+integration.rk.type = 1
+
+## *** Parameters Needed For SUNDIALS Integrators ***
+
+# If using the SUNDIALS Submodule, then compile with USE_SUNDIALS=TRUE or
+# AMReX_SUNDIALS=ON
+
+# Set the SUNDIALS method type:
+# ERK      = Explicit Runge-Kutta method
+# DIRK     = Diagonally Implicit Runge-Kutta method
+# IMEX-RK  = Implicit-Explicit Additive Runge-Kutta method
+# EX-MRI   = Explicit Multirate Infatesimal method
+# IM-MRI   = Implicit Multirate Infatesimal method
+# IMEX-MRI = Implicit-Explicit Multirate Infatesimal method
+#
+# Optionally select a specific SUNDIALS method by name, see the SUNDIALS
+# documentation for the supported method names
+
+# Use the SUNDIALS default method for the chosen type (fixed or adaptive step sizes)
+integration.sundials.type = ERK
+
+# Use forward Euler (fixed step sizes only)
+# integration.sundials.type = ERK
+# integration.sundials.method = ARKODE_FORWARD_EULER_1_1
+
+# Use backward Euler (fixed step sizes only)
+# integration.sundials.type = DIRK
+# integration.sundials.method = ARKODE_BACKWARD_EULER_1_1
