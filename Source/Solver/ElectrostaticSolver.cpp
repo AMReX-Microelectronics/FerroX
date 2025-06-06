@@ -86,9 +86,13 @@ void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS, 
              MultiFab&            PoissonPhi, 
 	     Array<MultiFab, AMREX_SPACEDIM>& P_old,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jn,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jp,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
+             MultiFab&            e_den_old,
+             MultiFab&            p_den_old,
 	     MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
@@ -104,7 +108,8 @@ void dF_dPhi(MultiFab&            alpha_cc,
         PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
 
         // Calculate rho from Phi in SC region
-        ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, MaterialMask);
+        //ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, MaterialMask);
+        ComputeRho_DriftDiffusion(PoissonPhi_plus_delta, rho, Jn, Jp, e_den, p_den, e_den_old, p_den_old, MaterialMask, geom);
 
         //Compute RHS of Poisson equation
         ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
@@ -586,6 +591,8 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
 
     p_mlabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
 
+    SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
+
     if(some_constant_inhomogeneous_boundaries)
     {
         Fill_Constant_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
@@ -597,7 +604,8 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
     PoissonPhi.FillBoundary(geom.periodicity());
 
     // set Dirichlet BC by reading in the ghost cell values
-    SetPhiBC_z(PoissonPhi, n_cell, geom); 
+    //SetPhiBC_z(PoissonPhi, n_cell, geom);
+
     p_mlabec->setLevelBC(amrlev, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
@@ -682,14 +690,18 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
              MultiFab&            PoissonPhi, 
              MultiFab&            PoissonPhi_Prev,
              MultiFab&            PhiErr,  
-	         Array<MultiFab, AMREX_SPACEDIM>& P_old,
+	     Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jn,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jp,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	         MultiFab&            MaterialMask,
+             MultiFab&            e_den_old,
+             MultiFab&            p_den_old,
+	     MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	         const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 
 {
@@ -705,9 +717,9 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
 	//Compute RHS of Poisson equation
 	ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, rho, e_den, p_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+        //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, rho, e_den, p_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+        //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 
         p_mlabec->setACoeffs(0, alpha_cc);
@@ -720,8 +732,9 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
 	    PoissonPhi.FillBoundary(geom.periodicity());
 	
         // Calculate rho from Phi in SC region
-        ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
-        
+        //ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
+        ComputeRho_DriftDiffusion(PoissonPhi, rho, Jn, Jp, e_den, p_den, e_den_old, p_den_old, MaterialMask, geom);
+
 	if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
@@ -754,14 +767,18 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
              MultiFab&            PoissonPhi, 
              MultiFab&            PoissonPhi_Prev,
              MultiFab&            PhiErr,  
-	         Array<MultiFab, AMREX_SPACEDIM>& P_old,
+	     Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jn,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jp,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	         MultiFab&            MaterialMask,
+             MultiFab&            e_den_old,
+             MultiFab&            p_den_old,
+	     MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	         const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 
 {
@@ -777,9 +794,9 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
 	//Compute RHS of Poisson equation
 	ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, rho, e_den, p_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+        //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, rho, e_den, p_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+        //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
 
         p_mlebabec->setACoeffs(0, alpha_cc);
@@ -792,7 +809,8 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
 	    PoissonPhi.FillBoundary(geom.periodicity());
 	
         // Calculate rho from Phi in SC region
-        ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
+        //ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
+        ComputeRho_DriftDiffusion(PoissonPhi, rho, Jn, Jp, e_den, p_den, e_den_old, p_den_old, MaterialMask, geom);
         
 	if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates

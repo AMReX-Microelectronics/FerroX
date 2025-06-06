@@ -7,6 +7,8 @@ void WritePlotfile(c_FerroX& rFerroX,
                    MultiFab& PoissonRHS,
                    Array< MultiFab, AMREX_SPACEDIM>& P_old,
                    Array< MultiFab, AMREX_SPACEDIM>& E,
+                   Array< MultiFab, AMREX_SPACEDIM>& Jn,
+                   Array< MultiFab, AMREX_SPACEDIM>& Jp,
                    MultiFab& hole_den,
                    MultiFab& e_den,
                    MultiFab& charge_den,
@@ -53,6 +55,20 @@ void WritePlotfile(c_FerroX& rFerroX,
         var_names.push_back("Ex");
         var_names.push_back("Ey");
         var_names.push_back("Ez");
+    }
+
+    if (plot_Jn) {
+        nvar += 3;
+        var_names.push_back("Jnx");
+        var_names.push_back("Jny");
+        var_names.push_back("Jnz");
+    }
+
+    if (plot_Jp) {
+        nvar += 3;
+        var_names.push_back("Jpx");
+        var_names.push_back("Jpy");
+        var_names.push_back("Jpz");
     }
 
     if (plot_holes) {
@@ -134,6 +150,18 @@ void WritePlotfile(c_FerroX& rFerroX,
         MultiFab::Copy(Plt, E[2], 0, counter++, 1, 0);  
     }
 
+    if (plot_Jn) {
+        MultiFab::Copy(Plt, Jn[0], 0, counter++, 1, 0);
+        MultiFab::Copy(Plt, Jn[1], 0, counter++, 1, 0);
+        MultiFab::Copy(Plt, Jn[2], 0, counter++, 1, 0);  
+    }
+
+    if (plot_Jp) {
+        MultiFab::Copy(Plt, Jp[0], 0, counter++, 1, 0);
+        MultiFab::Copy(Plt, Jp[1], 0, counter++, 1, 0);
+        MultiFab::Copy(Plt, Jp[2], 0, counter++, 1, 0);  
+    }
+
     if (plot_holes) {
         MultiFab::Copy(Plt, hole_den, 0, counter++, 1, 0);
     }
@@ -175,4 +203,7 @@ void WritePlotfile(c_FerroX& rFerroX,
     }
 
     WriteSingleLevelPlotfile(pltfile, Plt, var_names, geom, time, plt_step);
+#ifdef AMREX_USE_EB
+    EB_WriteSingleLevelPlotfile(pltfile, Plt, var_names, geom, time, plt_step);
+#endif
 }

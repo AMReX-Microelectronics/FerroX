@@ -130,16 +130,31 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                pOld_q(i,j,k) = 0.0;
 	    }
         });
-        // Calculate charge density from Phi, Nc, Nv, Ec, and Ev
+    }
 
-	MultiFab acceptor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
-	MultiFab donor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
+    for (int i = 0; i < 3; i++){
+      // fill periodic ghost cells
+      P_old[i].FillBoundary(geom.periodicity());
+    }
+	
+    // Calculate charge density from Phi, Nc, Nv, Ec, and Ev
+
+    MultiFab acceptor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
+    MultiFab donor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
+    acceptor_den.setVal(0.0);
+    donor_den.setVal(0.0);
+
+    // loop over boxes
+    for (MFIter mfi(rho); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
 
         const Array4<Real>& hole_den_arr = p_den.array(mfi);
         const Array4<Real>& e_den_arr = e_den.array(mfi);
         const Array4<Real>& charge_den_arr = rho.array(mfi);
         const Array4<Real>& acceptor_den_arr = acceptor_den.array(mfi);
         const Array4<Real>& donor_den_arr = donor_den.array(mfi);
+        const Array4<Real const>& mask = MaterialMask.array(mfi);
 
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
@@ -156,9 +171,11 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                 } else if (mask(i,j,k) == 3.0) { // p-type
                    Na = acceptor_doping;
                    Nd = 0.0;
+//		   amrex::Print() << "mask = " << mask(i,j,k) << ", Na = " << Na << "\n";
                 } else if (mask(i,j,k) == 4.0) { // n-type
                    Na = 0.0;
                    Nd = donor_doping;
+//		   amrex::Print() << "mask = " << mask(i,j,k) << ", Nd = " << Nd << "\n";
                 }
 
                 hole_den_arr(i,j,k) = intrinsic_carrier_concentration;
@@ -169,14 +186,14 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
              charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
 
+	     //if(i == 32 && j == 32 && k == 32) amrex::Print() << "hole_den_arr = " << hole_den_arr(i,j,k) << "\n" << "e_den_arr = " << e_den_arr(i,j,k) << "\n" << "acceptor_den_arr = " << acceptor_den_arr(i,j,k) << "\n" << "donor_den_arr = " << donor_den_arr(i,j,k) << "\n" << "charge_den_arr = " << charge_den_arr(i,j,k) << "\n";  
         });
-    }
-    for (int i = 0; i < 3; i++){
-      // fill periodic ghost cells
-      P_old[i].FillBoundary(geom.periodicity());
     }
     e_den.FillBoundary(geom.periodicity());
     p_den.FillBoundary(geom.periodicity());
+    rho.FillBoundary(geom.periodicity());
+    acceptor_den.FillBoundary(geom.periodicity());
+    donor_den.FillBoundary(geom.periodicity());
  }
 
 // create a mask filled with integers to idetify different material types
@@ -201,16 +218,22 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
              Real y = prob_lo[1] + (j+0.5) * dx[1];
              Real z = prob_lo[2] + (k+0.5) * dx[2];
 
-             //FE:0, DE:1, Source/Drain:2, Channel:3
+             //FE:0, DE:1, Source/Drain:2, p_type:3, n_type:4
              if (x <= FE_hi[0] && x >= FE_lo[0] && y <= FE_hi[1] && y >= FE_lo[1] && z <= FE_hi[2] && z >= FE_lo[2]) {
                  mask(i,j,k) = 0.;
              } else if (x <= DE_hi[0] && x >= DE_lo[0] && y <= DE_hi[1] && y >= DE_lo[1] && z <= DE_hi[2] && z >= DE_lo[2]) {
                  mask(i,j,k) = 1.;
              } else if (x <= SC_hi[0] && x >= SC_lo[0] && y <= SC_hi[1] && y >= SC_lo[1] && z <= SC_hi[2] && z >= SC_lo[2]) {
                  mask(i,j,k) = 2.;
-                if (x <= Channel_hi[0] && x >= Channel_lo[0] && y <= Channel_hi[1] && y >= Channel_lo[1] && z <= Channel_hi[2] && z >= Channel_lo[2]){
+                //p_type
+                if (x <= p_type_hi[0] && x >= p_type_lo[0] && y <= p_type_hi[1] && y >= p_type_lo[1] && z <= p_type_hi[2] && z >= p_type_lo[2]){
                     mask(i,j,k) = 3.;
+		}
+                //n_type
+		else if (x <= n_type_hi[0] && x >= n_type_lo[0] && y <= n_type_hi[1] && y >= n_type_lo[1] && z <= n_type_hi[2] && z >= n_type_lo[2]){
+                    mask(i,j,k) = 4.;
                 }
+
              } else {
 	         mask(i,j,k) = 1.; //spacer is DE
 	     }

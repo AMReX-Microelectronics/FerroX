@@ -77,7 +77,15 @@ public:
 
     amrex::MultiFab& get_soln_mf  (int i) {return (*m_p_soln_mf[i]);}
     //amrex::MultiFab& get_beta_mf  (int i) {return (*m_p_beta_mf[i]);}
-    void clear_soln_mf() { m_p_soln_mf.clear(); };
+    //void clear_soln_mf() { m_p_soln_mf.clear(); };
+    void clear_soln_mf()
+    {
+        for (int i = 0; i < m_p_soln_mf.size(); ++i)
+        {
+            m_p_soln_mf[i].reset();
+        }
+        m_p_soln_mf.clear();
+    };
     //void clear_beta_mf() { m_p_beta_mf.clear(); };
 
     void BuildGeometry(const amrex::Geometry* geom, const amrex::BoxArray* ba, const amrex::DistributionMapping* dm);

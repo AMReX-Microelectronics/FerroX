@@ -188,8 +188,8 @@ void main_main (c_FerroX& rFerroX)
     angle_theta.setVal(0.);
 
     //Initialize material mask
-    //InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
-    InitializeMaterialMask(rFerroX, geom, MaterialMask);
+    InitializeMaterialMask(MaterialMask, geom, prob_lo, prob_hi);
+    //InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
        Initialize_Euler_angles(rFerroX, geom, angle_alpha, angle_beta, angle_theta);
@@ -245,7 +245,7 @@ void main_main (c_FerroX& rFerroX)
     if (plot_int > 0)
     {
         int plt_step = 0;
-        WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, hole_den, e_den, charge_den, beta_cc, 
+        WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, Jn, Jp, hole_den, e_den, charge_den, beta_cc, 
                       MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, Phidiff, geom, time, plt_step);
     }
 
@@ -282,11 +282,11 @@ void main_main (c_FerroX& rFerroX)
 
 #ifdef AMREX_USE_EB
             ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                              P_old, charge_den, e_den, hole_den, MaterialMask,
+                              P_old, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask,
                               angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #else
             ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                           P_old, charge_den, e_den, hole_den, MaterialMask,
+                           P_old, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask,
                            angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #endif
 
@@ -325,11 +325,11 @@ void main_main (c_FerroX& rFerroX)
 
 #ifdef AMREX_USE_EB
                 ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                                  P_new_pre, charge_den, e_den, hole_den, MaterialMask,
+                                  P_new_pre, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask,
                                   angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #else
                 ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                               P_new_pre, charge_den, e_den, hole_den, MaterialMask,
+                               P_new_pre, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask,
                                angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #endif
 
@@ -396,11 +396,11 @@ void main_main (c_FerroX& rFerroX)
 
 #ifdef AMREX_USE_EB
                 ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                                  ar_state, charge_den, e_den, hole_den, MaterialMask, 
+                                  ar_state, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, 
                                   angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #else
                 ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                               ar_state, charge_den, e_den, hole_den, MaterialMask, 
+                               ar_state, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, 
                                angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #endif
 
@@ -469,11 +469,11 @@ void main_main (c_FerroX& rFerroX)
 
 #ifdef AMREX_USE_EB
                 ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                                  ar_state, charge_den, e_den, hole_den, MaterialMask, 
+                                  ar_state, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, 
                                   angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #else
                 ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                               ar_state, charge_den, e_den, hole_den, MaterialMask, 
+                               ar_state, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, 
                                angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #endif
 
@@ -580,7 +580,7 @@ void main_main (c_FerroX& rFerroX)
         if (plot_int > 0 && (step%plot_int == 0 || step == steady_state_step))
         {
             int plt_step = step;
-            WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, hole_den, e_den, charge_den, beta_cc, 
+            WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, Jn, Jp, hole_den, e_den, charge_den, beta_cc, 
                       MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, Phidiff, geom, time, plt_step);
             
         }
@@ -618,11 +618,11 @@ void main_main (c_FerroX& rFerroX)
 
 #ifdef AMREX_USE_EB
            ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                   P_old, charge_den, e_den, hole_den, MaterialMask, 
+                   P_old, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, 
                    angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #else
            ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                   P_old, charge_den, e_den, hole_den, MaterialMask, 
+                   P_old, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask, 
                    angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #endif
         }//end inc_step	

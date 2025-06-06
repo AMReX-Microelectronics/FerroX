@@ -170,6 +170,8 @@ AMREX_GPU_MANAGED amrex::Real FerroX::dt;
 int FerroX::plot_Phi;
 int FerroX::plot_PoissonRHS;
 int FerroX::plot_E;
+int FerroX::plot_Jn;
+int FerroX::plot_Jp;
 int FerroX::plot_holes;
 int FerroX::plot_electrons;
 int FerroX::plot_charge;
@@ -189,8 +191,10 @@ AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::SC_lo;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::DE_hi;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::FE_hi;
 AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::SC_hi;
-AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::Channel_hi;
-AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::Channel_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::p_type_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::p_type_lo;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::n_type_hi;
+AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FerroX::n_type_lo;
 
 // material parameters
 AMREX_GPU_MANAGED amrex::Real FerroX::epsilon_0;
@@ -310,6 +314,10 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.query("plot_PoissonRHS",plot_PoissonRHS);
      plot_E = 1;    
      pp.query("plot_E",plot_E);    
+     plot_Jn = 1;    
+     pp.query("plot_Jn",plot_Jn);    
+     plot_Jp = 1;    
+     pp.query("plot_Jp",plot_Jp);    
      plot_holes = 1;
      pp.query("plot_holes",plot_holes); 
      plot_electrons = 1;
@@ -452,11 +460,13 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      for (int i=0; i<AMREX_SPACEDIM; ++i) {
          DE_lo[i] = prob_lo[i] - 1.0;
          SC_lo[i] = prob_lo[i] - 1.0;
-         Channel_lo[i] = prob_lo[i] - 1.0;
+         p_type_lo[i] = prob_lo[i] - 1.0;
+         n_type_lo[i] = prob_lo[i] - 1.0;
 
          DE_hi[i] = prob_hi[i] + 1.0;
          SC_hi[i] = prob_hi[i] + 1.0;
-         Channel_hi[i] = prob_hi[i] + 1.0;
+         p_type_hi[i] = prob_hi[i] + 1.0;
+         n_type_hi[i] = prob_hi[i] + 1.0;
 	 t_phase_lo[i] = 1.0; //just a large number so that t_phase is NOT simulated by default
 	 t_phase_hi[i] = 1.0;
      }
@@ -502,15 +512,27 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
          }
      }
 
-     if (pp.queryarr("Channel_lo",temp)) {
+     if (pp.queryarr("p_type_lo",temp)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
-             Channel_lo[i] = temp[i];
+             p_type_lo[i] = temp[i];
          }
      }
 
-     if (pp.queryarr("Channel_hi",temp)) {
+     if (pp.queryarr("p_type_hi",temp)) {
          for (int i=0; i<AMREX_SPACEDIM; ++i) {
-             Channel_hi[i] = temp[i];
+             p_type_hi[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("n_type_lo",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             n_type_lo[i] = temp[i];
+         }
+     }
+
+     if (pp.queryarr("n_type_hi",temp)) {
+         for (int i=0; i<AMREX_SPACEDIM; ++i) {
+             n_type_hi[i] = temp[i];
          }
      }
 
@@ -564,7 +586,7 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      hole_mobility = 450.0*1.e-4;  
      electron_diffusion_coefficient = electron_mobility*kb*T/q; 
      hole_diffusion_coefficient = hole_mobility*kb*T/q;    
- 
+
      use_Fermi_Dirac = 1;
      pp.query("use_Fermi_Dirac",use_Fermi_Dirac);
      

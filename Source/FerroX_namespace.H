@@ -6,6 +6,8 @@ namespace FerroX {
     extern int plot_Phi;
     extern int plot_PoissonRHS;
     extern int plot_E;
+    extern int plot_Jn;
+    extern int plot_Jp;
     extern int plot_holes;
     extern int plot_electrons;
     extern int plot_charge;
@@ -27,8 +29,10 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> DE_hi;
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> FE_hi;
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> SC_hi;
-    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> Channel_hi;
-    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> Channel_lo;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> p_type_hi;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> p_type_lo;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> n_type_hi;
+    extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> n_type_lo;
 
     // material parameters
     extern AMREX_GPU_MANAGED amrex::Real epsilon_0;
