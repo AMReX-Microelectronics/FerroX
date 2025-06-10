@@ -159,36 +159,56 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
+            amrex::Real Na_val, Nd_val; // Use temporary values for N_A and N_D for this cell
+            amrex::Real initial_n, initial_p;
 
-             //SC region
-             if (mask(i,j,k) >= 2.0) {
+            // SC region (mask >= 2.0 indicates semiconductor)
+            if (mask(i,j,k) >= 2.0) {
 
-                amrex::Real Na, Nd;
-
-                if (mask(i,j,k) == 2.0) {//intrinsic
-                   Na = 0.0;
-                   Nd = 0.0;
+                if (mask(i,j,k) == 2.0) { // intrinsic
+                    Na_val = 0.0;
+                    Nd_val = 0.0;
+                    initial_n = intrinsic_carrier_concentration;
+                    initial_p = intrinsic_carrier_concentration;
                 } else if (mask(i,j,k) == 3.0) { // p-type
-                   Na = acceptor_doping;
-                   Nd = 0.0;
-//		   amrex::Print() << "mask = " << mask(i,j,k) << ", Na = " << Na << "\n";
+                    Na_val = acceptor_doping;
+                    Nd_val = 0.0;
+                    // In p-type, p is majority, n is minority
+                    initial_p = acceptor_doping; // Assume full ionization and charge neutrality
+                    initial_n = intrinsic_carrier_concentration * intrinsic_carrier_concentration / initial_p;
                 } else if (mask(i,j,k) == 4.0) { // n-type
-                   Na = 0.0;
-                   Nd = donor_doping;
-//		   amrex::Print() << "mask = " << mask(i,j,k) << ", Nd = " << Nd << "\n";
+                    Na_val = 0.0;
+                    Nd_val = donor_doping;
+                    // In n-type, n is majority, p is minority
+                    initial_n = donor_doping; // Assume full ionization and charge neutrality
+                    initial_p = intrinsic_carrier_concentration * intrinsic_carrier_concentration / initial_n;
                 }
 
-                hole_den_arr(i,j,k) = intrinsic_carrier_concentration;
-                e_den_arr(i,j,k) = intrinsic_carrier_concentration;
-                acceptor_den_arr(i,j,k) = Na;
-                donor_den_arr(i,j,k) = Nd;
-             }
+                // Assign initial carrier concentrations to MultiFabs
+                hole_den_arr(i,j,k) = initial_p;
+                e_den_arr(i,j,k) = initial_n;
 
-             charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
+                // Assign doping concentrations to MultiFabs
+                acceptor_den_arr(i,j,k) = Na_val;
+                donor_den_arr(i,j,k) = Nd_val;
 
-	     //if(i == 32 && j == 32 && k == 32) amrex::Print() << "hole_den_arr = " << hole_den_arr(i,j,k) << "\n" << "e_den_arr = " << e_den_arr(i,j,k) << "\n" << "acceptor_den_arr = " << acceptor_den_arr(i,j,k) << "\n" << "donor_den_arr = " << donor_den_arr(i,j,k) << "\n" << "charge_den_arr = " << charge_den_arr(i,j,k) << "\n";  
+            } else { // Non-semiconductor regions (e.g., oxide, metal contacts if you have them)
+                // Set carrier and doping densities to zero outside SC region
+                hole_den_arr(i,j,k) = 0.0;
+                e_den_arr(i,j,k) = 0.0;
+                acceptor_den_arr(i,j,k) = 0.0;
+                donor_den_arr(i,j,k) = 0.0;
+            }
+
+            // Calculate the charge density for Poisson's RHS
+            // q is the elementary charge (e.g., 1.602e-19 C)
+            charge_den_arr(i,j,k) = q * (hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
+
+            // Debug prints (enable if needed)
+            // if(i == 32 && j == 32 && k == 32) amrex::Print() << "hole_den_arr = " << hole_den_arr(i,j,k) << "\n" << "e_den_arr = " << e_den_arr(i,j,k) << "\n" << "acceptor_den_arr = " << acceptor_den_arr(i,j,k) << "\n" << "donor_den_arr = " << donor_den_arr(i,j,k) << "\n" << "charge_den_arr = " << charge_den_arr(i,j,k) << "\n";
         });
     }
+    // Fill boundaries for all MultiFabs
     e_den.FillBoundary(geom.periodicity());
     p_den.FillBoundary(geom.periodicity());
     rho.FillBoundary(geom.periodicity());

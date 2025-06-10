@@ -706,7 +706,7 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
 
 {
 //Obtain self consisten Phi and rho
-    Real tol = 1.e-5;
+    Real tol = 1.e-2;
     Real err = 1.0;
     int iter = 0;
     bool contains_SC = false;
@@ -717,7 +717,7 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
 	//Compute RHS of Poisson equation
 	ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-        //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, rho, e_den, p_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+        //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, Jn, Jp, rho, e_den, p_den, e_den_old, p_den_old,  MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
         //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
@@ -794,7 +794,7 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
 	//Compute RHS of Poisson equation
 	ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
-        //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, rho, e_den, p_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+        //dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, Jn, Jp, rho, e_den, p_den, e_den_old, p_den_old,  MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
         //ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
 
