@@ -108,8 +108,8 @@ void dF_dPhi(MultiFab&            alpha_cc,
         PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
 
         // Calculate rho from Phi in SC region
-        //ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, MaterialMask);
-        ComputeRho_DriftDiffusion(PoissonPhi_plus_delta, rho, Jn, Jp, e_den, p_den, e_den_old, p_den_old, MaterialMask, geom);
+        ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, MaterialMask);
+        //ComputeRho_DriftDiffusion(PoissonPhi_plus_delta, rho, Jn, Jp, e_den, p_den, e_den_old, p_den_old, MaterialMask, geom);
 
         //Compute RHS of Poisson equation
         ComputePoissonRHS(PoissonRHS_phi_plus_delta, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
@@ -504,25 +504,152 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
     }
 }
 
-void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom)
+// Approximation to the inverse of the Fermi-Dirac Integral of Order 1/2
+AMREX_GPU_HOST_DEVICE AMREX_INLINE
+amrex::Real Inverse_FD_half(amrex::Real u)
+{
+
+    amrex::Real sqrt_pi = std::sqrt(3.14);
+    amrex::Real nu = std::pow( (3.0 * sqrt_pi * u / 4.0), 2.0 / 3.0 );
+    
+    amrex::Real log_term = -std::log(u) / (u*u - 1.0);
+    amrex::Real denom = 1.0 + std::pow(0.24 + 1.08 * nu, -2.0);
+    amrex::Real eta = log_term + nu / denom;
+
+    return eta;
+}
+
+// --- Main Calculation Function for Poisson BC values ---
+AMREX_GPU_HOST_DEVICE AMREX_INLINE
+amrex::GpuArray<amrex::Real, 2> CalculatePoissonBoundaryPotentials(
+    amrex::Real Nc, amrex::Real Nv, amrex::Real bandgap_eV, amrex::Real affinity_eV,
+    amrex::Real q_coulombs, amrex::Real kb_joules_per_k, amrex::Real T_kelvin,
+    amrex::Real donor_doping_val, amrex::Real acceptor_doping_val,
+    amrex::Real Phi_Bc_lo = 0.0, amrex::Real Phi_Bc_hi = 0.0)
+{
+    /**
+     * @brief Calculates the Dirichlet boundary conditions for the Poisson equation at
+     * the top and bottom boundaries of a p-n diode at zero bias.
+     *
+     * @param Nc Effective density of states in conduction band.
+     * @param Nv Effective density of states in valence band.
+     * @param bandgap_eV Bandgap energy in electron-Volts (eV).
+     * @param affinity_eV Electron affinity in electron-Volts (eV).
+     * @param q_coulombs Elementary charge in Coulombs.
+     * @param kb_joules_per_k Boltzmann constant in J/K.
+     * @param T_kelvin Temperature in Kelvin.
+     * @param donor_doping_val Donor concentration for n-type material.
+     * @param acceptor_doping_val Acceptor concentration for p-type material.
+     * @param Phi_Bc_lo Applied voltage at the bottom boundary (z=0).
+     * @param Phi_Bc_hi Applied voltage at the top boundary (z=1).
+     * @return A GpuArray containing the calculated BCs: [bc_at_bottom_ntype, bc_at_top_ptype].
+     * Returns NaNs if Inverse_FD_half returns NaN.
+     */
+
+    amrex::Real kbT_over_q_V = (kb_joules_per_k * T_kelvin) / q_coulombs;
+
+    //Calculate phi_ref_V (intrinsic Fermi level relative to vacuum, as a potential)
+    amrex::Real log_Nc_over_Nv = log(Nc / Nv);
+    amrex::Real phi_ref_V = affinity_eV + (0.5 * bandgap_eV) + (0.5 * kbT_over_q_V * log_Nc_over_Nv);
+
+    // --- Calculate BC at n-type contact ---
+    amrex::Real u_ntype = donor_doping_val / Nc;
+    amrex::Real eta_ntype = Inverse_FD_half(u_ntype);
+
+    if (amrex::Gpu::isnan(eta_ntype)) {
+        return {std::numeric_limits<amrex::Real>::quiet_NaN(), std::numeric_limits<amrex::Real>::quiet_NaN()};
+    }
+
+    // Formula for n-type: phi_ohm^n = phi_ref_V - Chi_eV + (kbT/q)*eta + Va
+    // affinity_eV is used directly as a potential in Volts.
+    amrex::Real bc_at_bottom_ntype = phi_ref_V - affinity_eV + (kbT_over_q_V * eta_ntype) + Phi_Bc_lo;
+
+    // --- Calculate BC at p-type contact ---
+    amrex::Real u_ptype = acceptor_doping_val / Nv;
+    amrex::Real eta_ptype = Inverse_FD_half(u_ptype);
+
+    if (amrex::Gpu::isnan(eta_ptype)) {
+        return {std::numeric_limits<amrex::Real>::quiet_NaN(), std::numeric_limits<amrex::Real>::quiet_NaN()};
+    }
+
+    // Formula for p-type: phi_ohm^p = phi_ref_V - Chi_eV - Eg_eV - (kbT/q)*eta + Va
+    // affinity_eV and bandgap_eV are used directly as potentials in Volts.
+    amrex::Real bc_at_top_ptype = phi_ref_V - affinity_eV - bandgap_eV - (kbT_over_q_V * eta_ptype) + Phi_Bc_hi;
+
+    // Return the calculated boundary conditions
+    return {bc_at_bottom_ntype, bc_at_top_ptype};
+}
+
+void SetPhiBC_z(MultiFab& PoissonPhi, MultiFab& MaterialMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom)
 {
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox(1);
 
         const Array4<Real>& Phi = PoissonPhi.array(mfi);
+        const Array4<Real>& mask = MaterialMask.array(mfi);
+
+        amrex::Real Eg_eV = bandgap;   // Bandgap energy in eV
+        amrex::Real Chi_eV = affinity; // Electron affinity energy in eV
+
+        //Calculate phi_ref_V (intrinsic Fermi level relative to vacuum, as a potential)
+        amrex::Real log_Nc_over_Nv = log(Nc / Nv);
+        amrex::Real phi_ref_V = affinity + (0.5 * bandgap) + (0.5 * kb * T / q * log_Nc_over_Nv);
+
+	amrex::Real phi_m_V = use_work_function ? metal_work_function : phi_ref_V;
+
+	// Calculate the boundary conditions
+        amrex::GpuArray<amrex::Real, 2> bc_values = CalculatePoissonBoundaryPotentials(
+           Nc, Nv, bandgap, affinity, q, kb, T,
+           donor_doping, acceptor_doping,
+           Phi_Bc_lo,
+           Phi_Bc_hi 
+        );
+
+	//bc_values = {0.0, 0.0};
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-          if(k < 0) {
-            Phi(i,j,k) = Phi_Bc_lo;
-          } else if(k >= n_cell[2]){
-            amrex::Real Eg = bandgap;
-            amrex::Real Chi = affinity;
-            amrex::Real phi_ref = Chi + 0.5*Eg + 0.5*kb*T*log(Nc/Nv)/q;  
-            amrex::Real phi_m = use_work_function ? metal_work_function : phi_ref; //in eV When not used, applied voltgae is set as the potential on the metal interface 
-            Phi(i,j,k) = Phi_Bc_hi - (phi_m - phi_ref);
-          }
+	if(i == 0 && j == 0 && k == 0)amrex::Print() << "bc_values = " << bc_values[0] << ", " << bc_values[1] << "\n";
+
+
+            // Boundary condition for the lower z-face (k=0 in problem domain, so k < 0 in ghost cells)
+            if (k < 0) {
+                if (mask(i,j,0) == 3.0) { // lo_z touches p-type
+    
+                    Phi(i,j,k) = bc_values[1];
+                    if(i == 0 && j == 0)amrex::Print() << "lo z : setting up dirichlet BC at p-type contact with Phi_Bc_lo = " << Phi_Bc_lo << ", Phi = " << Phi(i,j,k) << "\n";		
+
+                } else if (mask(i,j,0) == 4.0) { // lo_z touches n-type
+
+                    Phi(i,j,k) = bc_values[0];
+                    if(i == 0 && j == 0)amrex::Print() << "lo z : setting up dirichlet BC at n-type contact with Phi_Bc_lo = " << Phi_Bc_lo << ", Phi = " << Phi(i,j,k) << "\n";		
+
+                } else { // lo_z touches insulator or intrinsic SC or metal
+
+                    if(i == 0 && j == 0)amrex::Print() << "lo z : setting up dirichlet BC at insulator or intrinsic SC contact " << "\n";		
+                    Phi(i,j,k) = Phi_Bc_lo - (phi_m_V - phi_ref_V);
+                }
+            }
+
+            // Boundary condition for the upper z-face (k=n_cell[2] in problem domain, so k >= n_cell[2] in ghost cells)
+            if (k >= n_cell[2]) {
+                if (mask(i,j,n_cell[2]-1) == 3.0) { // hi_z touches p-type
+    
+                    Phi(i,j,k) = bc_values[1];
+                    if(i == 0 && j == 0)amrex::Print() << "hi z : setting up dirichlet BC at p-type contact with Phi_Bc_hi = " << Phi_Bc_hi << ", Phi = " << Phi(i,j,k) << "\n";		
+
+                } else if (mask(i,j,n_cell[2]-1) == 4.0) { // hi_z touches n-type
+
+                    Phi(i,j,k) = bc_values[0];
+                    if(i == 0 && j == 0)amrex::Print() << "hi z : setting up dirichlet BC at n-type contact with Phi_Bc_hi = " << Phi_Bc_hi << ", Phi = " << Phi(i,j,k) << "\n";		
+
+                } else { // hi_z touches insulator or intrinsic SC or metal
+
+                    if(i == 0 && j == 0)amrex::Print() << "hi z : setting up dirichlet BC at insulator or intrinsic SC contact " << "\n";		
+                    Phi(i,j,k) = Phi_Bc_hi - (phi_m_V - phi_ref_V);
+                }
+	    }
         });
     }
     PoissonPhi.FillBoundary(geom.periodicity());
@@ -569,6 +696,7 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
         std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d,
         const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
         std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
+	MultiFab& MaterialMask,
         c_FerroX& rFerroX, MultiFab& PoissonPhi, amrex::Real& time, amrex::LPInfo& info)
  {
     auto& rGprop = rFerroX.get_GeometryProperties();
@@ -593,18 +721,21 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
 
     SetPoissonBC(rFerroX, LinOpBCType_2d, all_homogeneous_boundaries, some_functionbased_inhomogeneous_boundaries, some_constant_inhomogeneous_boundaries);
 
-    if(some_constant_inhomogeneous_boundaries)
-    {
-        Fill_Constant_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
-    }
-    if(some_functionbased_inhomogeneous_boundaries)
-    {
-        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
-    }
-    PoissonPhi.FillBoundary(geom.periodicity());
+    //if(some_constant_inhomogeneous_boundaries)
+    //{
+    //    Fill_Constant_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
+    //}
+    //if(some_functionbased_inhomogeneous_boundaries)
+    //{
+    //    Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
+    //}
+    //PoissonPhi.FillBoundary(geom.periodicity());
 
+    // For now only this option implements Ohmic contacts and metal work function 
     // set Dirichlet BC by reading in the ghost cell values
-    //SetPhiBC_z(PoissonPhi, n_cell, geom);
+    //if(some_constant_inhomogeneous_boundaries){
+       SetPhiBC_z(PoissonPhi, MaterialMask, n_cell, geom);
+    //}
 
     p_mlabec->setLevelBC(amrlev, &PoissonPhi);
     
@@ -624,6 +755,7 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
         std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d,
         const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
         std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
+	MultiFab& MaterialMask,
         MultiFab& beta_cc,
         c_FerroX& rFerroX, MultiFab& PoissonPhi, amrex::Real& time, amrex::LPInfo& info)
  {
@@ -649,18 +781,18 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
     // assign domain boundary conditions to the solver
     p_mlebabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
 
-    if(some_constant_inhomogeneous_boundaries)
-    {
-        Fill_Constant_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
-    }
-    if(some_functionbased_inhomogeneous_boundaries)
-    {
-        Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
-    }
-    PoissonPhi.FillBoundary(geom.periodicity());
+    //if(some_constant_inhomogeneous_boundaries)
+    //{
+    //    Fill_Constant_Inhomogeneous_Boundaries(rFerroX, PoissonPhi);
+    //}
+    //if(some_functionbased_inhomogeneous_boundaries)
+    //{
+    //    Fill_FunctionBased_Inhomogeneous_Boundaries(rFerroX, PoissonPhi, time);
+    //}
+    //PoissonPhi.FillBoundary(geom.periodicity());
 
     // Set Dirichlet BC for Phi in z
-    SetPhiBC_z(PoissonPhi, n_cell, geom); 
+    SetPhiBC_z(PoissonPhi, MaterialMask, n_cell, geom); 
     p_mlebabec->setLevelBC(amrlev, &PoissonPhi);
     
     // (A*alpha_cc - B * div beta grad) phi = rhs
@@ -682,6 +814,83 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
 
  }
 #endif
+
+void ComputePhi_Rho_Equilibrium(std::unique_ptr<amrex::MLMG>& pMLMG, 
+             std::unique_ptr<amrex::MLABecLaplacian>& p_mlabec,
+             MultiFab&            alpha_cc,
+             MultiFab&            PoissonRHS, 
+             MultiFab&            PoissonPhi, 
+             MultiFab&            PoissonPhi_Prev,
+             MultiFab&            PhiErr,  
+	     Array<MultiFab, AMREX_SPACEDIM>& P_old,
+             MultiFab&            rho,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jn,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jp,
+             MultiFab&            e_den,
+             MultiFab&            p_den,
+             MultiFab&            e_den_old,
+             MultiFab&            p_den_old,
+	     MultiFab&            MaterialMask,
+             MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
+             const          Geometry& geom,
+	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+
+{
+//Obtain self consisten Phi and rho
+    Real tol = 1.e-3;
+    Real err = 1.0;
+    int iter = 0;
+    bool contains_SC = false;
+    FerroX_Util::Contains_sc(MaterialMask, contains_SC);
+    
+    while(err > tol){
+   
+	//Compute RHS of Poisson equation
+	ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+        dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, Jn, Jp, rho, e_den, p_den, e_den_old, p_den_old,  MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+
+        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+
+
+        p_mlabec->setACoeffs(0, alpha_cc);
+
+        //Initial guess for phi
+        PoissonPhi.setVal(0.);
+
+        //Poisson Solve
+        pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
+	
+	PoissonPhi.FillBoundary(geom.periodicity());
+	
+        // Calculate rho from Phi in SC region
+        ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
+
+	if (contains_SC == 0) {
+            // no semiconductor region; set error to zero so the while loop terminates
+            err = 0.;
+        } else {
+        //    err = 0.;
+
+            // Calculate Error
+            if (iter > 0){
+                MultiFab::Copy(PhiErr, PoissonPhi, 0, 0, 1, 0);
+                MultiFab::Subtract(PhiErr, PoissonPhi_Prev, 0, 0, 1, 0);
+                err = PhiErr.norm1(0, geom.periodicity())/PoissonPhi.norm1(0, geom.periodicity());
+            }
+
+            //Copy PoissonPhi to PoissonPhi_Prev to calculate error at the next iteration
+            MultiFab::Copy(PoissonPhi_Prev, PoissonPhi, 0, 0, 1, 0);
+
+            iter = iter + 1;
+            amrex::Print() << iter << " iterations :: err = " << err << std::endl;
+            if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
+        }
+    }
+    
+    // amrex::Print() << "\n ========= Self-Consistent Initialization of Phi and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
+}
 
 void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG, 
              std::unique_ptr<amrex::MLABecLaplacian>& p_mlabec,
@@ -706,7 +915,7 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
 
 {
 //Obtain self consisten Phi and rho
-    Real tol = 1.e-2;
+    Real tol = 1.e-3;
     Real err = 1.0;
     int iter = 0;
     bool contains_SC = false;
@@ -729,7 +938,8 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
 
         //Poisson Solve
         pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-	    PoissonPhi.FillBoundary(geom.periodicity());
+	
+	PoissonPhi.FillBoundary(geom.periodicity());
 	
         // Calculate rho from Phi in SC region
         //ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
@@ -739,6 +949,7 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
         } else {
+        //    err = 0.;
 
             // Calculate Error
             if (iter > 0){

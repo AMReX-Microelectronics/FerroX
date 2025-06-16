@@ -11,6 +11,8 @@ void WritePlotfile(c_FerroX& rFerroX,
                    Array< MultiFab, AMREX_SPACEDIM>& Jp,
                    MultiFab& hole_den,
                    MultiFab& e_den,
+                   MultiFab& acceptor_den,
+                   MultiFab& donor_den,
                    MultiFab& charge_den,
                    MultiFab& beta_cc,
                    MultiFab& MaterialMask,
@@ -79,6 +81,16 @@ void WritePlotfile(c_FerroX& rFerroX,
     if (plot_electrons) {
         ++nvar;
         var_names.push_back("electrons");
+    }
+
+    if (plot_acceptors) {
+        ++nvar;
+        var_names.push_back("acceptors");
+    }
+
+    if (plot_donors) {
+        ++nvar;
+        var_names.push_back("donors");
     }
 
     if (plot_charge) {
@@ -168,6 +180,14 @@ void WritePlotfile(c_FerroX& rFerroX,
 
     if (plot_electrons) {
         MultiFab::Copy(Plt, e_den, 0, counter++, 1, 0);
+    }
+
+    if (plot_acceptors) {
+        MultiFab::Copy(Plt, acceptor_den, 0, counter++, 1, 0);
+    }
+
+    if (plot_donors) {
+        MultiFab::Copy(Plt, donor_den, 0, counter++, 1, 0);
     }
 
     if (plot_charge) {

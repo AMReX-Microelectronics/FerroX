@@ -154,6 +154,8 @@ void main_main (c_FerroX& rFerroX)
 
     MultiFab hole_den(ba, dm, 1, 1);
     MultiFab e_den(ba, dm, 1, 1);
+    MultiFab acceptor_den(ba, dm, 1, 1);
+    MultiFab donor_den(ba, dm, 1, 1);
     MultiFab hole_den_old(ba, dm, 1, 1);
     MultiFab e_den_old(ba, dm, 1, 1);
     MultiFab charge_den(ba, dm, 1, 0);
@@ -180,6 +182,8 @@ void main_main (c_FerroX& rFerroX)
     hole_den.setVal(0.);
     e_den_old.setVal(0.);
     hole_den_old.setVal(0.);
+    acceptor_den.setVal(0.);
+    donor_den.setVal(0.);
     PoissonPhi.setVal(0.);
     PoissonRHS.setVal(0.);
     tphaseMask.setVal(0.);
@@ -229,23 +233,27 @@ void main_main (c_FerroX& rFerroX)
     int linop_maxorder = 2;
     int amrlev = 0; //refers to the setcoarsest level of the solve
 
-    SetupMLMG(pMLMG, p_mlabec, LinOpBCType_2d, n_cell, beta_face, rFerroX, PoissonPhi, time, info);
+    SetupMLMG(pMLMG, p_mlabec, LinOpBCType_2d, n_cell, beta_face, MaterialMask, rFerroX, PoissonPhi, time, info);
 
 #ifdef AMREX_USE_EB
     std::unique_ptr<amrex::MLEBABecLap> p_mlebabec;
-    SetupMLMG_EB(pMLMG, p_mlebabec, LinOpBCType_2d, n_cell, beta_face, beta_cc, rFerroX, PoissonPhi, time, info);
+    SetupMLMG_EB(pMLMG, p_mlebabec, LinOpBCType_2d, n_cell, beta_face, MaterialMask, beta_cc, rFerroX, PoissonPhi, time, info);
 #endif
     
     // INITIALIZE P in FE and rho in SC regions
 
     //InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);//old
-    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);//mask based
+    InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, acceptor_den, donor_den, MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);//mask based
 
+    ComputePhi_Rho_Equilibrium(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
+                   P_old, charge_den, Jn, Jp, e_den, hole_den, e_den_old, hole_den_old, MaterialMask,
+                   angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+    
     // Write a plotfile of the initial data if plot_int > 0
     if (plot_int > 0)
     {
         int plt_step = 0;
-        WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, Jn, Jp, hole_den, e_den, charge_den, beta_cc, 
+        WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, Jn, Jp, hole_den, e_den, acceptor_den, donor_den, charge_den, beta_cc, 
                       MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, Phidiff, geom, time, plt_step);
     }
 
@@ -580,7 +588,7 @@ void main_main (c_FerroX& rFerroX)
         if (plot_int > 0 && (step%plot_int == 0 || step == steady_state_step))
         {
             int plt_step = step;
-            WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, Jn, Jp, hole_den, e_den, charge_den, beta_cc, 
+            WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, Jn, Jp, hole_den, e_den, acceptor_den, donor_den, charge_den, beta_cc, 
                       MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, Phidiff, geom, time, plt_step);
             
         }
@@ -598,7 +606,7 @@ void main_main (c_FerroX& rFerroX)
             amrex::Print() << "step = " << step << ", Phi_Bc_hi = " << Phi_Bc_hi << ", num_Vapp = " << num_Vapp << ", sign = " << sign << std::endl;
 
             // Set Dirichlet BC for Phi in z
-            SetPhiBC_z(PoissonPhi, n_cell, geom);
+            SetPhiBC_z(PoissonPhi, MaterialMask, n_cell, geom);
 
            // set Dirichlet BC by reading in the ghost cell values
 #ifdef AMREX_USE_EB

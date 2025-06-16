@@ -20,11 +20,19 @@ void CalculateDriftDiffusionCurrents(
     const amrex::MultiFab& PoissonPhi,                 // IN: Electric potential
     const amrex::Geometry& geom                        // IN: Simulation geometry
 );
-
+/*
 void Compute_Effective_Potentials(const MultiFab& PoissonPhi,
                                         MultiFab& e_potential,
                                         MultiFab& p_potential,
                                         const Geometry& geom);
+*/
+
+void Compute_Effective_Potentials(const MultiFab& PoissonPhi,
+                                  const MultiFab& e_den,
+                                  const MultiFab& p_den,
+                                  MultiFab& e_potential,
+                                  MultiFab& p_potential,
+                                  const Geometry& geom);
 
 void ComputeRho_DriftDiffusion(MultiFab&      PoissonPhi,
                 MultiFab&      rho,

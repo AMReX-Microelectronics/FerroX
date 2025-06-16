@@ -66,7 +66,8 @@ void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
                               MultiFab& PoissonPhi, 
                               MultiFab& alpha_cc);
 
-void SetPhiBC_z(MultiFab& PossonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom);
+//void SetPhiBC_z(MultiFab& PossonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom);
+void SetPhiBC_z(MultiFab& PoissonPhi, MultiFab& MaterialMask, const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell, const Geometry& geom);
 
 void SetPoissonBC(c_FerroX& rFerroX, std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, bool& all_homogeneous_boundaries, bool& some_functionbased_inhomogeneous_boundaries, bool& some_constant_inhomogeneous_boundaries);
 
@@ -79,6 +80,7 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
         std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d,
         const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
         std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
+        MultiFab& MaterialMask,
         c_FerroX& rFerroX, MultiFab& PoissonPhi, amrex::Real& time, amrex::LPInfo& info);
 
 #ifdef AMREX_USE_EB
@@ -87,11 +89,33 @@ void SetupMLMG_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
         std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d,
         const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
         std::array< MultiFab, AMREX_SPACEDIM >& beta_face,
+        MultiFab& MaterialMask,
         MultiFab& beta_cc,
         c_FerroX& rFerroX, MultiFab& PoissonPhi, amrex::Real& time, amrex::LPInfo& info);
 #endif
 
 void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG, 
+             std::unique_ptr<amrex::MLABecLaplacian>& p_mlabec,
+             MultiFab&            alpha_cc,
+             MultiFab&            PoissonRHS, 
+             MultiFab&            PoissonPhi, 
+             MultiFab&            PoissonPhi_Prev,
+             MultiFab&            PhiErr,  
+	     Array<MultiFab, AMREX_SPACEDIM>& P_old,
+             MultiFab&            rho,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jn,
+	     Array<MultiFab, AMREX_SPACEDIM>& Jp,
+             MultiFab&            e_den,
+             MultiFab&            p_den,
+             MultiFab&            e_den_old,
+             MultiFab&            p_den_old,
+	     MultiFab&            MaterialMask,
+             MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
+             const          Geometry& geom,
+	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
+
+void ComputePhi_Rho_Equilibrium(std::unique_ptr<amrex::MLMG>& pMLMG, 
              std::unique_ptr<amrex::MLABecLaplacian>& p_mlabec,
              MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS, 

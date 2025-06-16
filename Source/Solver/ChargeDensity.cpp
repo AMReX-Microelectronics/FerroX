@@ -11,7 +11,6 @@ amrex::Real FD_half(const amrex::Real eta)
     return integral;
 }
 
-
 // Compute rho in SC region for given phi
 void ComputeRho(MultiFab&      PoissonPhi,
                 MultiFab&      rho,
@@ -153,7 +152,7 @@ void CalculateDriftDiffusionCurrents(
     e_potential.setVal(0.);
     p_potential.setVal(0.);
 
-    Compute_Effective_Potentials(PoissonPhi, e_potential, p_potential, geom);
+    Compute_Effective_Potentials(PoissonPhi, e_den, p_den, e_potential, p_potential, geom);
 
     for (amrex::MFIter mfi(e_den, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
@@ -163,8 +162,10 @@ void CalculateDriftDiffusionCurrents(
         amrex::Array4<amrex::Real const> const& e_den_arr = e_den.const_array(mfi);
         amrex::Array4<amrex::Real const> const& p_den_arr = p_den.const_array(mfi);
         amrex::Array4<amrex::Real const> const& phi_arr = PoissonPhi.const_array(mfi);
-        amrex::Array4<amrex::Real>const& phi_n_arr = e_potential.array(mfi);
-        amrex::Array4<amrex::Real>const& phi_p_arr = p_potential.array(mfi);
+       // amrex::Array4<amrex::Real>const& phi_n_arr = e_potential.array(mfi);
+       // amrex::Array4<amrex::Real>const& phi_p_arr = p_potential.array(mfi);
+	amrex::Array4<amrex::Real const> const& phi_n_arr = e_potential.const_array(mfi);
+        amrex::Array4<amrex::Real const> const& phi_p_arr = p_potential.const_array(mfi);
 	amrex::Array4<Real const> const& mask = MaterialMask.const_array(mfi);
 
         // Get Array4 views for current components (output)
@@ -181,6 +182,7 @@ void CalculateDriftDiffusionCurrents(
         amrex::Real D_n = electron_diffusion_coefficient;
         amrex::Real D_p = hole_diffusion_coefficient;
 
+
         amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k) noexcept
         {
             // Initialize current components for this cell (will be overwritten)
@@ -190,6 +192,9 @@ void CalculateDriftDiffusionCurrents(
             Jpx_arr(i, j, k) = 0.0;
             Jpy_arr(i, j, k) = 0.0;
             Jpz_arr(i, j, k) = 0.0;
+
+	    //phi_n_arr(i,j,k) = 1.0*phi_arr(i,j,k);
+	    //phi_p_arr(i,j,k) = 1.0*phi_arr(i,j,k);
 
             if (mask(i,j,k) >= 2.0) {
                // --- Calculate J_x (current across faces normal to x-axis) ---
@@ -201,7 +206,7 @@ void CalculateDriftDiffusionCurrents(
                // Only compute if we are not at the very right boundary of the box for the current's central difference.
                // If the box is not periodic, the currents at the domain boundaries will be handled by specific boundary conditions
                // or implicitly be zero if not computed beyond the physical domain.
-               if (i < bx.bigEnd(0)) { // This calculates J_x at (i+1/2, j, k)
+               if (i <= bx.bigEnd(0)) { // This calculates J_x at (i+1/2, j, k)
                    amrex::Real dPhi_n = phi_n_arr(i+1, j, k) - phi_n_arr(i, j, k);
                    amrex::Real arg_n = dPhi_n / kBT_over_q;
 
@@ -213,7 +218,7 @@ void CalculateDriftDiffusionCurrents(
                }
 
                // --- Calculate J_y (current across faces normal to y-axis) ---
-               if (j < bx.bigEnd(1)) { // This calculates J_y at (i, j+1/2, k)
+               if (j <= bx.bigEnd(1)) { // This calculates J_y at (i, j+1/2, k)
                    amrex::Real dPhi_n = phi_n_arr(i, j+1, k) - phi_n_arr(i, j, k);
                    amrex::Real arg_n = dPhi_n / kBT_over_q;
 
@@ -225,7 +230,7 @@ void CalculateDriftDiffusionCurrents(
                }
 
                // --- Calculate J_z (current across faces normal to z-axis) ---
-               if (k < bx.bigEnd(2)) { // This calculates J_z at (i, j, k+1/2)
+               if (k <= bx.bigEnd(2)) { // This calculates J_z at (i, j, k+1/2)
                    amrex::Real dPhi_n = phi_n_arr(i, j, k+1) - phi_n_arr(i, j, k);
                    amrex::Real arg_n = dPhi_n / kBT_over_q;
 
@@ -294,6 +299,13 @@ void ComputeRho_DriftDiffusion(MultiFab&      PoissonPhi,
         amrex::Array4<amrex::Real const> const& Jpy_arr = Jp[1].const_array(mfi);
         amrex::Array4<amrex::Real const> const& Jpz_arr = Jp[2].const_array(mfi);
         
+	amrex::Real ni_sq_val = Nc * Nv * exp(-q*bandgap / (kb * T)); // Assuming bandgap is in eV, kb*T in eV
+                                
+	amrex::Real ni_val = std::sqrt(ni_sq_val);
+
+	amrex::Real tau_n_val = 1.0e-4; //taun_const; // Example: Pass as captured variable or global
+        amrex::Real tau_p_val = 1.0e-4; //taup_const; // Example: Pass as captured variable or global
+
         amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k) noexcept
         {
 	
@@ -317,10 +329,46 @@ void ComputeRho_DriftDiffusion(MultiFab&      PoissonPhi,
                                      (Jpy_arr(i, j, k) - Jpy_arr(i, j-1, k)) / dx[1] +
                                      (Jpz_arr(i, j, k) - Jpz_arr(i, j, k-1)) / dx[2];
 
+		// --- Calculate SRH Net Recombination Rate (R_SRH) ---
+                amrex::Real SRH_numerator = (e_den_arr(i, j, k) * p_den_arr(i, j, k)) - ni_sq_val;
+                amrex::Real SRH_denominator = tau_p_val * (e_den_arr(i, j, k) + ni_val) + tau_n_val * (p_den_arr(i, j, k) + ni_val);
+
+                // Handle potential division by zero if both carrier densities and ni are very small
+                // For practical device simulations, carrier densities are rarely zero in active regions.
+                // If they could be, you might need a small epsilon or check.
+                amrex::Real R_SRH = 0.0;
+                if (SRH_denominator > 1.0e-30) { // Add a small epsilon to avoid division by zero
+                    R_SRH = SRH_numerator / SRH_denominator;
+                }
+
+//		if(i == 0 && j == 0 && k == 32) amrex::Print() << "R_SRH = " << R_SRH << ", ni_val = " << ni_val << "\n";
+
+                // --- Update Densities (including recombination term) ---
+                // For electrons: q dn/dt = div(Jn) - qR
+                // dn/dt = (1/q) * div(Jn) - R
+                e_den_arr(i, j, k) += dt * ((1.0/q * div_Jn) - R_SRH);
+
+                // For holes: q dp/dt = -div(Jp) - qR
+                // dp/dt = (-1/q) * div(Jp) - R
+                p_den_arr(i, j, k) += dt * ((-1.0/q * div_Jp) - R_SRH);
+
                 // --- Update Densities (ignoring recombination) ---
-                e_den_arr(i, j, k) += dt * (1.0/q * div_Jn);
-                p_den_arr(i, j, k) += dt * (-1.0/q * div_Jp);
-      
+                //e_den_arr(i, j, k) += dt * (1.0/q * div_Jn);
+		//p_den_arr(i, j, k) += dt * (-1.0/q * div_Jp);
+
+		e_den_arr(i, j, -1) = 0.5*donor_doping + std::sqrt(std::pow(0.5*donor_doping,2.0) + intrinsic_carrier_concentration * intrinsic_carrier_concentration);
+		p_den_arr(i, j, -1) = intrinsic_carrier_concentration * intrinsic_carrier_concentration / e_den_arr(i, j, 0);
+
+		e_den_arr(i, j, 0) = 0.5*donor_doping + std::sqrt(std::pow(0.5*donor_doping,2.0) + intrinsic_carrier_concentration * intrinsic_carrier_concentration);
+		p_den_arr(i, j, 0) = intrinsic_carrier_concentration * intrinsic_carrier_concentration / e_den_arr(i, j, 0);
+
+		p_den_arr(i, j, 63) = 0.5*acceptor_doping + std::sqrt(std::pow(0.5*acceptor_doping,2.0) + intrinsic_carrier_concentration * intrinsic_carrier_concentration);
+		e_den_arr(i, j, 63) = intrinsic_carrier_concentration * intrinsic_carrier_concentration / p_den_arr(i, j, 63);
+
+		p_den_arr(i, j, 64) = 0.5*acceptor_doping + std::sqrt(std::pow(0.5*acceptor_doping,2.0) + intrinsic_carrier_concentration * intrinsic_carrier_concentration);
+		e_den_arr(i, j, 64) = intrinsic_carrier_concentration * intrinsic_carrier_concentration / p_den_arr(i, j, 64);
+
+
                 //g_A is the acceptor ground state degeneracy factor and is equal to 4 
                 //because in most semiconductors each acceptor level can accept one hole of either spin 
                 //and the impurity level is doubly degenerate as a result of the two degenerate valence bands 
@@ -329,8 +377,9 @@ void ComputeRho_DriftDiffusion(MultiFab&      PoissonPhi,
                 //g_D is the donor ground state degeneracy factor and is equal to 2
                 //because a donor level can accept one electron with either spin or can have no electron when filled.
 
-                amrex::Real g_A = 4.0;
-                amrex::Real g_D = 2.0;
+                //setting it to zero assuming complete ionization
+		amrex::Real g_A = 0.0; //4.0;
+                amrex::Real g_D = 0.0; //2.0;
 
                 amrex::Real Ea = acceptor_ionization_energy;  
                 amrex::Real Ed = donor_ionization_energy; 
@@ -361,14 +410,14 @@ void ComputeRho_DriftDiffusion(MultiFab&      PoissonPhi,
     p_den.FillBoundary(geom.periodicity());
     rho.FillBoundary(geom.periodicity());
  }
-
+/*
 void Compute_Effective_Potentials(const MultiFab& PoissonPhi,
-                                        MultiFab& e_potential,
-                                        MultiFab& p_potential,
-                                        const Geometry& geom)
+                                  MultiFab& e_potential,
+                                  MultiFab& p_potential,
+                                  const Geometry& geom)
 {
 
-// loop over boxes
+    // loop over boxes
     for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.validbox();
@@ -377,59 +426,178 @@ void Compute_Effective_Potentials(const MultiFab& PoissonPhi,
         const Array4<Real>& e_phi = e_potential.array(mfi);
         const Array4<Real>& p_phi = p_potential.array(mfi);
 
-        amrex::Real Ef_eV = 0.0;             // Fermi energy level (eV) - ensure this is in eV
-        amrex::Real Eg_eV = bandgap;         // Bandgap energy (eV)
-        amrex::Real Chi_affinity_eV = affinity; // Electron affinity (eV)
-        
-        // Convert kb*T from Joules to eV
-        amrex::Real kbT_J = kb * T;          // kb*T product in Joules
-        amrex::Real kbT_eV = kbT_J / q;      // kb*T product in eV
-        
-        // Conversion factor from eV to Joules
-        amrex::Real eV_to_Joule = q; // 1.602e-19 J/eV.
-        
-        amrex::Real Ef_J = Ef_eV * eV_to_Joule;             // Fermi energy level (Joules)
-        amrex::Real Eg_J = Eg_eV * eV_to_Joule;             // Bandgap energy (Joules)
-        amrex::Real Chi_affinity_J = Chi_affinity_eV * eV_to_Joule; // Electron affinity (Joules)
-        amrex::Real Psi_ref_V = (Chi_affinity_J + 0.5*Eg_J + 0.5*kbT_J*log(Nc/Nv)) / q; // Reference potential (Volts)
-        
-        amrex::Real Chi_eff_potential_V = Chi_affinity_J / q; // Effective electron affinity potential (Volts)
-        
-        amrex::Real Delta_Eg_eV = 0.; // Delta_Eg is an energy. Assume it's in eV. Convert to Joules if needed.
-        amrex::Real Delta_Eg_J = Delta_Eg_eV * eV_to_Joule; // Delta_Eg in Joules
-							    
+	amrex::Real Ef = 0.0;
+        amrex::Real Eg = bandgap;
+        amrex::Real Chi = affinity;
+        amrex::Real phi_ref = Chi + 0.5*Eg + 0.5*kb*T*log(Nc/Nv)/q;
+
+
+        amrex::Real Delta_Eg = 0.; // Delta_Eg is an energy. Assume it's in eV. Convert to Joules if needed.
+
         amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
+ 
+	    amrex::Real Ec = -q*(phi(i,j,k) - phi_ref) - Chi*q;
+            amrex::Real Ev = Ec - q*Eg; 
 
-	    amrex::Real Ec_J = -q*phi(i,j,k) - Chi_affinity_J;
-
-            // Valence band edge (Joules)
-            amrex::Real Ev_J = Ec_J - Eg_J;
-            
             // eta_n and eta_p are dimensionless (Energy/Energy)
-            amrex::Real eta_n = (Ef_J - Ec_J)/kbT_J; 
-            amrex::Real eta_p = (Ev_J - Ef_J)/kbT_J;
-            
-            amrex::Real gamma_n = FD_half(eta_n)/exp(eta_n);// 1.; // Default for Maxwell-Boltzmann
-            amrex::Real gamma_p = FD_half(eta_p)/exp(eta_p); //1.; // Default for Maxwell-Boltzmann
-            
-	    amrex::Real E_i_J = q*Psi_ref_V
-                               - q*Chi_eff_potential_V
-                               - q*phi(i,j,k) // phi is in Volts, q*phi is Joules
-                               - 0.5*Eg_J
-                               - 0.5*kbT_J*log( (Nc*gamma_n) / (Nv*gamma_p) );
+            amrex::Real eta_n = (q*Ef - Ec)/(kb*T);
+            amrex::Real eta_p = (Ev - q*Ef)/(kb*T);
+
+            amrex::Real gamma_n = 1.0;// FD_half(eta_n)/exp(eta_n);// 1.; // Default for Maxwell-Boltzmann
+            amrex::Real gamma_p = 1.0;// FD_half(eta_p)/exp(eta_p); //1.; // Default for Maxwell-Boltzmann
+
+            amrex::Real E_i_J = q*phi_ref
+                                - q*Chi
+                                - q*phi(i,j,k) // phi is in Volts, q*phi is Joules
+                                - 0.5*q*Eg
+                                - 0.5*kb*T*log( (Nc*gamma_n) / (Nv*gamma_p) );
 
             // Calculate the effective potentials in Joules
-            amrex::Real E_n_eff_J = E_i_J - 0.5*Delta_Eg_J - 0.5*kbT_J*log(gamma_n*gamma_p);
-            amrex::Real E_p_eff_J = E_i_J + 0.5*Delta_Eg_J + 0.5*kbT_J*log(gamma_n*gamma_p);
-            
-            e_phi(i,j,k) = E_n_eff_J; // J
-            p_phi(i,j,k) = E_p_eff_J; // J
+            amrex::Real E_n_eff_J = E_i_J - 0.5*Delta_Eg - 0.5*kb*T*log(gamma_n*gamma_p);
+            amrex::Real E_p_eff_J = E_i_J + 0.5*Delta_Eg + 0.5*kb*T*log(gamma_n*gamma_p);
+
+            e_phi(i,j,k) = 1./q*E_n_eff_J; // J
+            p_phi(i,j,k) = 1./q*E_p_eff_J; // J
         });
     }
 
     e_potential.FillBoundary(geom.periodicity());
     p_potential.FillBoundary(geom.periodicity());
 }
+*/
+// Approximation to the inverse of the Fermi-Dirac Integral of Order 1/2
+AMREX_GPU_HOST_DEVICE AMREX_INLINE
+amrex::Real Inverse_FD_half(amrex::Real u)
+{
+
+    amrex::Real sqrt_pi = std::sqrt(3.14);
+    amrex::Real nu = std::pow( (3.0 * sqrt_pi * u / 4.0), 2.0 / 3.0 );
+
+    amrex::Real log_term = -std::log(u) / (u*u - 1.0);
+    amrex::Real denom = 1.0 + std::pow(0.24 + 1.08 * nu, -2.0);
+    amrex::Real eta = log_term + nu / denom;
+
+    return eta;
+}
 
 
+void Compute_Effective_Potentials(const MultiFab& PoissonPhi,
+                                  const MultiFab& e_den,
+                                  const MultiFab& p_den,
+                                  MultiFab& e_potential,
+                                  MultiFab& p_potential,
+                                  const Geometry& geom)
+
+{
+    // Need to get Nc and Nv (effective density of states)
+    // Make sure these are consistent with your material parameters
+    // Example values for Silicon at 300K, typically in m^-3
+    amrex::Real Nc_val = 2.8e25; // Example: 2.8e19 cm^-3 = 2.8e25 m^-3
+    amrex::Real Nv_val = 1.04e25; // Example: 1.04e19 cm^-3 = 1.04e25 m^-3
+
+    // Constants from your previous code
+    amrex::Real Eg = bandgap;   // Bandgap in eV
+    amrex::Real Chi = affinity; // Electron affinity in eV
+    amrex::Real phi_ref = Chi + 0.5*Eg + 0.5*kb*T*log(Nc_val/Nv_val)/q; // Assuming consistent with your band definition
+
+    // loop over boxes
+    for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.validbox();
+
+        const Array4<Real const>& phi = PoissonPhi.array(mfi);
+        const Array4<Real const>& e_den_arr = e_den.const_array(mfi);
+        const Array4<Real const>& p_den_arr = p_den.const_array(mfi);
+
+        const Array4<Real>& e_phi = e_potential.array(mfi);
+        const Array4<Real>& p_phi = p_potential.array(mfi);
+
+        amrex::ParallelFor( bx, [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k) // Add AMREX_GPU_HOST_DEVICE
+        {
+            // Calculate band edges (Ec, Ev) in Joules
+            amrex::Real Ec_J = -q*(phi(i,j,k) - phi_ref) - Chi*q;
+            amrex::Real Ev_J = Ec_J - q*Eg;
+
+            // --- Electron Quasi-Fermi Level (E_Fn) ---
+            amrex::Real current_e_den = e_den_arr(i,j,k);
+            if (current_e_den <= 0.0) {
+                current_e_den = intrinsic_carrier_concentration; // Or a very small positive number
+            }
+
+            amrex::Real E_Fn_J;
+            if (use_Fermi_Dirac == 1) {
+                // Fermi-Dirac statistics for electrons
+                amrex::Real ratio_n = current_e_den / Nc_val;
+                if (ratio_n < 1.0e-10) ratio_n = 1.0e-10; // Clamp for numerical stability
+                   E_Fn_J = Ec_J + Inverse_FD_half(ratio_n) * kb*T;
+                // Make sure inverse_FD_half is accessible in GPU code if you use this branch.
+                // Placeholder for now:
+                //E_Fn_J = Ec_J + kb*T * log(current_e_den / Nc_val); // Fallback to MB if inverse_FD_half is not implemented
+            } else {
+                // Maxwell-Boltzmann statistics for electrons (non-degenerate)
+                E_Fn_J = Ec_J + kb*T * log(current_e_den / Nc_val);
+            }
+
+            // --- Hole Quasi-Fermi Level (E_Fp) ---
+            amrex::Real current_p_den = p_den_arr(i,j,k);
+            if (current_p_den <= 0.0) {
+                current_p_den = intrinsic_carrier_concentration; // Or a very small positive number
+            }
+
+            amrex::Real E_Fp_J;
+            if (use_Fermi_Dirac == 1) {
+                // Fermi-Dirac statistics for holes
+                amrex::Real ratio_p = current_p_den / Nv_val;
+                if (ratio_p < 1.0e-10) ratio_p = 1.0e-10; // Clamp for numerical stability
+                   E_Fp_J = Ev_J - Inverse_FD_half(ratio_p) * kb*T; // Note the sign difference for holes
+                // Placeholder for now:
+                //E_Fp_J = Ev_J - kb*T * log(current_p_den / Nv_val); // Fallback to MB if inverse_FD_half is not implemented
+            } else {
+                // Maxwell-Boltzmann statistics for holes (non-degenerate)
+                E_Fp_J = Ev_J - kb*T * log(current_p_den / Nv_val);
+            }
+
+            // Assign quasi-Fermi levels (in Volts) to the output MultiFabs
+            e_phi(i,j,k) = E_Fn_J / q;
+            p_phi(i,j,k) = E_Fp_J / q;
+        });
+
+	 const int lo_z = bx.smallEnd(2);
+        const int hi_z = bx.bigEnd(2);
+
+        // Left Boundary (Z = 0, assuming smallEnd(2) == 0 for the domain boundary)
+        if (lo_z == 0) { // Check if this box is at the global domain's left Z boundary
+            Box z_minus_1_ghost_slice = bx; // Start with the full box
+            z_minus_1_ghost_slice.setSmall(2, -1); // Set Z-low to -1
+            z_minus_1_ghost_slice.setBig(2, -1);   // Set Z-high to -1 (for a single slice)
+
+             amrex::ParallelFor(z_minus_1_ghost_slice,
+                                 [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k) noexcept
+             {
+                 // The '0' here refers to the actual physical cell index, not a relative index.
+                 e_phi(i,j,k) = e_phi(i,j,0); // e_phi(i,j,-1) = e_phi(i,j,0)
+                 p_phi(i,j,k) = p_phi(i,j,0); // p_phi(i,j,-1) = p_phi(i,j,0)
+             });
+        }
+
+        // Right Boundary (Z = 1000 nm, assuming bigEnd(2) == 63 for the domain boundary with a 0-indexed system up to 63)
+        if (hi_z == 63) { // Check if this box is at the global domain's right Z boundary
+            Box z_plus_1_ghost_slice = bx; // Start with the full box
+            z_plus_1_ghost_slice.setSmall(2, 64); // Set Z-low to 64
+            z_plus_1_ghost_slice.setBig(2, 64);   // Set Z-high to 64 (for a single slice)
+
+            amrex::ParallelFor(z_plus_1_ghost_slice,
+                                [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k) noexcept
+            {
+                // The '63' here refers to the actual physical cell index.
+                e_phi(i,j,k) = e_phi(i,j,63); // e_phi(i,j,64) = e_phi(i,j,63)
+                p_phi(i,j,k) = p_phi(i,j,63); // p_phi(i,j,64) = p_phi(i,j,63)
+            });
+        }
+        // --- End of corrected section for QFL BCs ---
+    }
+
+    e_potential.FillBoundary(geom.periodicity());
+    p_potential.FillBoundary(geom.periodicity());
+}

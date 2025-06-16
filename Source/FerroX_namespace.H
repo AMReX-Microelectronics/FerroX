@@ -10,6 +10,8 @@ namespace FerroX {
     extern int plot_Jp;
     extern int plot_holes;
     extern int plot_electrons;
+    extern int plot_acceptors;
+    extern int plot_donors;
     extern int plot_charge;
     extern int plot_epsilon;
     extern int plot_mask;
