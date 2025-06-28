@@ -14,15 +14,16 @@ Real ComputeLandauEnergy( Array<MultiFab, AMREX_SPACEDIM>& P,
                          Real beta,
                          Real gamma_coeff);
 
-Real ComputeGradientEnergy( Array<MultiFab, AMREX_SPACEDIM>& P,
-                            MultiFab& MaterialMask,
-                           const Geometry& geom,
-                           Real g11,
-                           Real g44);
 
 Real ComputeElectrostaticEnergy( Array<MultiFab, AMREX_SPACEDIM>& P,
                                  Array<MultiFab, AMREX_SPACEDIM>& E,
                                 const MultiFab& MaterialMask,
                                 const Geometry& geom);
 
+
+Real ComputeGradientEnergy(const Array<MultiFab, AMREX_SPACEDIM>& P,
+                            const MultiFab& MaterialMask,
+                            const Geometry& geom,
+                            Real g11,
+                            Real g44);
 #endif

@@ -47,54 +47,14 @@ Real ComputeLandauEnergy(Array<MultiFab, AMREX_SPACEDIM>& P,
 }
 
 
-// Real ComputeGradientEnergy(const Array<MultiFab, AMREX_SPACEDIM>& P,
-//                            const MultiFab& MaterialMask,
-//                            const Geometry& geom,
-//                            Real g11,
-//                            Real g44)
-// {
-//     const Real dV = geom.CellSize(0) * geom.CellSize(1) * geom.CellSize(2);
-//     const auto dx = geom.CellSizeArray();  // GpuArray<Real, 3>
-
-//     ReduceOps<ReduceOpSum> reduce_op;
-//     ReduceData<Real> reduce_data(reduce_op);
-//     using ReduceTuple = typename decltype(reduce_data)::Type;
-
-//     for (MFIter mfi(P[2], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
-//         const Box& bx = mfi.tilebox();
-//         auto const& pz = P[2].array(mfi);  // Scalar polarization (Pz)
-//         auto const& mask = MaterialMask.array(mfi);
-
-//         reduce_op.eval(bx, reduce_data,
-//             [=] AMREX_GPU_DEVICE(int i, int j, int k) -> ReduceTuple {
-//                 if (mask(i,j,k) == 0.0) {
-//                     Real dPdx = DPDx(pz, mask, i, j, k, dx);
-//                     Real dPdy = DPDy(pz, mask, i, j, k, dx);
-//                     Real dPdz = DPDz(pz, mask, i, j, k, dx);
-
-//                     Real f_grad = 0.5 * (g44 * (dPdx*dPdx + dPdy*dPdy) + g11 * dPdz*dPdz);
-//                     return {f_grad * dV};
-//                 } else {
-//                     return {0.0};
-//                 }
-//             });
-//     }
-
-//     Real grad_energy = amrex::get<0>(reduce_data.value());
-//     ParallelDescriptor::ReduceRealSum(grad_energy);
-//     return grad_energy;
-// }
-
-Real ComputeGradientEnergy( Array<MultiFab, AMREX_SPACEDIM>& P,
-                            MultiFab& MaterialMask,
+Real ComputeGradientEnergy(const Array<MultiFab, AMREX_SPACEDIM>& P,
+                           const MultiFab& MaterialMask,
                            const Geometry& geom,
                            Real g11,
                            Real g44)
 {
-    const Real dx = geom.CellSize(0);
-    const Real dy = geom.CellSize(1);
-    const Real dz = geom.CellSize(2);
-    const Real dV = dx * dy * dz;
+    const Real dV = geom.CellSize(0) * geom.CellSize(1) * geom.CellSize(2);
+    const auto dx = geom.CellSizeArray();  // GpuArray<Real, 3>
 
     ReduceOps<ReduceOpSum> reduce_op;
     ReduceData<Real> reduce_data(reduce_op);
@@ -102,15 +62,15 @@ Real ComputeGradientEnergy( Array<MultiFab, AMREX_SPACEDIM>& P,
 
     for (MFIter mfi(P[2], TilingIfNotGPU()); mfi.isValid(); ++mfi) {
         const Box& bx = mfi.tilebox();
-        auto const& pz = P[2].array(mfi);  // Assume gradient only for Pz
+        auto const& pz = P[2].array(mfi);  // Scalar polarization (Pz)
         auto const& mask = MaterialMask.array(mfi);
 
         reduce_op.eval(bx, reduce_data,
             [=] AMREX_GPU_DEVICE(int i, int j, int k) -> ReduceTuple {
                 if (mask(i,j,k) == 0.0) {
-                    Real dPdx = (pz(i+1,j,k) - pz(i-1,j,k)) / (2.0 * dx);
-                    Real dPdy = (pz(i,j+1,k) - pz(i,j-1,k)) / (2.0 * dy);
-                    Real dPdz = (pz(i,j,k+1) - pz(i,j,k-1)) / (2.0 * dz);
+                    Real dPdx = DPDx(pz, mask, i, j, k, dx);
+                    Real dPdy = DPDy(pz, mask, i, j, k, dx);
+                    Real dPdz = DPDz(pz, mask, i, j, k, dx);
 
                     Real f_grad = 0.5 * (g44 * (dPdx*dPdx + dPdy*dPdy) + g11 * dPdz*dPdz);
                     return {f_grad * dV};
@@ -124,6 +84,7 @@ Real ComputeGradientEnergy( Array<MultiFab, AMREX_SPACEDIM>& P,
     ParallelDescriptor::ReduceRealSum(grad_energy);
     return grad_energy;
 }
+
 
 
 Real ComputeElectrostaticEnergy( Array<MultiFab, AMREX_SPACEDIM>& P,
