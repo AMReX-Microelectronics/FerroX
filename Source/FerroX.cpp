@@ -265,9 +265,11 @@ AMREX_GPU_MANAGED int FerroX::include_Grad;
 AMREX_GPU_MANAGED int FerroX::include_Elec;
 
 AMREX_GPU_MANAGED int FerroX::using_MRI;
+AMREX_GPU_MANAGED int FerroX::using_IMEX;
 AMREX_GPU_MANAGED int FerroX::fast_Landau;
 AMREX_GPU_MANAGED int FerroX::fast_Grad;
 AMREX_GPU_MANAGED int FerroX::fast_Elec;
+AMREX_GPU_MANAGED int FerroX::using_adaptive_step;
 AMREX_GPU_MANAGED amrex::Real FerroX::fast_dt_ratio;
 
 void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
@@ -324,7 +326,8 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      plot_PhiDiff = 1;
      pp.query("plot_PhiDiff",plot_PhiDiff); 
 
-     pp.get("TimeIntegratorOrder",TimeIntegratorOrder);
+     TimeIntegratorOrder = 1;
+     pp.query("TimeIntegratorOrder",TimeIntegratorOrder);
      use_sundials = 0;
      pp.query("use_sundials", use_sundials);
 
@@ -423,7 +426,10 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      using_MRI = 0;
      pp.query("using_MRI",using_MRI);
-     
+
+     using_IMEX = 0;
+     pp.query("using_IMEX",using_IMEX);
+
      fast_Landau = 0;
      pp.query("fast_Landau",fast_Landau);
 
@@ -432,6 +438,9 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      fast_Elec = 0;
      pp.query("fast_Elec",fast_Elec);
+
+     using_adaptive_step = 0;
+     pp.query("using_adaptive_step",using_adaptive_step);
 
      fast_dt_ratio = 0.1;
      pp.query("fast_dt_ratio",fast_dt_ratio);
