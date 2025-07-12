@@ -258,8 +258,6 @@ void main_main (c_FerroX& rFerroX)
 
         BL_PROFILE_VAR("rhs_fun()",rhs_fast_fun);
 
-        //Print() << "Calling rhs_fun at time = " << time << "\n";
-
         // User function to calculate the rhs MultiFab given the state MultiFab
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
             rhs[idim].setVal(0.);
@@ -331,8 +329,6 @@ void main_main (c_FerroX& rFerroX)
 
         BL_PROFILE_VAR("rhs_fast_fun()",rhs_fast_fun);
 
-        //Print() << "Calling rhs_fast_fun at time = " << time << "\n";
-
         // User function to calculate the rhs MultiFab given the state MultiFab
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
             rhs[idim].setVal(0.);
@@ -353,18 +349,6 @@ void main_main (c_FerroX& rFerroX)
             ar_state[comp].FillBoundary(geom.periodicity());
         }
 
-        // #ifdef AMREX_USE_EB
-        //                 ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-        //                                   ar_state, charge_den, e_den, hole_den, MaterialMask,
-        //                                   angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
-        // #else
-        //                 ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-        //                                ar_state, charge_den, e_den, hole_den, MaterialMask,
-        //                                angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
-        // #endif
-
-        //                 ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
-
         if (include_Landau == 1){
             if(fast_Landau == 1){
                 Calculate_Landau(GL_rhs_Landau, ar_state, Gamma, tphaseMask);
@@ -384,13 +368,23 @@ void main_main (c_FerroX& rFerroX)
             }
         }
         if (include_Elec == 1){
-            // if(fast_Elec == 1){
-            //    Calculate_Elec(GL_rhs_elec, E, Gamma, tphaseMask);
-            // } else {
-            for (int idim=0; idim<AMREX_SPACEDIM; ++idim) {
-                GL_rhs_elec[idim].setVal(0.);
+            if(fast_Elec == 1){
+#ifdef AMREX_USE_EB
+                ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
+                                  ar_state, charge_den, e_den, hole_den, MaterialMask,
+                                  angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+#else
+                ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
+                               ar_state, charge_den, e_den, hole_den, MaterialMask,
+                               angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+#endif
+                ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+                Calculate_Elec(GL_rhs_elec, E, Gamma, tphaseMask);
+            } else {
+                for (int idim=0; idim<AMREX_SPACEDIM; ++idim) {
+                    GL_rhs_elec[idim].setVal(0.);
+                }
             }
-            // }
         }
 
         // Compute f^n = f(P^n, E^n)
@@ -398,20 +392,6 @@ void main_main (c_FerroX& rFerroX)
 
 
     };
-    /*
-    // Create a function to call after updating a state
-    auto post_update_fun = [&](Vector<MultiFab>& state, const Real ) {
-
-    Array<MultiFab, AMREX_SPACEDIM> ar_state{AMREX_D_DECL(MultiFab(state[0],amrex::make_alias,0,state[0].nComp()),
-    MultiFab(state[1],amrex::make_alias,0,state[1].nComp()),
-    MultiFab(state[2],amrex::make_alias,0,state[2].nComp()))};
-
-    // fill interior and periodic ghost cells
-    for (int comp = 0; comp < 3; comp++) {
-    ar_state[comp].FillBoundary(geom.periodicity());
-    }
-    };
-    */
 
     // Attach the right hand side function(s)
     if (using_MRI) {
