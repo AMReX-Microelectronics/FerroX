@@ -256,7 +256,14 @@ include(AMReXBuildInfo)
 #   builds SUNDIALS from source (default) or finds an existing install
 #   only included when FerroX_SUNDIALS is enabled
 if(FerroX_SUNDIALS)
+    # Find and build SUNDIALS if enabled
+    #  This is called after we read the options.
+    #  The SUNDIALS build settings must be configured before
+    #  AMReX, which depends on it.
     include(${FerroX_SOURCE_DIR}/cmake/dependencies/SUNDIALS.cmake)
+
+# Enable AMReX SUNDIALS support when FerroX SUNDIALS is requested
+set(AMReX_SUNDIALS ON CACHE BOOL "Enable SUNDIALS interfaces" FORCE)
 endif()
 
 # PICSAR
