@@ -1,15 +1,866 @@
-if (AMReX_SPACEDIM EQUAL 1)
-   return()
-endif ()
+# Parse FerroX version information
+file(READ "${CMAKE_CURRENT_LIST_DIR}/dependencies.json" dependencies_data)
+string(JSON ferrox_version GET "${dependencies_data}" version_ferrox)
 
-# List of source files
-set(_sources main.cpp myfunc.H)
-list(TRANSFORM _sources PREPEND "Source/")
+# Preamble ####################################################################
+#
+cmake_minimum_required(VERSION 3.24.0)
+project(FerroX VERSION ${ferrox_version})
 
-# List of input files
-file( GLOB_RECURSE _input_files LIST_DIRECTORIES false Exec/input* )
+include(${FerroX_SOURCE_DIR}/cmake/WarpXFunctions.cmake)
 
-setup_tutorial(_sources _input_files)
+# In-source tree builds are messy and can screw up the build system.
+# Avoid building at least in the same dir as the root dir:
+if(CMAKE_BINARY_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    message(FATAL_ERROR "Building in-source is not supported! "
+            "Create a build directory and remove "
+            "${CMAKE_SOURCE_DIR}/CMakeCache.txt ${CMAKE_SOURCE_DIR}/CMakeFiles/")
+endif()
 
-unset( _sources )
-unset( _input_files   )
+
+# CMake policies ##############################################################
+#
+# Setting a cmake_policy to OLD is deprecated by definition and will raise a
+# verbose warning
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
+endif()
+
+# AMReX 21.06+ supports CUDA_ARCHITECTURES with CMake 3.20+
+# CMake 3.18+: CMAKE_CUDA_ARCHITECTURES
+# https://cmake.org/cmake/help/latest/policy/CMP0104.html
+if(POLICY CMP0104)
+    cmake_policy(SET CMP0104 OLD)
+endif()
+
+
+# C++ Standard in Superbuilds #################################################
+#
+# This is the easiest way to push up a C++17 requirement for AMReX, PICSAR and
+# openPMD-api until they increase their requirement.
+set_cxx17_superbuild()
+
+
+# CCache Support ##############################################################
+#
+# this is an optional tool that stores compiled object files; allows fast
+# re-builds even with "make clean" in between. Mainly used to store AMReX
+# objects
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(FerroX_CCACHE_DEFAULT ON)
+else()
+    set(FerroX_CCACHE_DEFAULT OFF)  # we are a subproject in a superbuild
+endif()
+option(FerroX_CCACHE "Enable ccache for faster rebuilds" ${FerroX_CCACHE_DEFAULT})
+if(FerroX_CCACHE)
+    set_ccache()
+endif()
+
+
+# Output Directories ##########################################################
+#
+# temporary build directories
+set_default_build_dirs()
+
+# install directories
+set_default_install_dirs()
+
+
+# Options and Variants ########################################################
+#
+include(CMakeDependentOption)
+option(FerroX_APP           "Build the FerroX executable application"     ON)
+option(FerroX_ASCENT        "Ascent in situ diagnostics"                 OFF)
+option(FerroX_CATALYST      "Catalyst in situ diagnostics"               OFF)
+# Time-dependent support - matches Make.FerroX TIME_DEPENDENT=TRUE conditional compilation
+# Default OFF matches GNU Make default behavior (only enabled when explicitly set)
+option(FerroX_TIME_DEPENDENT "Time-dependent support" OFF)
+
+# SUNDIALS integration support - matches Make.FerroX USE_SUNDIALS=TRUE conditional compilation  
+# Default OFF matches GNU Make default behavior (only enabled when explicitly set)
+option(FerroX_SUNDIALS "SUNDIALS support" OFF)
+
+# Conditional dependency logic matching Make.FerroX behavior
+if(FerroX_SUNDIALS)
+    # Enable AMReX SUNDIALS support when FerroX SUNDIALS is requested
+    set(AMReX_SUNDIALS ON CACHE BOOL "Enable SUNDIALS interfaces" FORCE)
+endif()
+
+option(FerroX_EB            "Embedded boundary support"                  OFF)
+option(FerroX_LIB           "Build FerroX as a library"                   OFF)
+option(FerroX_MPI           "Multi-node support (message-passing)"       ON)
+option(FerroX_SIMD          "CPU SIMD Acceleration"                      OFF)
+option(FerroX_OPENPMD       "openPMD I/O (HDF5, ADIOS)"                  ON)
+option(FerroX_FFT           "FFT-based solvers"                          OFF)
+option(FerroX_PYTHON        "Python bindings"                            OFF)
+option(FerroX_SENSEI        "SENSEI in situ diagnostics"                 OFF)
+option(FerroX_QED           "QED support (requires PICSAR)"              ON)
+option(FerroX_QED_TABLE_GEN "QED table generation (requires PICSAR and Boost)"
+                                                                        OFF)
+option(FerroX_QED_TOOLS     "Build external tool to generate QED lookup tables (requires PICSAR and Boost)"
+                                                                        OFF)
+
+# Advanced option to run tests
+option(FerroX_TEST_CLEANUP "Clean up automated test directories" OFF)
+option(FerroX_TEST_DEBUGGER "Run automated tests without AMReX signal handling (to attach debuggers)" OFF)
+option(FerroX_TEST_FPETRAP "Run automated tests with FPE-trapping runtime parameters" OFF)
+mark_as_advanced(FerroX_TEST_CLEANUP)
+mark_as_advanced(FerroX_TEST_DEBUGGER)
+mark_as_advanced(FerroX_TEST_FPETRAP)
+
+# Advanced option to compile with the -g1 option for minimal debug symbols
+# (useful to see, e.g., line numbers in backtraces)
+option(FerroX_BACKTRACE_INFO "Compile with -g1 for minimal debug symbols (currently used in CI tests)" OFF)
+mark_as_advanced(FerroX_BACKTRACE_INFO)
+if(FerroX_BACKTRACE_INFO)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g1")
+endif()
+
+set(FerroX_DIMS_VALUES 1 2 3 RZ RCYLINDER RSPHERE)
+set(FerroX_DIMS 3 CACHE STRING "Simulation dimensionality <1;2;3;RZ;RCYLINDER;RSPHERE>")
+list(REMOVE_DUPLICATES FerroX_DIMS)
+foreach(D IN LISTS FerroX_DIMS)
+    if(NOT D IN_LIST FerroX_DIMS_VALUES)
+       message(FATAL_ERROR "FerroX_DIMS=${D} is not allowed."
+          " Must be one of ${FerroX_DIMS_VALUES}")
+    endif()
+endforeach()
+
+# for some targets need to be triggered once, so any dim dependency will do
+list(LENGTH FerroX_DIMS list_len)
+math(EXPR list_last "${list_len} - 1")
+list(GET FerroX_DIMS ${list_last} FerroX_DIMS_LAST)
+warpx_set_suffix_dims(FerroX_DIMS_LAST ${FerroX_DIMS_LAST})
+
+set(FerroX_PRECISION_VALUES SINGLE DOUBLE)
+set(FerroX_PRECISION DOUBLE CACHE STRING "Floating point precision (SINGLE/DOUBLE)")
+set_property(CACHE FerroX_PRECISION PROPERTY STRINGS ${FerroX_PRECISION_VALUES})
+if(NOT FerroX_PRECISION IN_LIST FerroX_PRECISION_VALUES)
+    message(FATAL_ERROR "FerroX_PRECISION (${FerroX_PRECISION}) must be one of ${FerroX_PRECISION_VALUES}")
+endif()
+
+set(FerroX_PARTICLE_PRECISION_VALUES SINGLE DOUBLE)
+set(FerroX_PARTICLE_PRECISION ${FerroX_PRECISION} CACHE STRING "Particle floating point precision (SINGLE/DOUBLE)")
+set_property(CACHE FerroX_PARTICLE_PRECISION PROPERTY STRINGS ${FerroX_PARTICLE_PRECISION_VALUES})
+if(NOT FerroX_PARTICLE_PRECISION IN_LIST FerroX_PARTICLE_PRECISION_VALUES)
+    message(FATAL_ERROR "FerroX_PARTICLE_PRECISION (${FerroX_PARTICLE_PRECISION}) must be one of ${FerroX_PARTICLE_PRECISION_VALUES}")
+endif()
+
+set(FerroX_QED_TABLES_GEN_OMP_VALUES AUTO ON OFF)
+set(FerroX_QED_TABLES_GEN_OMP AUTO CACHE STRING "Enables OpenMP support for QED lookup tables generation (AUTO/ON/OFF)")
+set_property(CACHE FerroX_QED_TABLES_GEN_OMP PROPERTY STRINGS ${FerroX_QED_TABLES_GEN_OMP_VALUES})
+if(NOT FerroX_QED_TABLES_GEN_OMP IN_LIST FerroX_QED_TABLES_GEN_OMP_VALUES)
+    message(FATAL_ERROR "FerroX_QED_TABLES_GEN_OMP (${FerroX_QED_TABLES_GEN_OMP}) must be one of ${FerroX_QED_TABLES_GEN_OMP_VALUES}")
+endif()
+
+set(FerroX_COMPUTE_VALUES NOACC OMP CUDA SYCL HIP)
+set(FerroX_COMPUTE OMP CACHE STRING "On-node, accelerated computing backend (NOACC/OMP/CUDA/SYCL/HIP)")
+set_property(CACHE FerroX_COMPUTE PROPERTY STRINGS ${FerroX_COMPUTE_VALUES})
+if(NOT FerroX_COMPUTE IN_LIST FerroX_COMPUTE_VALUES)
+    message(FATAL_ERROR "FerroX_COMPUTE (${FerroX_COMPUTE}) must be one of ${FerroX_COMPUTE_VALUES}")
+endif()
+
+option(FerroX_MPI_THREAD_MULTIPLE "MPI thread-multiple support, i.e. for async_io" ON)
+mark_as_advanced(FerroX_MPI_THREAD_MULTIPLE)
+
+option(FerroX_amrex_internal                    "Download & build AMReX" ON)
+
+# change the default build type to Release (or RelWithDebInfo) instead of Debug
+set_default_build_type("Release")
+
+# Option to enable interprocedural optimization
+# (also know as "link-time optimization" or "whole program optimization")
+set(_FerroX_IPO_DEFAULT OFF)
+set(_FerroX_PYTHON_IPO_DEFAULT ON)
+if(DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+    set(_FerroX_IPO_DEFAULT ${CMAKE_INTERPROCEDURAL_OPTIMIZATION})
+    set(_FerroX_PYTHON_IPO_DEFAULT ${CMAKE_INTERPROCEDURAL_OPTIMIZATION})
+endif()
+option(FerroX_IPO
+    "Compile FerroX with interprocedural optimization (will take more time)"
+    ${_FerroX_IPO_DEFAULT}
+)
+option(FerroX_PYTHON_IPO
+    "Compile Python bindings with interprocedural optimization (IPO) / link-time optimization (LTO)"
+    ${_FerroX_PYTHON_IPO_DEFAULT}
+)
+
+# Unity builds combine all .cpp files into a single one (a single translation
+# unit, TU).
+option(FerroX_UNITY_BUILD          "FerroX library as unity build" OFF)
+
+set(pyFerroX_VERSION_INFO "" CACHE STRING
+    "PEP-440 conformant version (set by setup.py)")
+
+# enforce consistency of dependent options
+if(FerroX_APP OR FerroX_PYTHON)
+    set(FerroX_LIB ON CACHE STRING "Build FerroX as a library" FORCE)
+endif()
+
+# deprecated options: transition phase
+
+if(DEFINED FerroX_PSATD)
+    message(WARNING "CMake option FerroX_PSATD is deprecated. Use FerroX_FFT instead.\n"
+                    "Overwriting FerroX_FFT with '${FerroX_PSATD}' because FerroX_PSATD was set.")
+    set(FerroX_FFT ${FerroX_PSATD} CACHE STRING "FFT-based solvers" FORCE)
+endif()
+
+# note: we could skip this if we solely build FerroX_APP, but if we build a
+# shared FerroX library or a third party, like ImpactX, uses ablastr in a
+# shared library (e.g., for Python bindings), then we need relocatable code.
+option(ABLASTR_POSITION_INDEPENDENT_CODE
+       "Build ABLASTR with position independent code" ON)
+mark_as_advanced(ABLASTR_POSITION_INDEPENDENT_CODE)
+
+option(ABLASTR_FFT "compile AnyFFT wrappers" ${FerroX_FFT})
+if(FerroX_FFT)
+    set(ABLASTR_FFT ON CACHE STRING "FFT-based solvers" FORCE)
+endif()
+
+# Define the variable BUILD_TESTING (ON by default),
+# include CDash dashboard testing module
+include(CTest)
+
+
+# Dependencies ################################################################
+#
+
+# Old GCCs: std::filesystem as a separate library
+try_compile(CXX_HAS_STD_FS "${FerroX_BINARY_DIR}/temp"
+    "${FerroX_SOURCE_DIR}/cmake/has_filesystem.cpp"
+    CMAKE_FLAGS -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON
+)
+try_compile(CXX_HAS_STD_FS_WITH_LINK "${FerroX_BINARY_DIR}/temp"
+    "${FerroX_SOURCE_DIR}/cmake/has_filesystem.cpp"
+    CMAKE_FLAGS -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON
+    LINK_LIBRARIES stdc++fs
+)
+
+# AMReX
+#   builds AMReX from source (default) or finds an existing install
+set(FerroX_amrex_dim ${FerroX_DIMS})  # RZ is AMReX 2D
+list(TRANSFORM FerroX_amrex_dim REPLACE RZ 2)
+list(TRANSFORM FerroX_amrex_dim REPLACE RCYLINDER 1)
+list(TRANSFORM FerroX_amrex_dim REPLACE RSPHERE 1)
+list(REMOVE_DUPLICATES FerroX_amrex_dim)
+
+include(${FerroX_SOURCE_DIR}/cmake/dependencies/AMReX.cmake)
+foreach(D IN LISTS FerroX_amrex_dim)
+    #   suppress warnings in AMReX headers (use -isystem instead of -I)
+    warpx_make_third_party_includes_system(AMReX::amrex_${D}d amrex_${D}d)
+endforeach()
+# For <AMReX_buildInfo.H>
+include(AMReXBuildInfo)
+
+# SUNDIALS 
+#   builds SUNDIALS from source (default) or finds an existing install
+#   only included when FerroX_SUNDIALS is enabled
+if(FerroX_SUNDIALS)
+    include(${FerroX_SOURCE_DIR}/cmake/dependencies/SUNDIALS.cmake)
+endif()
+
+# PICSAR
+#   builds PICSAR from source
+include(${FerroX_SOURCE_DIR}/cmake/dependencies/PICSAR.cmake)
+
+# openPMD
+#   builds openPMD-api from source (default) or finds an existing install
+include(${FerroX_SOURCE_DIR}/cmake/dependencies/openPMD.cmake)
+
+# PSATD
+include(${FerroX_SOURCE_DIR}/cmake/dependencies/FFT.cmake)
+if(FerroX_FFT)
+    # BLASPP and LAPACKPP
+    if(RZ IN_LIST FerroX_DIMS)
+        find_package(blaspp CONFIG REQUIRED)
+        find_package(lapackpp CONFIG REQUIRED)
+        find_package(OpenMP REQUIRED)  # pulled by the two above
+    endif()
+endif()
+
+# Python
+if(FerroX_PYTHON)
+    find_package(Python 3.8 COMPONENTS Interpreter Development.Module REQUIRED)
+
+    # default installation directories: Python
+    warpx_set_default_install_dirs_python()
+
+    # pybind11
+    #   builds pybind11 from git (default), form local source or
+    #   finds an existing install
+    include(${FerroX_SOURCE_DIR}/cmake/dependencies/pybind11.cmake)
+
+    # pyAMReX
+    include(${FerroX_SOURCE_DIR}/cmake/dependencies/pyAMReX.cmake)
+endif()
+
+
+# Targets #####################################################################
+#
+include(GenerateExportHeader)
+set(_ALL_TARGETS)
+foreach(D IN LISTS FerroX_DIMS)
+    warpx_set_suffix_dims(SD ${D})
+
+    # ABLASTR library
+#    add_library(ablastr_${SD})
+#    set(_BUILDINFO_SRC ablastr_${SD})
+#    list(APPEND _ALL_TARGETS ablastr_${SD})
+#    add_library(FerroX::ablastr_${SD} ALIAS ablastr_${SD})
+
+    # link into a library (default: static)
+    if(FerroX_LIB)
+        add_library(lib_${SD})
+        add_library(FerroX::lib_${SD} ALIAS lib_${SD})
+#        target_link_libraries(lib_${SD} PUBLIC ablastr_${SD})
+        set(_BUILDINFO_SRC lib_${SD})
+        list(APPEND _ALL_TARGETS lib_${SD})
+
+        set_target_properties(lib_${SD} PROPERTIES
+            POSITION_INDEPENDENT_CODE ON
+            WINDOWS_EXPORT_ALL_SYMBOLS ON
+        )
+
+        # Optional: build only a single TU
+        if(FerroX_UNITY_BUILD)
+            set_target_properties(lib_${SD} PROPERTIES
+                UNITY_BUILD ON
+                UNITY_BUILD_MODE BATCH
+                UNITY_BUILD_UNIQUE_ID "FERROX_UNITY_ID"
+                # Number must be more than the number of .cpp files in FerroX
+                UNITY_BUILD_BATCH_SIZE 10000
+            )
+        endif()
+
+        # GCC < 9 need to manually link std::filesystem
+#        if(NOT CXX_HAS_STD_FS)
+#            if(CXX_HAS_STD_FS_WITH_LINK)
+#                target_link_libraries(ablastr_${SD} PUBLIC stdc++fs)
+#            else()
+#                message(FATAL_ERROR "Your compiler does not support C++17 "
+#                        "<filesystem> Please use a newer C++ compiler.")
+#            endif()
+#        endif()
+    endif()
+
+    # executable application
+    #   note: we currently avoid a dependency on a core library
+    #         for simpler usage, but could make this an option
+    if(FerroX_APP)
+        add_executable(app_${SD})
+        add_executable(FerroX::app_${SD} ALIAS app_${SD})
+        target_link_libraries(app_${SD} PRIVATE lib_${SD})
+        set(_BUILDINFO_SRC app_${SD})
+        list(APPEND _ALL_TARGETS app_${SD})
+    endif()
+
+#    if(FerroX_PYTHON OR (FerroX_LIB AND BUILD_SHARED_LIBS))
+#        set(ABLASTR_POSITION_INDEPENDENT_CODE ON CACHE BOOL
+#            "Build ABLASTR with position independent code" FORCE)
+#    endif()
+
+#    # ABLASTR library (static or shared)
+#    set_target_properties(ablastr_${SD} PROPERTIES
+#        WINDOWS_EXPORT_ALL_SYMBOLS ON
+#    )
+#    if(ABLASTR_POSITION_INDEPENDENT_CODE)
+#        set_target_properties(ablastr_${SD} PROPERTIES
+#            POSITION_INDEPENDENT_CODE ON
+#        )
+#    endif()
+
+    # own headers
+#    target_include_directories(ablastr_${SD} PUBLIC
+#        # future: own directory root
+#        $<BUILD_INTERFACE:${FerroX_SOURCE_DIR}/Source>
+#        $<BUILD_INTERFACE:${FerroX_BINARY_DIR}/Source>
+#    )
+    if(FerroX_LIB)
+        target_include_directories(lib_${SD} PUBLIC
+            $<BUILD_INTERFACE:${FerroX_SOURCE_DIR}/Source>
+            $<BUILD_INTERFACE:${FerroX_BINARY_DIR}/Source>
+            $<BUILD_INTERFACE:${FerroX_SOURCE_DIR}/Source/Utils>
+            $<BUILD_INTERFACE:${FerroX_SOURCE_DIR}/Source/Input>
+            $<BUILD_INTERFACE:${FerroX_SOURCE_DIR}/Source/Input/GeometryProperties>
+            $<BUILD_INTERFACE:${FerroX_SOURCE_DIR}/Source/Input/BoundaryConditions>
+            $<BUILD_INTERFACE:${FerroX_SOURCE_DIR}/Source/Solver>
+            $<BUILD_INTERFACE:${FerroX_SOURCE_DIR}/Source/Utils/SelectWarpXUtils>
+            $<BUILD_INTERFACE:${FerroX_SOURCE_DIR}/Source/Utils/FerroXUtils>
+            $<BUILD_INTERFACE:${FerroX_SOURCE_DIR}/Source/Utils/eXstaticUtils>
+        )
+    endif()
+
+    # build Python module (this is always a shared library)
+    if(FerroX_PYTHON)
+        add_library(pyFerroX_${SD} MODULE Source/Python/pyFerroX.cpp)
+        add_library(FerroX::pyFerroX_${SD} ALIAS pyFerroX_${SD})
+        target_link_libraries(pyFerroX_${SD} PUBLIC lib_${SD})
+        set(_BUILDINFO_SRC pyFerroX_${SD})
+        list(APPEND _ALL_TARGETS pyFerroX_${SD})
+
+        # set Python module properties
+        set_target_properties(pyFerroX_${SD} PROPERTIES
+            # hide symbols for combining multiple pybind11 modules downstream & for
+            # reduced binary size
+            CXX_VISIBILITY_PRESET "hidden"
+            CUDA_VISIBILITY_PRESET "hidden"
+            # name of the pybind-generated python module, which is wrapped in another
+            # fluffy front-end modules, so we can extend it with pure Python
+            ARCHIVE_OUTPUT_NAME ferrox_pybind_${SD}
+            LIBRARY_OUTPUT_NAME ferrox_pybind_${SD}
+            # build output directories - mainly set to run tests from CMake & IDEs
+            ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
+            LIBRARY_OUTPUT_DIRECTORY ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
+            PDB_OUTPUT_DIRECTORY ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
+            COMPILE_PDB_OUTPUT_DIRECTORY ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
+        )
+        get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+        if(isMultiConfig)
+            foreach(CFG IN LISTS CMAKE_CONFIGURATION_TYPES)
+                string(TOUPPER "${CFG}" CFG_UPPER)
+                set_target_properties(pyFerroX_${SD} PROPERTIES
+                    # build output directories - mainly set to run tests from CMake & IDEs
+                    # note: same as above, but for Multi-Config generators
+                    ARCHIVE_OUTPUT_DIRECTORY_${CFG_UPPER} ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
+                    LIBRARY_OUTPUT_DIRECTORY_${CFG_UPPER} ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
+                    RUNTIME_OUTPUT_DIRECTORY_${CFG_UPPER} ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
+                    PDB_OUTPUT_DIRECTORY_${CFG_UPPER} ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
+                    COMPILE_PDB_OUTPUT_DIRECTORY_${CFG_UPPER} ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
+                )
+            endforeach()
+        endif()
+        if(EMSCRIPTEN)
+            set_target_properties(pyFerroX_${SD} PROPERTIES
+                PREFIX "")
+        else()
+            pybind11_extension(pyFerroX_${SD})
+        endif()
+        if(NOT MSVC AND NOT ${CMAKE_BUILD_TYPE} MATCHES Debug|RelWithDebInfo)
+            pybind11_strip(pyFerroX_${SD})
+        endif()
+    endif()
+
+    if(FerroX_LIB)
+        # if we include <AMReX_buildInfo.H> we will need to call:
+        generate_buildinfo(${_BUILDINFO_SRC} "${FerroX_SOURCE_DIR}")
+        target_link_libraries(lib_${SD} PRIVATE buildInfo::${_BUILDINFO_SRC})
+        unset(_BUILDINFO_SRC)
+
+        # add sources
+        target_sources(lib_${SD} PRIVATE Source/FerroX.cpp)
+    endif()
+
+    # add sources
+    if(FerroX_APP)
+        target_sources(app_${SD} PRIVATE Source/main.cpp)
+    endif()
+endforeach()
+
+# Headers controlling symbol visibility (for Windows)
+# Note: once FerroX gets rid of all its globals, we will not need this.
+#   - extern ... functions
+#   - static class member variables
+#generate_export_header(ablastr_${FerroX_DIMS_LAST}
+#    BASE_NAME ablastr
+#    EXPORT_FILE_NAME Source/ablastr/export.H)
+if(FerroX_LIB)
+    generate_export_header(lib_${FerroX_DIMS_LAST}
+        BASE_NAME ferrox
+        EXPORT_FILE_NAME Source/Utils/export.H)
+endif()
+# At build-time, we might need to set FerroX_<last>_EXPORTS and ablastr_<last>_EXPORTS on all targets
+foreach(D IN LISTS FerroX_DIMS)
+    warpx_set_suffix_dims(SD ${D})
+#    target_compile_definitions(ablastr_${SD} PRIVATE ablastr_${FerroX_DIMS_LAST}_EXPORTS)
+    if(FerroX_LIB)
+        target_compile_definitions(lib_${SD} PRIVATE lib_${FerroX_DIMS_LAST}_EXPORTS)  # note: some collision risk here
+    endif()
+    # Static libs: FERROX_STATIC_DEFINE and ABLASTR_STATIC_DEFINE during build time
+    # note: using a static lib (lib_${SD}) in a .dll (pyFerroX_${SD}) still needs the exports for
+    #       dllimport at DLL build time.
+    #       https://cmake.org/cmake/help/latest/prop_tgt/WINDOWS_EXPORT_ALL_SYMBOLS.html
+    if(NOT BUILD_SHARED_LIBS)
+#        target_compile_definitions(ablastr_${SD} PRIVATE ABLASTR_STATIC_DEFINE)
+        if(FerroX_LIB)
+            target_compile_definitions(lib_${SD} PRIVATE FERROX_STATIC_DEFINE)
+        endif()
+    endif()
+endforeach()
+
+if(FerroX_PYTHON)
+    # copy PICMI and other Python scripts to build directory
+    add_custom_command(TARGET pyFerroX_${FerroX_DIMS_LAST} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${FerroX_SOURCE_DIR}/Python/pyferrox
+        $<TARGET_FILE_DIR:pyFerroX_${FerroX_DIMS_LAST}>
+    )
+endif()
+
+if(FerroX_LIB)
+    add_subdirectory(Source)
+    add_subdirectory(Source/Input)
+    add_subdirectory(Source/Solver)
+    add_subdirectory(Source/Utils)
+endif()
+if(FerroX_QED_TOOLS)
+    add_subdirectory(Tools/QedTablesUtils)
+endif()
+
+# Interprocedural optimization (IPO) / Link-Time Optimization (LTO)
+if(FerroX_IPO)
+    warpx_enable_IPO("${_ALL_TARGETS}")
+endif()
+
+# link dependencies
+foreach(D IN LISTS FerroX_DIMS)
+    warpx_set_suffix_dims(SD ${D})
+    
+    # Link AMReX to lib target since we don't have ablastr targets
+    if(FerroX_LIB)
+        if(D STREQUAL "RZ")
+            target_link_libraries(lib_${SD} PUBLIC WarpX::thirdparty::amrex_2d)
+        elseif(D STREQUAL "RCYLINDER")
+            target_link_libraries(lib_${SD} PUBLIC WarpX::thirdparty::amrex_1d)
+        elseif(D STREQUAL "RSPHERE")
+            target_link_libraries(lib_${SD} PUBLIC WarpX::thirdparty::amrex_1d)
+        else()
+            target_link_libraries(lib_${SD} PUBLIC WarpX::thirdparty::amrex_${D}d)
+        endif()
+    endif()
+
+#    if(ABLASTR_FFT)
+#        target_link_libraries(ablastr_${SD} PUBLIC FerroX::thirdparty::FFT)
+#        if(D STREQUAL "RZ")
+#            target_link_libraries(ablastr_${SD} PUBLIC blaspp)
+#            target_link_libraries(ablastr_${SD} PUBLIC lapackpp)
+
+#            # BLAS++ forgets to declare cuBLAS and cudaRT dependencies
+#            if(FerroX_COMPUTE STREQUAL CUDA)
+#                find_package(CUDAToolkit REQUIRED)
+#                target_link_libraries(ablastr_${SD} PUBLIC CUDA::cudart CUDA::cublas)
+#            endif()
+#        endif()
+#    endif()
+
+    if(FerroX_PYTHON)
+        target_link_libraries(pyFerroX_${SD} PRIVATE pybind11::module pybind11::windows_extras)
+        if(FerroX_PYTHON_IPO)
+            if(DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+                warpx_enable_IPO(pyFerroX_${SD})
+            else()
+                # conditionally defined target in pybind11
+                # https://github.com/pybind/pybind11/blob/v2.13.0/tools/pybind11Common.cmake#L407-L413
+                target_link_libraries(pyFerroX_${SD} PRIVATE pybind11::lto)
+            endif()
+        endif()
+    endif()
+
+#    if(FerroX_OPENPMD)
+#        target_link_libraries(ablastr_${SD} PUBLIC openPMD::openPMD)
+#    endif()
+
+#    if(FerroX_QED)
+#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_QED)
+#        if(FerroX_QED_TABLE_GEN)
+#            target_compile_definitions(ablastr_${SD} PUBLIC FERROX_QED_TABLE_GEN)
+#        endif()
+#        target_link_libraries(ablastr_${SD} PUBLIC PXRMP_QED::PXRMP_QED)
+#    endif()
+endforeach()
+
+# C++ properties: at least a C++17 capable compiler is needed
+if(FerroX_COMPUTE STREQUAL CUDA)
+    # AMReX helper function: propagate CUDA specific target & source properties
+    foreach(ferrox_tgt IN LISTS _ALL_TARGETS)
+        setup_target_for_cuda_compilation(${ferrox_tgt})
+    endforeach()
+    foreach(ferrox_tgt IN LISTS _ALL_TARGETS)
+        target_compile_features(${ferrox_tgt} PUBLIC cuda_std_17)
+    endforeach()
+    set_target_properties(${_ALL_TARGETS} PROPERTIES
+        CUDA_EXTENSIONS OFF
+        CUDA_STANDARD_REQUIRED ON
+    )
+else()
+    foreach(ferrox_tgt IN LISTS _ALL_TARGETS)
+        target_compile_features(${ferrox_tgt} PUBLIC cxx_std_17)
+    endforeach()
+    set_target_properties(${_ALL_TARGETS} PROPERTIES
+        CXX_EXTENSIONS OFF
+        CXX_STANDARD_REQUIRED ON
+    )
+endif()
+
+foreach(D IN LISTS FerroX_DIMS)
+    warpx_set_suffix_dims(SD ${D})
+
+    # fancy binary name for build variants
+    set_warpx_binary_name(${D})
+endforeach()
+
+
+# Defines #####################################################################
+#
+foreach(D IN LISTS FerroX_DIMS)
+    warpx_set_suffix_dims(SD ${D})
+#    if(D STREQUAL 3)
+#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_3D FERROX_ZINDEX=2)
+#    elseif(D STREQUAL 2)
+#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_XZ FERROX_ZINDEX=1)
+#    elseif(D STREQUAL 1)
+#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_1D_Z FERROX_ZINDEX=0)
+#    elseif(D STREQUAL "RZ")
+#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_RZ FERROX_ZINDEX=1)
+#    elseif(D STREQUAL "RCYLINDER")
+#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_RCYLINDER)
+#    elseif(D STREQUAL "RSPHERE")
+#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_RSPHERE)
+#    endif()
+
+#    if(FerroX_OPENPMD)
+#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_USE_OPENPMD)
+#    endif()
+
+#    if(FerroX_QED)
+#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_QED)
+#        if(FerroX_QED_TABLE_GEN)
+#            target_compile_definitions(ablastr_${SD} PUBLIC FerroX_QED_TABLE_GEN)
+#        endif()
+#    endif()
+
+#    if(FerroX_FFT)
+#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_USE_FFT)
+#    endif()
+#    if(ABLASTR_FFT)
+#        # We need to enable FFT support in ABLASTR for PSATD solver
+#        target_compile_definitions(ablastr_${SD} PUBLIC ABLASTR_USE_FFT)
+#    endif()
+
+#    # Time-dependent compilation support - matches Make.FerroX TIME_DEPENDENT=TRUE
+#    if(FerroX_TIME_DEPENDENT)
+#        target_compile_definitions(ablastr_${SD} PUBLIC TIME_DEPENDENT)
+#    endif()
+
+    # SUNDIALS compilation support - matches Make.FerroX USE_SUNDIALS=TRUE
+    if(FerroX_SUNDIALS)
+        target_compile_definitions(lib_${SD} PUBLIC USE_SUNDIALS)
+    endif()
+
+    if(FerroX_PYTHON AND pyFerroX_VERSION_INFO)
+        # for module __version__
+        target_compile_definitions(pyFerroX_${SD} PRIVATE
+            PYFERROX_VERSION_INFO=${pyFerroX_VERSION_INFO})
+    endif()
+
+    # <cmath>: M_PI
+#    if(WIN32)
+#        target_compile_definitions(ablastr_${SD} PUBLIC _USE_MATH_DEFINES)
+#    endif()
+
+    # Windows DLLs and Global Symbols
+    # https://stackoverflow.com/questions/54560832/cmake-windows-export-all-symbols-does-not-cover-global-variables/54568678#54568678
+    #
+#    if(WIN32 AND BUILD_SHARED_LIBS)
+#        set(ABLASTR_IS_DLL ON)
+#        target_compile_definitions(ablastr_${SD} PRIVATE ABLASTR_IS_DLL_BUILDING)
+#    endif()
+#    if(WIN32 AND FerroX_LIB AND BUILD_SHARED_LIBS)
+#        set(ABLASTR_IS_DLL ON)
+#        target_compile_definitions(lib_${SD} PRIVATE ABLASTR_IS_DLL_BUILDING)
+#    endif()
+#    if(WIN32 AND FerroX_PYTHON)
+#        set(ABLASTR_IS_DLL ON)
+#        target_compile_definitions(pyFerroX_${SD} PRIVATE ABLASTR_IS_DLL_BUILDING)
+#    endif()
+endforeach()
+
+
+# Warnings ####################################################################
+#
+set_cxx_warnings()
+
+
+# Generate Configuration and .pc Files ########################################
+#
+get_source_version(FerroX_${FerroX_DIMS_LAST} ${FerroX_SOURCE_DIR})
+set(FerroX_GIT_VERSION ${FerroX_${FerroX_DIMS_LAST}_GIT_VERSION})
+configure_file(
+    ${FerroX_SOURCE_DIR}/Source/Utils/FerroXVersion.H.in
+    ${FerroX_BINARY_DIR}/Source/Utils/FerroXVersion.H
+    @ONLY
+)
+
+# these files are used if FerroX is installed and picked up by a downstream
+# project (not needed yet)
+
+#include(CMakePackageConfigHelpers)
+#write_basic_package_version_file("FerroXConfigVersion.cmake"
+#    VERSION ${FerroX_VERSION}
+#    COMPATIBILITY SameMajorVersion
+#)
+
+
+# Installs ####################################################################
+#
+# headers, libraries and executables
+set(FerroX_INSTALL_TARGET_NAMES)
+foreach(D IN LISTS FerroX_DIMS)
+    warpx_set_suffix_dims(SD ${D})
+#    list(APPEND FerroX_INSTALL_TARGET_NAMES ablastr_${SD})
+    if(FerroX_APP)
+        list(APPEND FerroX_INSTALL_TARGET_NAMES app_${SD})
+    endif()
+    if(FerroX_LIB)
+        list(APPEND FerroX_INSTALL_TARGET_NAMES lib_${SD})
+    endif()
+    if(FerroX_PYTHON)
+        list(APPEND FerroX_INSTALL_TARGET_NAMES pyFerroX_${SD})
+    endif()
+
+    install(TARGETS ${FerroX_INSTALL_TARGET_NAMES}
+        EXPORT FerroXTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
+
+    # simplified library alias
+    # this is currently expected by Python bindings
+    if(FerroX_LIB)
+        if(IS_ABSOLUTE ${CMAKE_INSTALL_LIBDIR})
+            set(ABS_INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}")
+        else()
+            set(ABS_INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+        endif()
+        # escape spaces for generated cmake_install.cmake file
+        file(TO_CMAKE_PATH "${ABS_INSTALL_LIB_DIR}" ABS_INSTALL_LIB_DIR)
+
+        install(CODE "file(CREATE_LINK
+            $<TARGET_FILE_NAME:lib_${SD}>
+            \"${ABS_INSTALL_LIB_DIR}/libferrox.${SD}$<TARGET_FILE_SUFFIX:lib_${SD}>\"
+            COPY_ON_ERROR SYMBOLIC)")
+    endif()
+
+    # FerroX
+    # Utils/FerroXVersion.H
+
+    # ABLASTR
+    # export.H
+
+    # CMake package file for find_package(FerroX::FerroX) in depending projects
+    #install(EXPORT FerroXTargets
+    #    FILE FerroXTargets.cmake
+    #    NAMESPACE FerroX::
+    #    DESTINATION ${FerroX_INSTALL_CMAKEDIR}
+    #)
+    #install(
+    #    FILES
+    #        ${FerroX_BINARY_DIR}/FerroXConfig.cmake
+    #        ${FerroX_BINARY_DIR}/FerroXConfigVersion.cmake
+    #    DESTINATION ${FerroX_INSTALL_CMAKEDIR}
+    #)
+endforeach()
+
+
+# pip helpers for the pyferrox package #########################################
+#
+if(FerroX_PYTHON)
+    set(PY_PIP_OPTIONS "-v" CACHE STRING
+        "Additional parameters to pass to `pip` as ; separated list")
+    set(PY_PIP_INSTALL_OPTIONS "" CACHE STRING
+        "Additional parameters to pass to `pip install` as ; separated list")
+
+    # ensure all targets are built before we package them in a wheel
+    set(pyFerroX_INSTALL_TARGET_NAMES)
+    foreach(D IN LISTS FerroX_DIMS)
+        warpx_set_suffix_dims(SD ${D})
+        list(APPEND pyFerroX_INSTALL_TARGET_NAMES pyFerroX_${SD})
+    endforeach()
+
+    # add a prefix to custom targets so we do not collide if used as a subproject
+    if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+        set(_FerroX_CUSTOM_TARGET_PREFIX_DEFAULT "")
+    else()
+        set(_FerroX_CUSTOM_TARGET_PREFIX_DEFAULT "ferrox_")
+    endif()
+    set(FerroX_CUSTOM_TARGET_PREFIX "${_FerroX_CUSTOM_TARGET_PREFIX_DEFAULT}"
+            CACHE STRING "Prefix for custom targets")
+
+    # build the wheel by re-using the python module that we build
+    add_custom_target(${FerroX_CUSTOM_TARGET_PREFIX}pip_wheel
+        ${CMAKE_COMMAND} -E rm -f -r ferrox-whl
+        COMMAND
+            ${CMAKE_COMMAND} -E env PYFERROX_LIB_DIR=$<TARGET_FILE_DIR:pyFerroX_${FerroX_DIMS_LAST}>
+                ${Python_EXECUTABLE} -m pip ${PY_PIP_OPTIONS} wheel --no-build-isolation --no-deps --wheel-dir=ferrox-whl "${FerroX_SOURCE_DIR}"
+        COMMAND_EXPAND_LISTS VERBATIM
+        WORKING_DIRECTORY
+            ${FerroX_BINARY_DIR}
+        DEPENDS
+            ${pyFerroX_INSTALL_TARGET_NAMES}
+    )
+
+    # this will also upgrade/downgrade dependencies, e.g., when the version of picmistandard changes
+    if(FerroX_MPI)
+        set(pyFerroX_REQUIREMENT_FILE "requirements_mpi.txt")
+    else()
+        set(pyFerroX_REQUIREMENT_FILE "requirements.txt")
+    endif()
+    add_custom_target(${FerroX_CUSTOM_TARGET_PREFIX}pip_install_requirements
+        ${Python_EXECUTABLE} -m pip ${PY_PIP_OPTIONS} install ${PY_PIP_INSTALL_OPTIONS} -r "${FerroX_SOURCE_DIR}/${pyFerroX_REQUIREMENT_FILE}"
+        COMMAND_EXPAND_LISTS VERBATIM
+        WORKING_DIRECTORY
+            ${FerroX_BINARY_DIR}
+    )
+
+    # if we do a superbuild, make sure we install pyAMReX via its custom install
+    # target
+    set(_EXTRA_INSTALL_DEPENDS)
+    if(FerroX_pyamrex_internal OR FerroX_pyamrex_src)
+        set(_EXTRA_INSTALL_DEPENDS pyamrex_pip_install)
+    endif()
+
+    # We force-install because in development, it is likely that the version of
+    # the package does not change, but the code did change. We need --no-deps,
+    # because otherwise pip would also force reinstall all dependencies.
+    add_custom_target(${FerroX_CUSTOM_TARGET_PREFIX}pip_install
+        ${CMAKE_COMMAND} -E env FERROX_MPI=${FerroX_MPI}
+            ${Python_EXECUTABLE} -m pip ${PY_PIP_OPTIONS} install --force-reinstall --no-index --no-deps ${PY_PIP_INSTALL_OPTIONS} --find-links=ferrox-whl pyferrox
+        COMMAND_EXPAND_LISTS VERBATIM
+        WORKING_DIRECTORY
+            ${FerroX_BINARY_DIR}
+        DEPENDS
+            pyFerroX_${FerroX_DIMS_LAST}
+            ${FerroX_CUSTOM_TARGET_PREFIX}pip_wheel
+            ${FerroX_CUSTOM_TARGET_PREFIX}pip_install_requirements
+            ${_EXTRA_INSTALL_DEPENDS}
+    )
+
+    # this is for package managers only
+    add_custom_target(${FerroX_CUSTOM_TARGET_PREFIX}pip_install_nodeps
+        ${CMAKE_COMMAND} -E env FERROX_MPI=${FerroX_MPI}
+            ${Python_EXECUTABLE} -m pip ${PY_PIP_OPTIONS} install --force-reinstall --no-index --no-deps ${PY_PIP_INSTALL_OPTIONS} --find-links=ferrox-whl pyferrox
+        COMMAND_EXPAND_LISTS VERBATIM
+        WORKING_DIRECTORY
+            ${FerroX_BINARY_DIR}
+        DEPENDS
+            pyFerroX_${FerroX_DIMS_LAST}
+            ${FerroX_CUSTOM_TARGET_PREFIX}pip_wheel
+    )
+endif()
+
+
+# Tests #######################################################################
+#
+#if(BUILD_TESTING)
+#    enable_testing()
+#    if(FerroX_APP OR FerroX_PYTHON)
+#        add_subdirectory(Exec/Examples)
+#    endif()
+#endif()
+
+
+# Status Summary for Build Options ############################################
+#
+warpx_print_summary()
