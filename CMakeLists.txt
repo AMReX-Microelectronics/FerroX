@@ -7,7 +7,7 @@ string(JSON ferrox_version GET "${dependencies_data}" version_ferrox)
 cmake_minimum_required(VERSION 3.24.0)
 project(FerroX VERSION ${ferrox_version})
 
-include(${FerroX_SOURCE_DIR}/cmake/WarpXFunctions.cmake)
+include(${FerroX_SOURCE_DIR}/cmake/FerroXFunctions.cmake)
 
 # In-source tree builds are messy and can screw up the build system.
 # Avoid building at least in the same dir as the root dir:
@@ -518,13 +518,13 @@ foreach(D IN LISTS FerroX_DIMS)
     # Link AMReX to lib target since we don't have ablastr targets
     if(FerroX_LIB)
         if(D STREQUAL "RZ")
-            target_link_libraries(lib_${SD} PUBLIC WarpX::thirdparty::amrex_2d)
+            target_link_libraries(lib_${SD} PUBLIC FerroX::thirdparty::amrex_2d)
         elseif(D STREQUAL "RCYLINDER")
-            target_link_libraries(lib_${SD} PUBLIC WarpX::thirdparty::amrex_1d)
+            target_link_libraries(lib_${SD} PUBLIC FerroX::thirdparty::amrex_1d)
         elseif(D STREQUAL "RSPHERE")
-            target_link_libraries(lib_${SD} PUBLIC WarpX::thirdparty::amrex_1d)
+            target_link_libraries(lib_${SD} PUBLIC FerroX::thirdparty::amrex_1d)
         else()
-            target_link_libraries(lib_${SD} PUBLIC WarpX::thirdparty::amrex_${D}d)
+            target_link_libraries(lib_${SD} PUBLIC FerroX::thirdparty::amrex_${D}d)
         endif()
     endif()
 

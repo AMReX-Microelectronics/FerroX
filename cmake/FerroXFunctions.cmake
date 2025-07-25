@@ -243,19 +243,19 @@ macro(ferrox_set_suffix_dims suffix dim)
 endmacro()
 
 # Take an <imported_target> and expose it as INTERFACE target with
-# WarpX::thirdparty::<propagated_name> naming and SYSTEM includes.
+# FerroX::thirdparty::<propagated_name> naming and SYSTEM includes.
 #
 function(ferrox_make_third_party_includes_system imported_target propagated_name)
-    add_library(WarpX::thirdparty::${propagated_name} INTERFACE IMPORTED)
-    target_link_libraries(WarpX::thirdparty::${propagated_name} INTERFACE ${imported_target})
+    add_library(FerroX::thirdparty::${propagated_name} INTERFACE IMPORTED)
+    target_link_libraries(FerroX::thirdparty::${propagated_name} INTERFACE ${imported_target})
 
     if(TARGET ${imported_target})
         get_target_property(imported_target_type ${imported_target} TYPE)
         if(NOT imported_target_type STREQUAL INTERFACE_LIBRARY)
             get_target_property(ALL_INCLUDES ${imported_target} INCLUDE_DIRECTORIES)
             if(ALL_INCLUDES)
-                set_target_properties(WarpX::thirdparty::${propagated_name} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "")
-                target_include_directories(WarpX::thirdparty::${propagated_name} SYSTEM INTERFACE ${ALL_INCLUDES})
+                set_target_properties(FerroX::thirdparty::${propagated_name} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "")
+                target_include_directories(FerroX::thirdparty::${propagated_name} SYSTEM INTERFACE ${ALL_INCLUDES})
             endif()
         endif()
     endif()

@@ -4,13 +4,13 @@ if(ABLASTR_FFT)
     option(WarpX_FFTW_IGNORE_OMP "Ignore FFTW3 OpenMP support, even if found" OFF)
     mark_as_advanced(WarpX_FFTW_IGNORE_OMP)
 
-    # Set the WarpX_FFTW_OMP=1 define on WarpX::thirdparty::FFT if TRUE and print
+    # Set the WarpX_FFTW_OMP=1 define on FerroX::thirdparty::FFT if TRUE and print
     # a message
     #
     function(fftw_add_define HAS_FFTW_OMP_LIB)
         if(HAS_FFTW_OMP_LIB)
             message(STATUS "FFTW: Found OpenMP support")
-            target_compile_definitions(WarpX::thirdparty::FFT INTERFACE WarpX_FFTW_OMP=1)
+            target_compile_definitions(FerroX::thirdparty::FFT INTERFACE WarpX_FFTW_OMP=1)
         else()
             message(STATUS "FFTW: Could NOT find OpenMP support")
         endif()
@@ -37,7 +37,7 @@ if(ABLASTR_FFT)
             # the .pc files here forget to link the _omp.a/so files
             # explicitly - we add those manually to avoid any trouble,
             # e.g., in static builds.
-            target_link_libraries(WarpX::thirdparty::FFT INTERFACE ${HAS_FFTW_OMP_LIB})
+            target_link_libraries(FerroX::thirdparty::FFT INTERFACE ${HAS_FFTW_OMP_LIB})
         endif()
 
         fftw_add_define("${HAS_FFTW_OMP_LIB}")
@@ -106,9 +106,9 @@ if(ABLASTR_FFT)
         endif()
     endif()
 
-    # create an IMPORTED target: WarpX::thirdparty::FFT
+    # create an IMPORTED target: FerroX::thirdparty::FFT
     if(WarpX_COMPUTE STREQUAL CUDA)
-        # CUDA_ADD_CUFFT_TO_TARGET(WarpX::thirdparty::FFT)
+        # CUDA_ADD_CUFFT_TO_TARGET(FerroX::thirdparty::FFT)
         ferrox_make_third_party_includes_system(cufft FFT)
     elseif(WarpX_COMPUTE STREQUAL HIP)
         ferrox_make_third_party_includes_system(roc::rocfft FFT)
