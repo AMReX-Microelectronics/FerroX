@@ -122,13 +122,13 @@ if(FerroX_BACKTRACE_INFO)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g1")
 endif()
 
-set(FerroX_DIMS_VALUES 1 2 3 RZ RCYLINDER RSPHERE)
-set(FerroX_DIMS 3 CACHE STRING "Simulation dimensionality <1;2;3;RZ;RCYLINDER;RSPHERE>")
+set(FerroX_DIMS_VALUES 3)
+set(FerroX_DIMS 3 CACHE STRING "Simulation dimensionality (3D only)")
 list(REMOVE_DUPLICATES FerroX_DIMS)
 foreach(D IN LISTS FerroX_DIMS)
     if(NOT D IN_LIST FerroX_DIMS_VALUES)
        message(FATAL_ERROR "FerroX_DIMS=${D} is not allowed."
-          " Must be one of ${FerroX_DIMS_VALUES}")
+          " FerroX only supports 3D simulations")
     endif()
 endforeach()
 
@@ -136,7 +136,7 @@ endforeach()
 list(LENGTH FerroX_DIMS list_len)
 math(EXPR list_last "${list_len} - 1")
 list(GET FerroX_DIMS ${list_last} FerroX_DIMS_LAST)
-warpx_set_suffix_dims(FerroX_DIMS_LAST ${FerroX_DIMS_LAST})
+ferrox_set_suffix_dims(FerroX_DIMS_LAST ${FerroX_DIMS_LAST})
 
 set(FerroX_PRECISION_VALUES SINGLE DOUBLE)
 set(FerroX_PRECISION DOUBLE CACHE STRING "Floating point precision (SINGLE/DOUBLE)")
@@ -253,7 +253,7 @@ list(REMOVE_DUPLICATES FerroX_amrex_dim)
 include(${FerroX_SOURCE_DIR}/cmake/dependencies/AMReX.cmake)
 foreach(D IN LISTS FerroX_amrex_dim)
     #   suppress warnings in AMReX headers (use -isystem instead of -I)
-    warpx_make_third_party_includes_system(AMReX::amrex_${D}d amrex_${D}d)
+    ferrox_make_third_party_includes_system(AMReX::amrex_${D}d amrex_${D}d)
 endforeach()
 # For <AMReX_buildInfo.H>
 include(AMReXBuildInfo)
@@ -282,7 +282,7 @@ if(FerroX_PYTHON)
     find_package(Python 3.8 COMPONENTS Interpreter Development.Module REQUIRED)
 
     # default installation directories: Python
-    warpx_set_default_install_dirs_python()
+    ferrox_set_default_install_dirs_python()
 
     # pybind11
     #   builds pybind11 from git (default), form local source or
@@ -299,7 +299,7 @@ endif()
 include(GenerateExportHeader)
 set(_ALL_TARGETS)
 foreach(D IN LISTS FerroX_DIMS)
-    warpx_set_suffix_dims(SD ${D})
+    ferrox_set_suffix_dims(SD ${D})
 
     # ABLASTR library
 #    add_library(ablastr_${SD})
@@ -470,7 +470,7 @@ if(FerroX_LIB)
 endif()
 # At build-time, we might need to set FerroX_<last>_EXPORTS and ablastr_<last>_EXPORTS on all targets
 foreach(D IN LISTS FerroX_DIMS)
-    warpx_set_suffix_dims(SD ${D})
+    ferrox_set_suffix_dims(SD ${D})
 #    target_compile_definitions(ablastr_${SD} PRIVATE ablastr_${FerroX_DIMS_LAST}_EXPORTS)
     if(FerroX_LIB)
         target_compile_definitions(lib_${SD} PRIVATE lib_${FerroX_DIMS_LAST}_EXPORTS)  # note: some collision risk here
@@ -508,12 +508,12 @@ endif()
 
 # Interprocedural optimization (IPO) / Link-Time Optimization (LTO)
 if(FerroX_IPO)
-    warpx_enable_IPO("${_ALL_TARGETS}")
+    ferrox_enable_IPO("${_ALL_TARGETS}")
 endif()
 
 # link dependencies
 foreach(D IN LISTS FerroX_DIMS)
-    warpx_set_suffix_dims(SD ${D})
+    ferrox_set_suffix_dims(SD ${D})
     
     # Link AMReX to lib target since we don't have ablastr targets
     if(FerroX_LIB)
@@ -546,7 +546,7 @@ foreach(D IN LISTS FerroX_DIMS)
         target_link_libraries(pyFerroX_${SD} PRIVATE pybind11::module pybind11::windows_extras)
         if(FerroX_PYTHON_IPO)
             if(DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
-                warpx_enable_IPO(pyFerroX_${SD})
+                ferrox_enable_IPO(pyFerroX_${SD})
             else()
                 # conditionally defined target in pybind11
                 # https://github.com/pybind/pybind11/blob/v2.13.0/tools/pybind11Common.cmake#L407-L413
@@ -592,17 +592,17 @@ else()
 endif()
 
 foreach(D IN LISTS FerroX_DIMS)
-    warpx_set_suffix_dims(SD ${D})
+    ferrox_set_suffix_dims(SD ${D})
 
     # fancy binary name for build variants
-    set_warpx_binary_name(${D})
+    set_ferrox_binary_name(${D})
 endforeach()
 
 
 # Defines #####################################################################
 #
 foreach(D IN LISTS FerroX_DIMS)
-    warpx_set_suffix_dims(SD ${D})
+    ferrox_set_suffix_dims(SD ${D})
 #    if(D STREQUAL 3)
 #        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_3D FERROX_ZINDEX=2)
 #    elseif(D STREQUAL 2)
@@ -705,7 +705,7 @@ configure_file(
 # headers, libraries and executables
 set(FerroX_INSTALL_TARGET_NAMES)
 foreach(D IN LISTS FerroX_DIMS)
-    warpx_set_suffix_dims(SD ${D})
+    ferrox_set_suffix_dims(SD ${D})
 #    list(APPEND FerroX_INSTALL_TARGET_NAMES ablastr_${SD})
     if(FerroX_APP)
         list(APPEND FerroX_INSTALL_TARGET_NAMES app_${SD})
@@ -774,7 +774,7 @@ if(FerroX_PYTHON)
     # ensure all targets are built before we package them in a wheel
     set(pyFerroX_INSTALL_TARGET_NAMES)
     foreach(D IN LISTS FerroX_DIMS)
-        warpx_set_suffix_dims(SD ${D})
+        ferrox_set_suffix_dims(SD ${D})
         list(APPEND pyFerroX_INSTALL_TARGET_NAMES pyFerroX_${SD})
     endforeach()
 
@@ -862,4 +862,4 @@ endif()
 
 # Status Summary for Build Options ############################################
 #
-warpx_print_summary()
+ferrox_print_summary()

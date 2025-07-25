@@ -1,3 +1,7 @@
+# CMake functions for FerroX build system
+# Adapted from WarpX CMake functions
+# Original source: https://github.com/ECP-WarpX/WarpX
+
 # Set C++17 for the whole build if not otherwise requested
 #
 # This is the easiest way to push up a C++17 requirement for AMReX, PICSAR and
@@ -103,7 +107,7 @@ endmacro()
 # the defaults in CMake are sub-ideal for historic reasons, lets make them more
 # Unix-ish and portable.
 #
-macro(warpx_set_default_install_dirs)
+macro(ferrox_set_default_install_dirs)
     if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
         include(GNUInstallDirs)
         if(NOT CMAKE_INSTALL_CMAKEDIR)
@@ -130,7 +134,7 @@ endmacro()
 # this needs to be slightly delayed until we found Python and know its
 # major and minor version number
 #
-macro(warpx_set_default_install_dirs_python)
+macro(ferrox_set_default_install_dirs_python)
     if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
         # Python install and build output dirs
         if(NOT CMAKE_INSTALL_PYTHONDIR)
@@ -209,7 +213,7 @@ endmacro()
 
 # Enables interprocedural optimization for a list of targets
 #
-function(warpx_enable_IPO all_targets_list)
+function(ferrox_enable_IPO all_targets_list)
     include(CheckIPOSupported)
     check_ipo_supported(RESULT is_IPO_available)
     if(is_IPO_available)
@@ -226,7 +230,7 @@ endfunction()
 # User specify 1;2;3;RZ;RCYLINDER;RSPHERE in WarpX_DIMS.
 # We append to CMake targets and binaries the suffix "Nd" for 1,2,3 or otherwise the lowercase dimension string
 #
-macro(warpx_set_suffix_dims suffix dim)
+macro(ferrox_set_suffix_dims suffix dim)
     if("${dim}" STREQUAL "RZ")
         set(${suffix} rz)
     elseif("${dim}" STREQUAL "RCYLINDER")
@@ -241,7 +245,7 @@ endmacro()
 # Take an <imported_target> and expose it as INTERFACE target with
 # WarpX::thirdparty::<propagated_name> naming and SYSTEM includes.
 #
-function(warpx_make_third_party_includes_system imported_target propagated_name)
+function(ferrox_make_third_party_includes_system imported_target propagated_name)
     add_library(WarpX::thirdparty::${propagated_name} INTERFACE IMPORTED)
     target_link_libraries(WarpX::thirdparty::${propagated_name} INTERFACE ${imported_target})
 
@@ -261,16 +265,16 @@ endfunction()
 # Set a feature-based binary name for the WarpX executable and create a generic
 # warpx symlink to it. Only sets options relevant for users (see summary).
 #
-function(set_warpx_binary_name D)
-    warpx_set_suffix_dims(SD ${D})
+function(set_ferrox_binary_name D)
+    ferrox_set_suffix_dims(SD ${D})
 
-    set(warpx_bin_names)
+    set(ferrox_bin_names)
     if(WarpX_APP)
-        list(APPEND warpx_bin_names app_${SD})
+        list(APPEND ferrox_bin_names app_${SD})
         set_target_properties(app_${SD} PROPERTIES OUTPUT_NAME "warpx")
     endif()
     if(WarpX_LIB)
-        list(APPEND warpx_bin_names lib_${SD})
+        list(APPEND ferrox_bin_names lib_${SD})
         # On WIN32, the OUTPUT_NAME must not collide between lib and app!
         if(WIN32)
             set_target_properties(lib_${SD} PROPERTIES OUTPUT_NAME "libwarpx")
@@ -278,7 +282,7 @@ function(set_warpx_binary_name D)
             set_target_properties(lib_${SD} PROPERTIES OUTPUT_NAME "warpx")
         endif()
     endif()
-    foreach(tgt IN LISTS warpx_bin_names)
+    foreach(tgt IN LISTS ferrox_bin_names)
         set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".${SD}")
 
         if(WarpX_MPI)
@@ -421,7 +425,7 @@ endfunction ()
 
 # Prints a summary of WarpX options at the end of the CMake configuration
 #
-function(warpx_print_summary)
+function(ferrox_print_summary)
     message("")
     message("WarpX build configuration:")
     message("  Version: ${WarpX_VERSION} (${WarpX_GIT_VERSION})")
