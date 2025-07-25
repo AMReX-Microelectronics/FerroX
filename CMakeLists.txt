@@ -70,8 +70,6 @@ set_default_install_dirs()
 #
 include(CMakeDependentOption)
 option(FerroX_APP           "Build the FerroX executable application"     ON)
-option(FerroX_ASCENT        "Ascent in situ diagnostics"                 OFF)
-option(FerroX_CATALYST      "Catalyst in situ diagnostics"               OFF)
 # Time-dependent support - matches Make.FerroX TIME_DEPENDENT=TRUE conditional compilation
 # Default OFF matches GNU Make default behavior (only enabled when explicitly set)
 option(FerroX_TIME_DEPENDENT "Time-dependent support" OFF)
@@ -96,15 +94,12 @@ option(FerroX_EB            "Embedded boundary support"                  OFF)
 option(FerroX_LIB           "Build FerroX as a library"                   OFF)
 option(FerroX_MPI           "Multi-node support (message-passing)"       ON)
 option(FerroX_SIMD          "CPU SIMD Acceleration"                      OFF)
-option(FerroX_OPENPMD       "openPMD I/O (HDF5, ADIOS)"                  ON)
-option(FerroX_FFT           "FFT-based solvers"                          OFF)
-option(FerroX_PYTHON        "Python bindings"                            OFF)
-option(FerroX_SENSEI        "SENSEI in situ diagnostics"                 OFF)
-option(FerroX_QED           "QED support (requires PICSAR)"              ON)
-option(FerroX_QED_TABLE_GEN "QED table generation (requires PICSAR and Boost)"
-                                                                        OFF)
-option(FerroX_QED_TOOLS     "Build external tool to generate QED lookup tables (requires PICSAR and Boost)"
-                                                                        OFF)
+
+# Print debug options - matches Make.FerroX PRINT_* options
+option(FerroX_PRINT_HIGH    "Enable high level debug printing"              OFF)
+option(FerroX_PRINT_MEDIUM  "Enable medium level debug printing"            OFF)
+option(FerroX_PRINT_LOW     "Enable low level debug printing"               OFF)
+option(FerroX_PRINT_NAME    "Enable function name debug printing"           OFF)
 
 # Advanced option to run tests
 option(FerroX_TEST_CLEANUP "Clean up automated test directories" OFF)
@@ -152,12 +147,6 @@ if(NOT FerroX_PARTICLE_PRECISION IN_LIST FerroX_PARTICLE_PRECISION_VALUES)
     message(FATAL_ERROR "FerroX_PARTICLE_PRECISION (${FerroX_PARTICLE_PRECISION}) must be one of ${FerroX_PARTICLE_PRECISION_VALUES}")
 endif()
 
-set(FerroX_QED_TABLES_GEN_OMP_VALUES AUTO ON OFF)
-set(FerroX_QED_TABLES_GEN_OMP AUTO CACHE STRING "Enables OpenMP support for QED lookup tables generation (AUTO/ON/OFF)")
-set_property(CACHE FerroX_QED_TABLES_GEN_OMP PROPERTY STRINGS ${FerroX_QED_TABLES_GEN_OMP_VALUES})
-if(NOT FerroX_QED_TABLES_GEN_OMP IN_LIST FerroX_QED_TABLES_GEN_OMP_VALUES)
-    message(FATAL_ERROR "FerroX_QED_TABLES_GEN_OMP (${FerroX_QED_TABLES_GEN_OMP}) must be one of ${FerroX_QED_TABLES_GEN_OMP_VALUES}")
-endif()
 
 set(FerroX_COMPUTE_VALUES NOACC OMP CUDA SYCL HIP)
 set(FerroX_COMPUTE OMP CACHE STRING "On-node, accelerated computing backend (NOACC/OMP/CUDA/SYCL/HIP)")
@@ -177,29 +166,21 @@ set_default_build_type("Release")
 # Option to enable interprocedural optimization
 # (also know as "link-time optimization" or "whole program optimization")
 set(_FerroX_IPO_DEFAULT OFF)
-set(_FerroX_PYTHON_IPO_DEFAULT ON)
 if(DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
     set(_FerroX_IPO_DEFAULT ${CMAKE_INTERPROCEDURAL_OPTIMIZATION})
-    set(_FerroX_PYTHON_IPO_DEFAULT ${CMAKE_INTERPROCEDURAL_OPTIMIZATION})
 endif()
 option(FerroX_IPO
     "Compile FerroX with interprocedural optimization (will take more time)"
     ${_FerroX_IPO_DEFAULT}
-)
-option(FerroX_PYTHON_IPO
-    "Compile Python bindings with interprocedural optimization (IPO) / link-time optimization (LTO)"
-    ${_FerroX_PYTHON_IPO_DEFAULT}
 )
 
 # Unity builds combine all .cpp files into a single one (a single translation
 # unit, TU).
 option(FerroX_UNITY_BUILD          "FerroX library as unity build" OFF)
 
-set(pyFerroX_VERSION_INFO "" CACHE STRING
-    "PEP-440 conformant version (set by setup.py)")
 
 # enforce consistency of dependent options
-if(FerroX_APP OR FerroX_PYTHON)
+if(FerroX_APP)
     set(FerroX_LIB ON CACHE STRING "Build FerroX as a library" FORCE)
 endif()
 
@@ -258,40 +239,9 @@ endforeach()
 # For <AMReX_buildInfo.H>
 include(AMReXBuildInfo)
 
-# PICSAR
-#   builds PICSAR from source
-include(${FerroX_SOURCE_DIR}/cmake/dependencies/PICSAR.cmake)
 
-# openPMD
-#   builds openPMD-api from source (default) or finds an existing install
-include(${FerroX_SOURCE_DIR}/cmake/dependencies/openPMD.cmake)
 
-# PSATD
-include(${FerroX_SOURCE_DIR}/cmake/dependencies/FFT.cmake)
-if(FerroX_FFT)
-    # BLASPP and LAPACKPP
-    if(RZ IN_LIST FerroX_DIMS)
-        find_package(blaspp CONFIG REQUIRED)
-        find_package(lapackpp CONFIG REQUIRED)
-        find_package(OpenMP REQUIRED)  # pulled by the two above
-    endif()
-endif()
 
-# Python
-if(FerroX_PYTHON)
-    find_package(Python 3.8 COMPONENTS Interpreter Development.Module REQUIRED)
-
-    # default installation directories: Python
-    ferrox_set_default_install_dirs_python()
-
-    # pybind11
-    #   builds pybind11 from git (default), form local source or
-    #   finds an existing install
-    include(${FerroX_SOURCE_DIR}/cmake/dependencies/pybind11.cmake)
-
-    # pyAMReX
-    include(${FerroX_SOURCE_DIR}/cmake/dependencies/pyAMReX.cmake)
-endif()
 
 
 # Targets #####################################################################
@@ -389,56 +339,6 @@ foreach(D IN LISTS FerroX_DIMS)
         )
     endif()
 
-    # build Python module (this is always a shared library)
-    if(FerroX_PYTHON)
-        add_library(pyFerroX_${SD} MODULE Source/Python/pyFerroX.cpp)
-        add_library(FerroX::pyFerroX_${SD} ALIAS pyFerroX_${SD})
-        target_link_libraries(pyFerroX_${SD} PUBLIC lib_${SD})
-        set(_BUILDINFO_SRC pyFerroX_${SD})
-        list(APPEND _ALL_TARGETS pyFerroX_${SD})
-
-        # set Python module properties
-        set_target_properties(pyFerroX_${SD} PROPERTIES
-            # hide symbols for combining multiple pybind11 modules downstream & for
-            # reduced binary size
-            CXX_VISIBILITY_PRESET "hidden"
-            CUDA_VISIBILITY_PRESET "hidden"
-            # name of the pybind-generated python module, which is wrapped in another
-            # fluffy front-end modules, so we can extend it with pure Python
-            ARCHIVE_OUTPUT_NAME ferrox_pybind_${SD}
-            LIBRARY_OUTPUT_NAME ferrox_pybind_${SD}
-            # build output directories - mainly set to run tests from CMake & IDEs
-            ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
-            LIBRARY_OUTPUT_DIRECTORY ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
-            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
-            PDB_OUTPUT_DIRECTORY ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
-            COMPILE_PDB_OUTPUT_DIRECTORY ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
-        )
-        get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-        if(isMultiConfig)
-            foreach(CFG IN LISTS CMAKE_CONFIGURATION_TYPES)
-                string(TOUPPER "${CFG}" CFG_UPPER)
-                set_target_properties(pyFerroX_${SD} PROPERTIES
-                    # build output directories - mainly set to run tests from CMake & IDEs
-                    # note: same as above, but for Multi-Config generators
-                    ARCHIVE_OUTPUT_DIRECTORY_${CFG_UPPER} ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
-                    LIBRARY_OUTPUT_DIRECTORY_${CFG_UPPER} ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
-                    RUNTIME_OUTPUT_DIRECTORY_${CFG_UPPER} ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
-                    PDB_OUTPUT_DIRECTORY_${CFG_UPPER} ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
-                    COMPILE_PDB_OUTPUT_DIRECTORY_${CFG_UPPER} ${CMAKE_PYTHON_OUTPUT_DIRECTORY}/pyferrox
-                )
-            endforeach()
-        endif()
-        if(EMSCRIPTEN)
-            set_target_properties(pyFerroX_${SD} PROPERTIES
-                PREFIX "")
-        else()
-            pybind11_extension(pyFerroX_${SD})
-        endif()
-        if(NOT MSVC AND NOT ${CMAKE_BUILD_TYPE} MATCHES Debug|RelWithDebInfo)
-            pybind11_strip(pyFerroX_${SD})
-        endif()
-    endif()
 
     if(FerroX_LIB)
         # if we include <AMReX_buildInfo.H> we will need to call:
@@ -487,23 +387,12 @@ foreach(D IN LISTS FerroX_DIMS)
     endif()
 endforeach()
 
-if(FerroX_PYTHON)
-    # copy PICMI and other Python scripts to build directory
-    add_custom_command(TARGET pyFerroX_${FerroX_DIMS_LAST} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${FerroX_SOURCE_DIR}/Python/pyferrox
-        $<TARGET_FILE_DIR:pyFerroX_${FerroX_DIMS_LAST}>
-    )
-endif()
 
 if(FerroX_LIB)
     add_subdirectory(Source)
     add_subdirectory(Source/Input)
     add_subdirectory(Source/Solver)
     add_subdirectory(Source/Utils)
-endif()
-if(FerroX_QED_TOOLS)
-    add_subdirectory(Tools/QedTablesUtils)
 endif()
 
 # Interprocedural optimization (IPO) / Link-Time Optimization (LTO)
@@ -542,18 +431,6 @@ foreach(D IN LISTS FerroX_DIMS)
 #        endif()
 #    endif()
 
-    if(FerroX_PYTHON)
-        target_link_libraries(pyFerroX_${SD} PRIVATE pybind11::module pybind11::windows_extras)
-        if(FerroX_PYTHON_IPO)
-            if(DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
-                ferrox_enable_IPO(pyFerroX_${SD})
-            else()
-                # conditionally defined target in pybind11
-                # https://github.com/pybind/pybind11/blob/v2.13.0/tools/pybind11Common.cmake#L407-L413
-                target_link_libraries(pyFerroX_${SD} PRIVATE pybind11::lto)
-            endif()
-        endif()
-    endif()
 
 #    if(FerroX_OPENPMD)
 #        target_link_libraries(ablastr_${SD} PUBLIC openPMD::openPMD)
@@ -636,21 +513,30 @@ foreach(D IN LISTS FerroX_DIMS)
 #        target_compile_definitions(ablastr_${SD} PUBLIC ABLASTR_USE_FFT)
 #    endif()
 
-#    # Time-dependent compilation support - matches Make.FerroX TIME_DEPENDENT=TRUE
-#    if(FerroX_TIME_DEPENDENT)
-#        target_compile_definitions(ablastr_${SD} PUBLIC TIME_DEPENDENT)
-#    endif()
+    # Time-dependent compilation support - matches Make.FerroX TIME_DEPENDENT=TRUE
+    if(FerroX_TIME_DEPENDENT)
+        target_compile_definitions(lib_${SD} PUBLIC TIME_DEPENDENT)
+    endif()
 
     # SUNDIALS compilation support - matches Make.FerroX USE_SUNDIALS=TRUE
     if(FerroX_SUNDIALS)
         target_compile_definitions(lib_${SD} PUBLIC USE_SUNDIALS)
     endif()
 
-    if(FerroX_PYTHON AND pyFerroX_VERSION_INFO)
-        # for module __version__
-        target_compile_definitions(pyFerroX_${SD} PRIVATE
-            PYFERROX_VERSION_INFO=${pyFerroX_VERSION_INFO})
+    # Print debug options - matches Make.FerroX PRINT_* options
+    if(FerroX_PRINT_HIGH)
+        target_compile_definitions(lib_${SD} PUBLIC PRINT_HIGH PRINT_MEDIUM PRINT_LOW PRINT_NAME)
     endif()
+    if(FerroX_PRINT_MEDIUM)
+        target_compile_definitions(lib_${SD} PUBLIC PRINT_MEDIUM PRINT_LOW PRINT_NAME)
+    endif()
+    if(FerroX_PRINT_LOW)
+        target_compile_definitions(lib_${SD} PUBLIC PRINT_LOW PRINT_NAME)
+    endif()
+    if(FerroX_PRINT_NAME)
+        target_compile_definitions(lib_${SD} PUBLIC PRINT_NAME)
+    endif()
+
 
     # <cmath>: M_PI
 #    if(WIN32)
@@ -713,9 +599,6 @@ foreach(D IN LISTS FerroX_DIMS)
     if(FerroX_LIB)
         list(APPEND FerroX_INSTALL_TARGET_NAMES lib_${SD})
     endif()
-    if(FerroX_PYTHON)
-        list(APPEND FerroX_INSTALL_TARGET_NAMES pyFerroX_${SD})
-    endif()
 
     install(TARGETS ${FerroX_INSTALL_TARGET_NAMES}
         EXPORT FerroXTargets
@@ -763,91 +646,6 @@ foreach(D IN LISTS FerroX_DIMS)
 endforeach()
 
 
-# pip helpers for the pyferrox package #########################################
-#
-if(FerroX_PYTHON)
-    set(PY_PIP_OPTIONS "-v" CACHE STRING
-        "Additional parameters to pass to `pip` as ; separated list")
-    set(PY_PIP_INSTALL_OPTIONS "" CACHE STRING
-        "Additional parameters to pass to `pip install` as ; separated list")
-
-    # ensure all targets are built before we package them in a wheel
-    set(pyFerroX_INSTALL_TARGET_NAMES)
-    foreach(D IN LISTS FerroX_DIMS)
-        ferrox_set_suffix_dims(SD ${D})
-        list(APPEND pyFerroX_INSTALL_TARGET_NAMES pyFerroX_${SD})
-    endforeach()
-
-    # add a prefix to custom targets so we do not collide if used as a subproject
-    if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-        set(_FerroX_CUSTOM_TARGET_PREFIX_DEFAULT "")
-    else()
-        set(_FerroX_CUSTOM_TARGET_PREFIX_DEFAULT "ferrox_")
-    endif()
-    set(FerroX_CUSTOM_TARGET_PREFIX "${_FerroX_CUSTOM_TARGET_PREFIX_DEFAULT}"
-            CACHE STRING "Prefix for custom targets")
-
-    # build the wheel by re-using the python module that we build
-    add_custom_target(${FerroX_CUSTOM_TARGET_PREFIX}pip_wheel
-        ${CMAKE_COMMAND} -E rm -f -r ferrox-whl
-        COMMAND
-            ${CMAKE_COMMAND} -E env PYFERROX_LIB_DIR=$<TARGET_FILE_DIR:pyFerroX_${FerroX_DIMS_LAST}>
-                ${Python_EXECUTABLE} -m pip ${PY_PIP_OPTIONS} wheel --no-build-isolation --no-deps --wheel-dir=ferrox-whl "${FerroX_SOURCE_DIR}"
-        COMMAND_EXPAND_LISTS VERBATIM
-        WORKING_DIRECTORY
-            ${FerroX_BINARY_DIR}
-        DEPENDS
-            ${pyFerroX_INSTALL_TARGET_NAMES}
-    )
-
-    # this will also upgrade/downgrade dependencies, e.g., when the version of picmistandard changes
-    if(FerroX_MPI)
-        set(pyFerroX_REQUIREMENT_FILE "requirements_mpi.txt")
-    else()
-        set(pyFerroX_REQUIREMENT_FILE "requirements.txt")
-    endif()
-    add_custom_target(${FerroX_CUSTOM_TARGET_PREFIX}pip_install_requirements
-        ${Python_EXECUTABLE} -m pip ${PY_PIP_OPTIONS} install ${PY_PIP_INSTALL_OPTIONS} -r "${FerroX_SOURCE_DIR}/${pyFerroX_REQUIREMENT_FILE}"
-        COMMAND_EXPAND_LISTS VERBATIM
-        WORKING_DIRECTORY
-            ${FerroX_BINARY_DIR}
-    )
-
-    # if we do a superbuild, make sure we install pyAMReX via its custom install
-    # target
-    set(_EXTRA_INSTALL_DEPENDS)
-    if(FerroX_pyamrex_internal OR FerroX_pyamrex_src)
-        set(_EXTRA_INSTALL_DEPENDS pyamrex_pip_install)
-    endif()
-
-    # We force-install because in development, it is likely that the version of
-    # the package does not change, but the code did change. We need --no-deps,
-    # because otherwise pip would also force reinstall all dependencies.
-    add_custom_target(${FerroX_CUSTOM_TARGET_PREFIX}pip_install
-        ${CMAKE_COMMAND} -E env FERROX_MPI=${FerroX_MPI}
-            ${Python_EXECUTABLE} -m pip ${PY_PIP_OPTIONS} install --force-reinstall --no-index --no-deps ${PY_PIP_INSTALL_OPTIONS} --find-links=ferrox-whl pyferrox
-        COMMAND_EXPAND_LISTS VERBATIM
-        WORKING_DIRECTORY
-            ${FerroX_BINARY_DIR}
-        DEPENDS
-            pyFerroX_${FerroX_DIMS_LAST}
-            ${FerroX_CUSTOM_TARGET_PREFIX}pip_wheel
-            ${FerroX_CUSTOM_TARGET_PREFIX}pip_install_requirements
-            ${_EXTRA_INSTALL_DEPENDS}
-    )
-
-    # this is for package managers only
-    add_custom_target(${FerroX_CUSTOM_TARGET_PREFIX}pip_install_nodeps
-        ${CMAKE_COMMAND} -E env FERROX_MPI=${FerroX_MPI}
-            ${Python_EXECUTABLE} -m pip ${PY_PIP_OPTIONS} install --force-reinstall --no-index --no-deps ${PY_PIP_INSTALL_OPTIONS} --find-links=ferrox-whl pyferrox
-        COMMAND_EXPAND_LISTS VERBATIM
-        WORKING_DIRECTORY
-            ${FerroX_BINARY_DIR}
-        DEPENDS
-            pyFerroX_${FerroX_DIMS_LAST}
-            ${FerroX_CUSTOM_TARGET_PREFIX}pip_wheel
-    )
-endif()
 
 
 # Tests #######################################################################
