@@ -17,6 +17,10 @@ macro(find_sundials)
         # Configure SUNDIALS to match AMReX settings
         # See https://sundials.readthedocs.io/en/latest/Installation.html#configuration-options
 
+        #
+        # To specify the location of a pre-installed SUNDIALS, set the
+        # `SUNDIALS_DIR` variable or add the install directory to `CMAKE_PREFIX_PATH`.
+
         # Enable/disable MPI support to match AMReX
         if(FerroX_MPI)
             set(ENABLE_MPI ON CACHE INTERNAL "")
@@ -84,6 +88,9 @@ macro(find_sundials)
 
         if(FerroX_sundials_src)
             add_subdirectory(${FerroX_sundials_src} _deps/localsundials-build/)
+
+        # For local source builds, set SUNDIALS_FOUND so AMReX knows it's available
+        set(SUNDIALS_FOUND TRUE CACHE BOOL "SUNDIALS was built from local source" FORCE)
         else()
             FetchContent_Declare(fetchedsundials
                 GIT_REPOSITORY ${FerroX_sundials_repo}
@@ -91,6 +98,10 @@ macro(find_sundials)
                 BUILD_IN_SOURCE 0
             )
             FetchContent_MakeAvailable(fetchedsundials)
+
+            # After FetchContent_MakeAvailable, the SUNDIALS targets are available
+            # Set a variable so AMReX knows SUNDIALS is already available
+            set(SUNDIALS_FOUND TRUE CACHE BOOL "SUNDIALS was built via FetchContent" FORCE)
 
             # Advanced fetch options
             mark_as_advanced(FETCHCONTENT_SOURCE_DIR_FETCHEDSUNDIALS)
@@ -113,6 +124,9 @@ macro(find_sundials)
         mark_as_advanced(ENABLE_INSTALL_DOCS)
 
         message(STATUS "SUNDIALS: Using internal build")
+
+        # Ensure SUNDIALS_FOUND is set for both internal build paths
+        # set(SUNDIALS_FOUND TRUE CACHE BOOL "SUNDIALS built internally" FORCE)
     else()
         message(STATUS "Searching for pre-installed SUNDIALS ...")
         
@@ -145,7 +159,7 @@ set(FerroX_sundials_repo "https://github.com/LLNL/sundials.git"
     CACHE STRING
     "Repository URI to pull and build SUNDIALS from if(FerroX_sundials_internal)")
 
-set(FerroX_sundials_branch "release"
+set(FerroX_sundials_branch "main"
     CACHE STRING
     "Repository branch for FerroX_sundials_repo if(FerroX_sundials_internal)")
 
@@ -154,5 +168,6 @@ option(FerroX_sundials_internal "Download & build SUNDIALS" ON)
 
 # Call the macro
 if(FerroX_SUNDIALS)
+    message(STATUS "Calling find_sundials here")
     find_sundials()
 endif()

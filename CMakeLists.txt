@@ -81,7 +81,13 @@ option(FerroX_TIME_DEPENDENT "Time-dependent support" OFF)
 option(FerroX_SUNDIALS "SUNDIALS support" OFF)
 
 # Conditional dependency logic matching Make.FerroX behavior
+# SUNDIALS 
+#   builds SUNDIALS from source (default) or finds an existing install
+#   only included when FerroX_SUNDIALS is enabled
 if(FerroX_SUNDIALS)
+    # Build/find SUNDIALS first, before AMReX looks for it
+    include(${FerroX_SOURCE_DIR}/cmake/dependencies/SUNDIALS.cmake)
+
     # Enable AMReX SUNDIALS support when FerroX SUNDIALS is requested
     set(AMReX_SUNDIALS ON CACHE BOOL "Enable SUNDIALS interfaces" FORCE)
 endif()
@@ -251,20 +257,6 @@ foreach(D IN LISTS FerroX_amrex_dim)
 endforeach()
 # For <AMReX_buildInfo.H>
 include(AMReXBuildInfo)
-
-# SUNDIALS 
-#   builds SUNDIALS from source (default) or finds an existing install
-#   only included when FerroX_SUNDIALS is enabled
-if(FerroX_SUNDIALS)
-    # Find and build SUNDIALS if enabled
-    #  This is called after we read the options.
-    #  The SUNDIALS build settings must be configured before
-    #  AMReX, which depends on it.
-    include(${FerroX_SOURCE_DIR}/cmake/dependencies/SUNDIALS.cmake)
-
-# Enable AMReX SUNDIALS support when FerroX SUNDIALS is requested
-set(AMReX_SUNDIALS ON CACHE BOOL "Enable SUNDIALS interfaces" FORCE)
-endif()
 
 # PICSAR
 #   builds PICSAR from source
