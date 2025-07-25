@@ -315,4 +315,11 @@ set(FerroX_amrex_branch ${amrex_commit}
     CACHE STRING
     "Repository branch for FerroX_amrex_repo if(FerroX_amrex_internal)")
 
+# Override branch if AMReX PR is specified (for testing)
+if(FerroX_amrex_pr AND NOT FerroX_amrex_pr STREQUAL "")
+    set(FerroX_amrex_branch "pull/${FerroX_amrex_pr}/head" CACHE STRING 
+        "Using AMReX PR #${FerroX_amrex_pr}" FORCE)
+    message(STATUS "AMReX: Using pull request #${FerroX_amrex_pr}")
+endif()
+
 find_amrex()

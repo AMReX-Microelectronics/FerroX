@@ -160,6 +160,12 @@ mark_as_advanced(FerroX_MPI_THREAD_MULTIPLE)
 
 option(FerroX_amrex_internal                    "Download & build AMReX" ON)
 
+# PR testing options (primarily for CI/testing)
+set(FerroX_amrex_pr "" CACHE STRING "AMReX pull request number for testing")
+set(FerroX_ferrox_pr "" CACHE STRING "FerroX pull request number for testing")
+mark_as_advanced(FerroX_amrex_pr)
+mark_as_advanced(FerroX_ferrox_pr)
+
 # change the default build type to Release (or RelWithDebInfo) instead of Debug
 set_default_build_type("Release")
 
