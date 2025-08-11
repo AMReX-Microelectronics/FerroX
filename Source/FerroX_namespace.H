@@ -3,6 +3,15 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int nsteps;
     extern AMREX_GPU_MANAGED int plot_int;
 
+    extern AMREX_GPU_MANAGED int hardswitch_flag;
+    extern AMREX_GPU_MANAGED int nucleation_flag;
+
+    
+    extern AMREX_GPU_MANAGED amrex::Real hardswitch_ratio;
+    extern AMREX_GPU_MANAGED amrex::Real nucleation_ratio;
+    extern AMREX_GPU_MANAGED amrex::Real hardswitch_alpha_ratio;
+
+
     extern int plot_Phi;
     extern int plot_PoissonRHS;
     extern int plot_E;

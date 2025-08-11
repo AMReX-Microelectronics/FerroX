@@ -198,6 +198,18 @@ void main_main (c_FerroX& rFerroX)
                                    alpha_12, 
                                    alpha_112, 
                                    alpha_123);
+
+    //check hardswitch_ratio and nucleation_ratio
+    if (hardswitch_ratio > 1.0 || nucleation_ratio > 1.0 || (hardswitch_ratio + nucleation_ratio) > 1.0) {
+        amrex::Abort("ERROR: hardswitch_ratio, nucleation_ratio, or their sum exceeds 1.0. Please check input parameters.");
+    }
+    
+    // define hard to switch spots with larger alpha value
+    if(hardswitch_flag == 1){
+        printf("Set HardSwitch with ratio of:%g, with hardswitch_alpha_ratio:%g \n", hardswitch_ratio, hardswitch_alpha_ratio);
+        SetHardToSwitchNucleation(alpha, MaterialMask, n_cell, hardswitch_ratio, hardswitch_alpha_ratio);
+    }
+
     //InitializeMaterialMask(rFerroX, geom, MaterialMask);
     if(Coordinate_Transformation == 1){
        Initialize_tphase_Mask(rFerroX, geom, tphaseMask);
@@ -248,7 +260,10 @@ void main_main (c_FerroX& rFerroX)
 
     //InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);//old
     InitializePandRho(P_old, BigGamma, charge_den, e_den, hole_den, MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);//mask based
-    SetNucleation(P_old, MaterialMask, n_cell);
+    if(nucleation_flag == 1){
+        printf("Set Nucleation with ratio of:%g, with hardswitch_ratio:%g \n", nucleation_ratio, hardswitch_ratio);
+        SetNucleation(P_old, MaterialMask, n_cell, hardswitch_ratio, nucleation_ratio);
+    }
 
 #ifdef AMREX_USE_EB
     ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr, 
@@ -327,7 +342,10 @@ void main_main (c_FerroX& rFerroX)
                 P_old[i].FillBoundary(geom.periodicity());
                 P_new_pre[i].FillBoundary(geom.periodicity());
             }
-            SetNucleation(P_old, MaterialMask, n_cell);
+            if(nucleation_flag == 1){
+                printf("Set Nucleation with ratio of:%g, with hardswitch_ratio:%g \n", nucleation_ratio, hardswitch_ratio);
+                SetNucleation(P_old, MaterialMask, n_cell, hardswitch_ratio, nucleation_ratio);
+            }
             
         } else {
         

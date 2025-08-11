@@ -164,6 +164,19 @@ c_FerroX::InitData ()
 AMREX_GPU_MANAGED int FerroX::nsteps;
 AMREX_GPU_MANAGED int FerroX::plot_int;
 
+
+//hardtoswitch & nucleation mask
+AMREX_GPU_MANAGED int FerroX::hardswitch_flag;
+AMREX_GPU_MANAGED int FerroX::nucleation_flag;
+
+//hardtoswitch & nucleation ratio
+AMREX_GPU_MANAGED amrex::Real FerroX::hardswitch_ratio;
+AMREX_GPU_MANAGED amrex::Real FerroX::nucleation_ratio;
+
+//hardtoswitch & nucleation alpha
+AMREX_GPU_MANAGED amrex::Real FerroX::hardswitch_alpha_ratio;
+
+
 // time step
 AMREX_GPU_MANAGED amrex::Real FerroX::dt;
 
@@ -312,55 +325,55 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.query("plot_PoissonRHS",plot_PoissonRHS);
      plot_E = 1;    
      pp.query("plot_E",plot_E);    
-     plot_holes = 1;
+    //  plot_holes = 1;
      pp.query("plot_holes",plot_holes); 
-     plot_electrons = 1;
+    //  plot_electrons = 1;
      pp.query("plot_electrons",plot_electrons); 
-     plot_charge = 1;
+    //  plot_charge = 1;
      pp.query("plot_charge",plot_charge); 
-     plot_epsilon = 1;
+    //  plot_epsilon = 1;
      pp.query("plot_epsilon",plot_epsilon); 
-     plot_mask = 1;
+    //  plot_mask = 1;
      pp.query("plot_mask",plot_mask); 
-     plot_tphase = 1;
+    //  plot_tphase = 1;
      pp.query("plot_tphase",plot_tphase); 
 
-     plot_mat_BigGamma = 1;
+    //  plot_mat_BigGamma = 1;
      pp.query("plot_mat_BigGamma",plot_mat_BigGamma); 
-     plot_mat_alpha = 1;
+    //  plot_mat_alpha = 1;
      pp.query("plot_mat_alpha",plot_mat_alpha); 
-     plot_mat_beta = 1;
+    //  plot_mat_beta = 1;
      pp.query("plot_mat_beta",plot_mat_beta); 
-     plot_mat_gamma = 1;
+    //  plot_mat_gamma = 1;
      pp.query("plot_mat_gamma",plot_mat_gamma); 
-     plot_mat_epsilonX_fe = 1;
+    //  plot_mat_epsilonX_fe = 1;
      pp.query("plot_mat_epsilonX_fe",plot_mat_epsilonX_fe); 
-     plot_mat_epsilonZ_fe = 1;
+    //  plot_mat_epsilonZ_fe = 1;
      pp.query("plot_mat_epsilonZ_fe",plot_mat_epsilonZ_fe); 
-     plot_mat_epsilon_de = 1;
+    //  plot_mat_epsilon_de = 1;
      pp.query("plot_mat_epsilon_de",plot_mat_epsilon_de); 
-     plot_mat_epsilon_si = 1;
+    //  plot_mat_epsilon_si = 1;
      pp.query("plot_mat_epsilon_si",plot_mat_epsilon_si); 
-     plot_mat_g11 = 1;
+    //  plot_mat_g11 = 1;
      pp.query("plot_mat_g11",plot_mat_g11); 
-     plot_mat_g44 = 1;
+    //  plot_mat_g44 = 1;
      pp.query("plot_mat_g44",plot_mat_g44); 
-     plot_mat_g44_p = 1;
+    //  plot_mat_g44_p = 1;
      pp.query("plot_mat_g44_p",plot_mat_g44_p); 
-     plot_mat_g12 = 1;
+    //  plot_mat_g12 = 1;
      pp.query("plot_mat_g12",plot_mat_g12); 
-     plot_mat_alpha_12 = 1;
+    //  plot_mat_alpha_12 = 1;
      pp.query("plot_mat_alpha_12",plot_mat_alpha_12); 
-     plot_mat_alpha_112 = 1;
+    //  plot_mat_alpha_112 = 1;
      pp.query("plot_mat_alpha_112",plot_mat_alpha_112); 
-     plot_mat_alpha_123 = 1;
+    //  plot_mat_alpha_123 = 1;
      pp.query("plot_mat_alpha_123",plot_mat_alpha_123); 
 
-     plot_angle_alpha = 1 ;
+    //  plot_angle_alpha = 1 ;
      pp.query("plot_angle_alpha",plot_angle_alpha); 
-     plot_angle_beta = 1;
+    //  plot_angle_beta = 1;
      pp.query("plot_angle_beta",plot_angle_beta); 
-     plot_angle_theta = 1;
+    //  plot_angle_theta = 1;
      pp.query("plot_angle_theta",plot_angle_theta); 
      plot_PhiDiff = 1;
      pp.query("plot_PhiDiff",plot_PhiDiff); 
@@ -408,6 +421,31 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      //  If plot_int < 0 then no plot files will be written
      plot_int = -1;
      pp.query("plot_int",plot_int);
+
+
+     //hardswitch flag
+     hardswitch_flag = 0;
+     pp.query("hardswitch_flag",hardswitch_flag);
+
+     //hardswitch ratio
+    if (hardswitch_flag == 1) {
+        pp.get("hardswitch_ratio", hardswitch_ratio);
+    }
+
+    if (hardswitch_flag == 1) {
+        pp.get("hardswitch_alpha_ratio", hardswitch_alpha_ratio);
+    }
+
+
+     //nucleation flag
+     nucleation_flag = 0;
+     pp.query("nucleation_flag",nucleation_flag);
+
+     //nucleation ratio
+    
+     if (nucleation_flag == 1) {
+        pp.get("nucleation_ratio", nucleation_ratio);
+    }
 
      // time step
      pp.get("dt",dt);
