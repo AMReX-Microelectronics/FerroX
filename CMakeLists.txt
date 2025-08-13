@@ -102,20 +102,9 @@ option(FerroX_PRINT_LOW     "Enable low level debug printing"               OFF)
 option(FerroX_PRINT_NAME    "Enable function name debug printing"           OFF)
 
 # Advanced option to run tests
-option(FerroX_TEST_CLEANUP "Clean up automated test directories" OFF)
-option(FerroX_TEST_DEBUGGER "Run automated tests without AMReX signal handling (to attach debuggers)" OFF)
-option(FerroX_TEST_FPETRAP "Run automated tests with FPE-trapping runtime parameters" OFF)
-mark_as_advanced(FerroX_TEST_CLEANUP)
-mark_as_advanced(FerroX_TEST_DEBUGGER)
-mark_as_advanced(FerroX_TEST_FPETRAP)
 
 # Advanced option to compile with the -g1 option for minimal debug symbols
 # (useful to see, e.g., line numbers in backtraces)
-option(FerroX_BACKTRACE_INFO "Compile with -g1 for minimal debug symbols (currently used in CI tests)" OFF)
-mark_as_advanced(FerroX_BACKTRACE_INFO)
-if(FerroX_BACKTRACE_INFO)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g1")
-endif()
 
 set(FerroX_DIMS_VALUES 3)
 set(FerroX_DIMS 3 CACHE STRING "Simulation dimensionality (3D only)")
@@ -309,20 +298,6 @@ foreach(D IN LISTS FerroX_DIMS)
         list(APPEND _ALL_TARGETS app_${SD})
     endif()
 
-#    if(FerroX_PYTHON OR (FerroX_LIB AND BUILD_SHARED_LIBS))
-#        set(ABLASTR_POSITION_INDEPENDENT_CODE ON CACHE BOOL
-#            "Build ABLASTR with position independent code" FORCE)
-#    endif()
-
-#    # ABLASTR library (static or shared)
-#    set_target_properties(ablastr_${SD} PROPERTIES
-#        WINDOWS_EXPORT_ALL_SYMBOLS ON
-#    )
-#    if(ABLASTR_POSITION_INDEPENDENT_CODE)
-#        set_target_properties(ablastr_${SD} PROPERTIES
-#            POSITION_INDEPENDENT_CODE ON
-#        )
-#    endif()
 
     # own headers
 #    target_include_directories(ablastr_${SD} PUBLIC
@@ -423,32 +398,9 @@ foreach(D IN LISTS FerroX_DIMS)
         endif()
     endif()
 
-#    if(ABLASTR_FFT)
-#        target_link_libraries(ablastr_${SD} PUBLIC FerroX::thirdparty::FFT)
-#        if(D STREQUAL "RZ")
-#            target_link_libraries(ablastr_${SD} PUBLIC blaspp)
-#            target_link_libraries(ablastr_${SD} PUBLIC lapackpp)
-
-#            # BLAS++ forgets to declare cuBLAS and cudaRT dependencies
-#            if(FerroX_COMPUTE STREQUAL CUDA)
-#                find_package(CUDAToolkit REQUIRED)
-#                target_link_libraries(ablastr_${SD} PUBLIC CUDA::cudart CUDA::cublas)
-#            endif()
-#        endif()
-#    endif()
 
 
-#    if(FerroX_OPENPMD)
-#        target_link_libraries(ablastr_${SD} PUBLIC openPMD::openPMD)
-#    endif()
 
-#    if(FerroX_QED)
-#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_QED)
-#        if(FerroX_QED_TABLE_GEN)
-#            target_compile_definitions(ablastr_${SD} PUBLIC FERROX_QED_TABLE_GEN)
-#        endif()
-#        target_link_libraries(ablastr_${SD} PUBLIC PXRMP_QED::PXRMP_QED)
-#    endif()
 endforeach()
 
 # C++ properties: at least a C++17 capable compiler is needed
@@ -486,38 +438,6 @@ endforeach()
 #
 foreach(D IN LISTS FerroX_DIMS)
     ferrox_set_suffix_dims(SD ${D})
-#    if(D STREQUAL 3)
-#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_3D FERROX_ZINDEX=2)
-#    elseif(D STREQUAL 2)
-#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_XZ FERROX_ZINDEX=1)
-#    elseif(D STREQUAL 1)
-#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_1D_Z FERROX_ZINDEX=0)
-#    elseif(D STREQUAL "RZ")
-#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_RZ FERROX_ZINDEX=1)
-#    elseif(D STREQUAL "RCYLINDER")
-#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_RCYLINDER)
-#    elseif(D STREQUAL "RSPHERE")
-#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_DIM_RSPHERE)
-#    endif()
-
-#    if(FerroX_OPENPMD)
-#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_USE_OPENPMD)
-#    endif()
-
-#    if(FerroX_QED)
-#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_QED)
-#        if(FerroX_QED_TABLE_GEN)
-#            target_compile_definitions(ablastr_${SD} PUBLIC FerroX_QED_TABLE_GEN)
-#        endif()
-#    endif()
-
-#    if(FerroX_FFT)
-#        target_compile_definitions(ablastr_${SD} PUBLIC FERROX_USE_FFT)
-#    endif()
-#    if(ABLASTR_FFT)
-#        # We need to enable FFT support in ABLASTR for PSATD solver
-#        target_compile_definitions(ablastr_${SD} PUBLIC ABLASTR_USE_FFT)
-#    endif()
 
     # Time-dependent compilation support - matches Make.FerroX TIME_DEPENDENT=TRUE
     if(FerroX_TIME_DEPENDENT)
