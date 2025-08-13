@@ -112,25 +112,25 @@ You can run the following to simulate a MFIM heterostructure with a 5 nm HZO as 
 ### GNU Make builds (from Exec directory)
 ```bash
 # For MPI+OMP build
-mpirun -n 4 ./main3d.gnu.TPROF.MPI.OMP.ex Examples/inputs_mfim_Noeb
+mpirun -n 4 ./main3d.gnu.TPROF.MPI.OMP.ex Exec/Examples/inputs_mfim_Noeb
 
 # For MPI+CUDA build
-mpirun -n 4 ./main3d.gnu.TPROF.MPI.CUDA.ex Examples/inputs_mfim_Noeb
+mpirun -n 4 ./main3d.gnu.TPROF.MPI.CUDA.ex Exec/Examples/inputs_mfim_Noeb
 
 # With embedded boundaries
-mpirun -n 4 ./main3d.gnu.TPROF.MPI.OMP.EB.ex Examples/inputs_mfim_eb
+mpirun -n 4 ./main3d.gnu.TPROF.MPI.OMP.EB.ex Exec/Examples/inputs_mfim_eb
 ```
 
 ### CMake builds (from project root directory)
 ```bash
 # For MPI+OMP build
-mpirun -n 4 ./build/main3d.gnu.TPROF.MPI.OMP.ex Examples/inputs_mfim_Noeb
+mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MPI.OMP.ex Exec/Examples/inputs_mfim_Noeb
 
 # For MPI+CUDA build  
-mpirun -n 4 ./build/main3d.gnu.TPROF.MPI.CUDA.ex Examples/inputs_mfim_Noeb
+mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MPI.CUDA.ex Exec/Examples/inputs_mfim_Noeb
 
 # With embedded boundaries (if built with -DFerroX_EB=ON)
-mpirun -n 4 ./build/main3d.gnu.TPROF.MPI.OMP.EB.ex Examples/inputs_mfim_eb
+mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MPI.OMP.EB.ex Exec/Examples/inputs_mfim_eb
 ```
 # Visualization and Data Analysis
 Refer to the following link for several visualization tools that can be used for AMReX plotfiles. 
