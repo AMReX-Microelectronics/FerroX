@@ -430,7 +430,7 @@ foreach(D IN LISTS FerroX_DIMS)
     ferrox_set_suffix_dims(SD ${D})
 
     # fancy binary name for build variants
-    set_ferrox_binary_name(${D})
+    ferrox_set_binary_name(${D})
 endforeach()
 
 

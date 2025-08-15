@@ -262,10 +262,20 @@ function(ferrox_make_third_party_includes_system imported_target propagated_name
 endfunction()
 
 
-# Set a feature-based binary name for the WarpX executable and create a generic
-# warpx symlink to it. Only sets options relevant for users (see summary).
+# Set a feature-based binary name for the FerroX executable following the same 
+# naming logic as AMReX's GNU Make system
 #
-function(set_ferrox_binary_name D)
+# Parameters:
+#   D - dimension (e.g., 3)
+#   SIMPLE_NAME - optional, if TRUE, uses just basic name without feature suffixes
+#
+function(ferrox_set_binary_name D)
+    # Parse optional arguments
+    set(options SIMPLE_NAME)
+    set(oneValueArgs "")
+    set(multiValueArgs "")
+    cmake_parse_arguments(FERROX_NAME "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
     ferrox_set_suffix_dims(SD ${D})
 
     set(ferrox_bin_names)
@@ -277,108 +287,132 @@ function(set_ferrox_binary_name D)
         list(APPEND ferrox_bin_names lib_${SD})
         # On WIN32, the OUTPUT_NAME must not collide between lib and app!
         if(WIN32)
-            set_target_properties(lib_${SD} PROPERTIES OUTPUT_NAME "libferrox")
+            set_target_properties(lib_${SD} PROPERTIES OUTPUT_NAME "libferrox${SD}")
         else()
-            set_target_properties(lib_${SD} PROPERTIES OUTPUT_NAME "ferrox")
+            set_target_properties(lib_${SD} PROPERTIES OUTPUT_NAME "ferrox${SD}")
         endif()
     endif()
+
     foreach(tgt IN LISTS ferrox_bin_names)
-        set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".${SD}")
-
-        if(FerroX_MPI)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".MPI")
+        # If SIMPLE_NAME is requested, skip all the feature suffixes
+        if(FERROX_NAME_SIMPLE_NAME)
+            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".ex")
         else()
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".NOMPI")
-        endif()
+            # Machine suffix components in exact order from Make.defs:
+            # $(lowercase_comp)$(archSuffix)$(PrecisionSuffix)$(DebugSuffix)$(ProfSuffix)$(MProfSuffix)$(MPISuffix)$(UPCXXSuffix)$(OMPSuffix)$(ACCSuffix)$(GPUSuffix)$(CUPTISuffix)$(USERSuffix)
 
-        set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".${FerroX_COMPUTE}")
-
-        if(FerroX_PRECISION STREQUAL "DOUBLE")
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".DP")
-        else()
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".SP")
-        endif()
-
-        if(WarpX_PARTICLE_PRECISION STREQUAL "DOUBLE")
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".PDP")
-        else()
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".PSP")
-        endif()
-
-        if(WarpX_ASCENT)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".ASCENT")
-        endif()
-
-        if(WarpX_CATALYST)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".CATALYST")
-        endif()
-
-        if(WarpX_OPENPMD)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".OPMD")
-        endif()
-
-        if(WarpX_FFT)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".FFT")
-        endif()
-
-        if(WarpX_EB)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".EB")
-        endif()
-
-        if(WarpX_QED)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".QED")
-        endif()
-
-        if(WarpX_QED_TABLE_GEN)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".GENQEDTABLES")
-        endif()
-
-        if(WarpX_SENSEI)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".SENSEI")
-        endif()
-
-        # Profiling suffix based on AMReX options
-        if(FerroX_APP)
-            if(AMReX_TINY_PROFILE)
-                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".TPROF")
-            elseif(AMReX_TRACE_PROFILE AND AMReX_COMM_PROFILE)
-                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".COMTR_PROF")
-            elseif(AMReX_TRACE_PROFILE)
-                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".TRACE_PROF")
-            elseif(AMReX_COMM_PROFILE)
-                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".COMM_PROF")
-            elseif(AMReX_BASE_PROFILE)
-                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".PROF")
+            # lowercase_comp - compiler name
+            if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".gnu")
+            elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".intel")
+            elseif(CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".intel-llvm")
+            elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".llvm")
+            elseif(CMAKE_CXX_COMPILER_ID STREQUAL "PGI" OR CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".nvhpc")
+            elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Cray")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".cray")
+            elseif(CMAKE_CXX_COMPILER_ID STREQUAL "XL")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".ibm")
             endif()
+
+            # archSuffix - architecture suffix (typically from CRAY_CPU_TARGET)
+            if(DEFINED ENV{CRAY_CPU_TARGET} AND NOT FerroX_COMPUTE STREQUAL "CUDA")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".$ENV{CRAY_CPU_TARGET}")
+            endif()
+
+            # PrecisionSuffix - precision
+            if(FerroX_PRECISION STREQUAL "SINGLE")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".FLOAT")
+            endif()
+
+            # DebugSuffix - debug/test mode
+            if(CMAKE_BUILD_TYPE MATCHES "Debug")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".DEBUG")
+            elseif(FerroX_TESTING AND NOT CMAKE_BUILD_TYPE MATCHES "Debug")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".TEST")
+            endif()
+
+            # ProfSuffix - profiling suffix
+            if(AMReX_TRACE_PROFILE AND AMReX_COMM_PROFILE)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".COMTR_PROF")
+            elseif(AMReX_TRACE_PROFILE AND NOT AMReX_COMM_PROFILE)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".TRACE_PROF")
+            elseif(NOT AMReX_TRACE_PROFILE AND AMReX_COMM_PROFILE)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".COMM_PROF")
+            elseif(NOT AMReX_TRACE_PROFILE AND NOT AMReX_COMM_PROFILE AND AMReX_BASE_PROFILE)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".PROF")
+            elseif(AMReX_TINY_PROFILE)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".TPROF")
+            endif()
+
+            # MProfSuffix - memory profiling
+            if(AMReX_MEM_PROFILE)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".MPROF")
+            endif()
+
+            # MPISuffix - MPI configuration
+            if(FerroX_MPI_THREAD_MULTIPLE)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".MTMPI")
+            elseif(FerroX_MPI)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".MPI")
+            endif()
+
+
+            # OMPSuffix - OpenMP configuration
+            if(AMReX_OMP)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".OMP")
+            endif()
+
+
+            # GPUSuffix - GPU backend
+            if(FerroX_COMPUTE STREQUAL "HIP")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".HIP")
+            elseif(FerroX_COMPUTE STREQUAL "CUDA")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".CUDA")
+            elseif(FerroX_COMPUTE STREQUAL "SYCL")
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".SYCL")
+            endif()
+
+
+            # FerroX-specific suffixes
+            if(FerroX_TIME_DEPENDENT)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".TD")
+            endif()
+
+            if(FerroX_SUNDIALS)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".SUNDIALS")
+            endif()
+
+            if(FerroX_EB)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".EB")
+            endif()
+
+            # USERSuffix - user-defined suffix
+            if(DEFINED FerroX_USER_SUFFIX)
+                set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME "${FerroX_USER_SUFFIX}")
+            endif()
+
+            # Final .ex extension (matching GNU Make behavior)
+            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".ex")
         endif()
 
-        # FerroX-specific suffixes matching Make.FerroX behavior
-        if(FerroX_TIME_DEPENDENT)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".TD")
-        endif()
-
-        if(FerroX_SUNDIALS)
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".SUNDIALS")
-        endif()
-
-        if(CMAKE_BUILD_TYPE MATCHES "Debug")
-            set_property(TARGET ${tgt} APPEND_STRING PROPERTY OUTPUT_NAME ".DEBUG")
-        endif()
-
+        # Create symlinks for convenience
         if(FerroX_APP)
             # alias to the latest build, because using the full name is often confusing
             add_custom_command(TARGET app_${SD} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E create_symlink
                     $<TARGET_FILE_NAME:app_${SD}>
-                    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ferrox.${SD}
+                    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ferrox${SD}
             )
         endif()
         if(FerroX_LIB)
-            # alias to the latest build; this is the one expected by Python bindings
             add_custom_command(TARGET lib_${SD} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E create_symlink
                     $<TARGET_FILE_NAME:lib_${SD}>
-                    $<TARGET_FILE_DIR:lib_${SD}>/libferrox.${SD}$<TARGET_FILE_SUFFIX:lib_${SD}>
+                    $<TARGET_FILE_DIR:lib_${SD}>/libferrox${SD}$<TARGET_FILE_SUFFIX:lib_${SD}>
             )
         endif()
     endforeach()
