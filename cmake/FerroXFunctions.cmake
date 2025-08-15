@@ -1,6 +1,6 @@
 # CMake functions for FerroX build system
-# Adapted from WarpX CMake functions
-# Original source: https://github.com/ECP-WarpX/WarpX
+# Adapted from FerroX CMake functions
+# Original source: https://github.com/ECP-FerroX/FerroX
 
 # Set C++17 for the whole build if not otherwise requested
 #
@@ -96,9 +96,9 @@ macro(set_default_install_dirs)
     endif()
 
     if(WIN32)
-        set(WarpX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_CMAKEDIR}")
+        set(FerroX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_CMAKEDIR}")
     else()
-        set(WarpX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_CMAKEDIR}/WarpX")
+        set(FerroX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_CMAKEDIR}/FerroX")
     endif()
 endmacro()
 
@@ -123,9 +123,9 @@ macro(ferrox_set_default_install_dirs)
     endif()
 
     if(WIN32)
-        set(WarpX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_CMAKEDIR}")
+        set(FerroX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_CMAKEDIR}")
     else()
-        set(WarpX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_CMAKEDIR}/WarpX")
+        set(FerroX_INSTALL_CMAKEDIR "${CMAKE_INSTALL_CMAKEDIR}/FerroX")
     endif()
 endmacro()
 
@@ -221,13 +221,13 @@ function(ferrox_enable_IPO all_targets_list)
             set_target_properties(${tgt} PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
         endforeach()
     else()
-        message(FATAL_ERROR "Interprocedural optimization is not available, set WarpX_IPO=OFF")
+        message(FATAL_ERROR "Interprocedural optimization is not available, set FerroX_IPO=OFF")
     endif()
 endfunction()
 
 # Set the suffix for targets and binaries depending on dimension
 #
-# User specify 1;2;3;RZ;RCYLINDER;RSPHERE in WarpX_DIMS.
+# User specify 1;2;3;RZ;RCYLINDER;RSPHERE in FerroX_DIMS.
 # We append to CMake targets and binaries the suffix "Nd" for 1,2,3 or otherwise the lowercase dimension string
 #
 macro(ferrox_set_suffix_dims suffix dim)
@@ -472,12 +472,12 @@ function(get_source_version NAME SOURCE_DIR)
 endfunction ()
 
 
-# Prints a summary of WarpX options at the end of the CMake configuration
+# Prints a summary of FerroX options at the end of the CMake configuration
 #
 function(ferrox_print_summary)
     message("")
-    message("WarpX build configuration:")
-    message("  Version: ${WarpX_VERSION} (${WarpX_GIT_VERSION})")
+    message("FerroX build configuration:")
+    message("  Version: ${FerroX_VERSION} (${FerroX_GIT_VERSION})")
     message("  C++ Compiler: ${CMAKE_CXX_COMPILER_ID} "
                             "${CMAKE_CXX_COMPILER_VERSION} "
                             "${CMAKE_CXX_COMPILER_WRAPPER}")
@@ -487,8 +487,8 @@ function(ferrox_print_summary)
     message("        bin: ${CMAKE_INSTALL_BINDIR}")
     message("        lib: ${CMAKE_INSTALL_LIBDIR}")
     message("    include: ${CMAKE_INSTALL_INCLUDEDIR}")
-    message("      cmake: ${WarpX_INSTALL_CMAKEDIR}")
-    if(WarpX_PYTHON)
+    message("      cmake: ${FerroX_INSTALL_CMAKEDIR}")
+    if(FerroX_PYTHON)
         message("     python: ${CMAKE_INSTALL_PYTHONDIR}")
     endif()
     message("")
@@ -505,7 +505,7 @@ function(ferrox_print_summary)
         else()
             set(LIB_TYPE " (static")
         endif()
-        if(WarpX_UNITY_BUILD)
+        if(FerroX_UNITY_BUILD)
             set(LIB_TYPE "${LIB_TYPE}, unity build")
         endif()
         set(LIB_TYPE "${LIB_TYPE})")
@@ -513,29 +513,29 @@ function(ferrox_print_summary)
     #message("  Testing: ${BUILD_TESTING}")
     message("  Build options:")
     message("    APP: ${FerroX_APP}")
-    message("    ASCENT: ${WarpX_ASCENT}")
-    message("    CATALYST: ${WarpX_CATALYST}")
+    message("    ASCENT: ${FerroX_ASCENT}")
+    message("    CATALYST: ${FerroX_CATALYST}")
     message("    COMPUTE: ${FerroX_COMPUTE}")
-    message("    SIMD: ${WarpX_SIMD}")
-    message("    DIMS: ${WarpX_DIMS}")
-    message("    Embedded Boundary: ${WarpX_EB}")
-    message("    IPO/LTO: ${WarpX_IPO}")
+    message("    SIMD: ${FerroX_SIMD}")
+    message("    DIMS: ${FerroX_DIMS}")
+    message("    Embedded Boundary: ${FerroX_EB}")
+    message("    IPO/LTO: ${FerroX_IPO}")
     message("    LIB: ${FerroX_LIB}${LIB_TYPE}")
     message("    MPI: ${FerroX_MPI}")
     if(MPI)
         message("    MPI (thread multiple): ${FerroX_MPI_THREAD_MULTIPLE}")
     endif()
-    message("    PARTICLE PRECISION: ${WarpX_PARTICLE_PRECISION}")
+    message("    PARTICLE PRECISION: ${FerroX_PARTICLE_PRECISION}")
     message("    PRECISION: ${FerroX_PRECISION}")
-    message("    FFT Solvers: ${WarpX_FFT}")
-    message("    PYTHON: ${WarpX_PYTHON}")
-    if(WarpX_PYTHON)
-        message("    PYTHON IPO: ${WarpX_PYTHON_IPO}")
+    message("    FFT Solvers: ${FerroX_FFT}")
+    message("    PYTHON: ${FerroX_PYTHON}")
+    if(FerroX_PYTHON)
+        message("    PYTHON IPO: ${FerroX_PYTHON_IPO}")
     endif()
-    message("    OPENPMD: ${WarpX_OPENPMD}")
-    message("    QED: ${WarpX_QED}")
-    message("    QED table generation: ${WarpX_QED_TABLE_GEN}")
-    message("    QED tools: ${WarpX_QED_TOOLS}")
-    message("    SENSEI: ${WarpX_SENSEI}")
+    message("    OPENPMD: ${FerroX_OPENPMD}")
+    message("    QED: ${FerroX_QED}")
+    message("    QED table generation: ${FerroX_QED_TABLE_GEN}")
+    message("    QED tools: ${FerroX_QED_TOOLS}")
+    message("    SENSEI: ${FerroX_SENSEI}")
     message("")
 endfunction()
