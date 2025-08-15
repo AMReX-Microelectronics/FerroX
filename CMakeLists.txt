@@ -179,25 +179,12 @@ if(FerroX_APP)
     set(FerroX_LIB ON CACHE STRING "Build FerroX as a library" FORCE)
 endif()
 
-# deprecated options: transition phase
-
-if(DEFINED FerroX_PSATD)
-    message(WARNING "CMake option FerroX_PSATD is deprecated. Use FerroX_FFT instead.\n"
-                    "Overwriting FerroX_FFT with '${FerroX_PSATD}' because FerroX_PSATD was set.")
-    set(FerroX_FFT ${FerroX_PSATD} CACHE STRING "FFT-based solvers" FORCE)
-endif()
 
 # note: we could skip this if we solely build FerroX_APP, but if we build a
-# shared FerroX library or a third party, like ImpactX, uses ablastr in a
-# shared library (e.g., for Python bindings), then we need relocatable code.
+# shared FerroX library, then we need relocatable code.
 option(ABLASTR_POSITION_INDEPENDENT_CODE
        "Build ABLASTR with position independent code" ON)
 mark_as_advanced(ABLASTR_POSITION_INDEPENDENT_CODE)
-
-option(ABLASTR_FFT "compile AnyFFT wrappers" ${FerroX_FFT})
-if(FerroX_FFT)
-    set(ABLASTR_FFT ON CACHE STRING "FFT-based solvers" FORCE)
-endif()
 
 # Define the variable BUILD_TESTING (ON by default),
 # include CDash dashboard testing module
