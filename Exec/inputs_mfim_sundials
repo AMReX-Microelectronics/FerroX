@@ -13,13 +13,6 @@ domain.coord_sys = cartesian
 
 prob_type = 1
 
-TimeIntegratorOrder = 1
-
-nsteps = 1000
-plot_int = 100
-
-dt = 4.0e-13
-
 ############################################
 ###### POLARIZATION BOUNDARY CONDITIONS ####
 ############################################
@@ -78,33 +71,26 @@ alpha_112 = 0.0
 alpha_123 = 0.0
 
 #################################
+###### MULTIGRID ################
+#################################
+
+mlmg_verbosity = 0
+
+#################################
 ###### INTEGRATION ##############
 #################################
+
 use_sundials = 1
 using_MRI = 0
 fast_Grad = 0
-fast_dt_ratio = 0.2
+fast_Landau = 0
+
+nsteps = 1000
+plot_int = 100
+dt = 4.0e-13
 
 ## amrex/sundials backend integrators
 ## *** Selecting the integrator backend ***
-## integration.type can take on the following string or int values:
-## (without the quotation marks)
-## "ForwardEuler" or "0" = Native Forward Euler Integrator
-## "RungeKutta" or "1"   = Native Explicit Runge Kutta controlled by integration.rk.type
-## "SUNDIALS" or "2"     = SUNDIALS Integrators controlled by integration.sundials.strategy
 integration.type = SUNDIALS
-
-## *** Parameters Needed For Native Explicit Runge-Kutta ***
-#
-## integration.rk.type can take the following values:
-### 0 = User-specified Butcher Tableau
-### 1 = Forward Euler
-### 2 = Trapezoid Method
-### 3 = SSPRK3 Method
-### 4 = RK4 Method
-#integration.rk.type = 1
-
 integration.sundials.type = ERK
-
-integration.sundials.method = ARKODE_MIS_KW3
-
+integration.sundials.method = ARKODE_KNOTH_WOLKE_3_3

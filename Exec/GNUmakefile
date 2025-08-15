@@ -13,6 +13,7 @@ TINY_PROFILE = TRUE
 
 USE_EB = FALSE
 USE_SUNDIALS = FALSE
+SUNDIALS_HOME ?= ../../sundials/instdir
 
 ifeq ($(USE_CUDA), TRUE)
  USE_OMP= FALSE
