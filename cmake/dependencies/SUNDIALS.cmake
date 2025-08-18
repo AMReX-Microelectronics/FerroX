@@ -1,3 +1,55 @@
+# Create SUNDIALS target aliases for internal builds
+# Maps internal SUNDIALS targets to standard SUNDIALS:: namespace
+function(create_sundials_aliases)
+    # Core components (always available)
+    if(BUILD_SHARED_LIBS)
+        add_library(SUNDIALS::cvode ALIAS sundials_cvode_shared)
+        add_library(SUNDIALS::nvecserial ALIAS sundials_nvecserial_shared)
+        add_library(SUNDIALS::nvecmanyvector ALIAS sundials_nvecmanyvector_shared)
+        add_library(SUNDIALS::nvecmpimanyvector ALIAS sundials_nvecmpimanyvector_shared)
+    else()
+        add_library(SUNDIALS::cvode ALIAS sundials_cvode_static)
+        add_library(SUNDIALS::nvecserial ALIAS sundials_nvecserial_static)
+        add_library(SUNDIALS::nvecmanyvector ALIAS sundials_nvecmanyvector_static)
+        add_library(SUNDIALS::nvecmpimanyvector ALIAS sundials_nvecmpimanyvector_static)
+    endif()
+
+    # Backend-specific components (conditionally available)
+    if(BUILD_SHARED_LIBS)
+        if(FerroX_COMPUTE STREQUAL CUDA AND TARGET sundials_nveccuda_shared)
+            add_library(SUNDIALS::nveccuda ALIAS sundials_nveccuda_shared)
+            if(TARGET sundials_cvode_fused_cuda_shared)
+                add_library(SUNDIALS::cvode_fused_cuda ALIAS sundials_cvode_fused_cuda_shared)
+            endif()
+        elseif(FerroX_COMPUTE STREQUAL HIP AND TARGET sundials_nvechip_shared)
+            add_library(SUNDIALS::nvechip ALIAS sundials_nvechip_shared)
+            if(TARGET sundials_cvode_fused_hip_shared)
+                add_library(SUNDIALS::cvode_fused_hip ALIAS sundials_cvode_fused_hip_shared)
+            endif()
+        elseif(FerroX_COMPUTE STREQUAL OMP AND TARGET sundials_nvecopenmp_shared)
+            add_library(SUNDIALS::nvecopenmp ALIAS sundials_nvecopenmp_shared)
+        elseif(FerroX_COMPUTE STREQUAL SYCL AND TARGET sundials_nvecsycl_shared)
+            add_library(SUNDIALS::nvecsycl ALIAS sundials_nvecsycl_shared)
+        endif()
+    else()
+        if(FerroX_COMPUTE STREQUAL CUDA AND TARGET sundials_nveccuda_static)
+            add_library(SUNDIALS::nveccuda ALIAS sundials_nveccuda_static)
+            if(TARGET sundials_cvode_fused_cuda_static)
+                add_library(SUNDIALS::cvode_fused_cuda ALIAS sundials_cvode_fused_cuda_static)
+            endif()
+        elseif(FerroX_COMPUTE STREQUAL HIP AND TARGET sundials_nvechip_static)
+            add_library(SUNDIALS::nvechip ALIAS sundials_nvechip_static)
+            if(TARGET sundials_cvode_fused_hip_static)
+                add_library(SUNDIALS::cvode_fused_hip ALIAS sundials_cvode_fused_hip_static)
+            endif()
+        elseif(FerroX_COMPUTE STREQUAL OMP AND TARGET sundials_nvecopenmp_static)
+            add_library(SUNDIALS::nvecopenmp ALIAS sundials_nvecopenmp_static)
+        elseif(FerroX_COMPUTE STREQUAL SYCL AND TARGET sundials_nvecsycl_static)
+            add_library(SUNDIALS::nvecsycl ALIAS sundials_nvecsycl_static)
+        endif()
+    endif()
+endfunction()
+
 macro(find_sundials)
     if(FerroX_sundials_src)
         message(STATUS "Compiling local SUNDIALS ...")
@@ -73,8 +125,8 @@ macro(find_sundials)
         set(ENABLE_EXAMPLES OFF CACHE INTERNAL "")
         set(ENABLE_UNIT_TESTS OFF CACHE INTERNAL "")
 
-        # Shared library settings
-        if(FerroX_PYTHON OR (FerroX_LIB AND BUILD_SHARED_LIBS))
+        # Library build configuration
+        if(FerroX_LIB AND BUILD_SHARED_LIBS)
             set(BUILD_SHARED_LIBS ON CACHE INTERNAL "")
             set(SUNDIALS_BUILD_STATIC_LIBS OFF CACHE INTERNAL "")
         else()
@@ -83,9 +135,7 @@ macro(find_sundials)
         endif()
 
         # Position independent code for shared libraries
-        if(FerroX_PYTHON OR 
-           ABLASTR_POSITION_INDEPENDENT_CODE OR
-           (FerroX_LIB AND BUILD_SHARED_LIBS))
+        if(ABLASTR_POSITION_INDEPENDENT_CODE OR (FerroX_LIB AND BUILD_SHARED_LIBS))
             set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE INTERNAL "")
         endif()
 
@@ -131,66 +181,54 @@ macro(find_sundials)
         mark_as_advanced(SUNDIALS_INDEX_SIZE)
         mark_as_advanced(SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS)
 
-        message(STATUS "SUNDIALS: Using internal build")
-
-        # Set up library aliases for different configurations
-        if(BUILD_SHARED_LIBS)
-            # Shared library aliases for different compute backends
-            if(FerroX_COMPUTE STREQUAL CUDA)
-                add_library(SUNDIALS::nveccuda ALIAS sundials_nveccuda_shared)
-                add_library(SUNDIALS::cvode_fused_cuda ALIAS sundials_cvode_fused_cuda_shared)
-            elseif(FerroX_COMPUTE STREQUAL HIP)
-                add_library(SUNDIALS::nvechip ALIAS sundials_nvechip_shared)
-                add_library(SUNDIALS::cvode_fused_hip ALIAS sundials_cvode_fused_hip_shared)
-            elseif(FerroX_COMPUTE STREQUAL OMP)
-                add_library(SUNDIALS::nvecopenmp ALIAS sundials_nvecopenmp_shared)
-            elseif(FerroX_COMPUTE STREQUAL SYCL)
-                add_library(SUNDIALS::nvecsycl ALIAS sundials_nvecsycl_shared)
+        # Extract SUNDIALS version from its own config files
+        if(FerroX_sundials_src)
+            # For local source builds
+            if(EXISTS "${CMAKE_BINARY_DIR}/_deps/localsundials-build/SUNDIALSConfigVersion.cmake")
+                include("${CMAKE_BINARY_DIR}/_deps/localsundials-build/SUNDIALSConfigVersion.cmake")
+                set(SUNDIALS_VERSION "${PACKAGE_VERSION}" CACHE STRING "SUNDIALS version from local build" FORCE)
             endif()
         else()
-            # Static library aliases for different compute backends
-            if(FerroX_COMPUTE STREQUAL CUDA)
-                add_library(SUNDIALS::nveccuda ALIAS sundials_nveccuda_static)
-                add_library(SUNDIALS::cvode_fused_cuda ALIAS sundials_cvode_fused_cuda_static)
-            elseif(FerroX_COMPUTE STREQUAL HIP)
-                add_library(SUNDIALS::nvechip ALIAS sundials_nvechip_static)
-                add_library(SUNDIALS::cvode_fused_hip ALIAS sundials_cvode_fused_hip_static)
-            elseif(FerroX_COMPUTE STREQUAL OMP)
-                add_library(SUNDIALS::nvecopenmp ALIAS sundials_nvecopenmp_static)
-            elseif(FerroX_COMPUTE STREQUAL SYCL)
-                add_library(SUNDIALS::nvecsycl ALIAS sundials_nvecsycl_static)
+            # For FetchContent builds - use FetchContent variables
+            FetchContent_GetProperties(fetchedsundials)
+            if(EXISTS "${fetchedsundials_BINARY_DIR}/SUNDIALSConfigVersion.cmake")
+                include("${fetchedsundials_BINARY_DIR}/SUNDIALSConfigVersion.cmake")
+                set(SUNDIALS_VERSION "${PACKAGE_VERSION}" CACHE STRING "SUNDIALS version from FetchContent" FORCE)
             endif()
         endif()
+
+        # Fallback if version file not found
+        if(NOT DEFINED SUNDIALS_VERSION)
+            set(SUNDIALS_VERSION "7.0.0" CACHE STRING "SUNDIALS version (fallback)" FORCE)
+        endif()
+
+        message(STATUS "SUNDIALS: Using internal build (version ${SUNDIALS_VERSION})")
+
+        # Create standard SUNDIALS:: aliases for internal build targets
+        create_sundials_aliases()
     else()
         message(STATUS "Searching for pre-installed SUNDIALS ...")
         
-        # Use the minimum version required by AMReX (6.0.0+)
-        set(SUNDIALS_MINIMUM_VERSION 6.0.0)
-        set(SUNDIALS_COMPONENTS 
-            arkode 
-            cvode 
-            nvecserial 
-            nvecmanyvector 
-            nvecmpimanyvector
-            sunlinsolspgmr 
-            sunlinsolspfgmr
-            sunlinsolsptfqmr 
-            sunnonlinsolnewton 
-            sunlinsollapackband
-            sunlinsollapackdense 
-            sunmatrixband 
-            sunmatrixdense
-            sunmatrixsparse)
+        if (SUNDIALS_FOUND)
+            message(STATUS "SUNDIALS_FOUND is true, using pre-configured SUNDIALS for version 6.0.0 or higher")
+        else()
+            set(SUNDIALS_MINIMUM_VERSION 6.0.0 CACHE INTERNAL "Minimum required SUNDIALS version")
+            set(SUNDIALS_COMPONENTS 
+                arkode cvode 
+                nvecserial nvecmanyvector nvecmpimanyvector
+                sunlinsolspgmr sunlinsolspfgmr sunnonlinsolfixedpoint)
 
-        find_package(SUNDIALS CONFIG REQUIRED
-                     COMPONENTS ${SUNDIALS_COMPONENTS}
-                     PATHS ${SUNDIALS_ROOT} $ENV{SUNDIALS_ROOT})
+            find_package(SUNDIALS CONFIG REQUIRED
+                         COMPONENTS ${SUNDIALS_COMPONENTS}
+                         OPTIONAL_COMPONENTS core
+                         PATHS ${SUNDIALS_ROOT} $ENV{SUNDIALS_ROOT})
 
-        if(SUNDIALS_VERSION VERSION_LESS ${SUNDIALS_MINIMUM_VERSION})
-            message(FATAL_ERROR "SUNDIALS_VERSION ${SUNDIALS_MINIMUM_VERSION} or newer is required. Found version ${SUNDIALS_VERSION}.")
+            if(SUNDIALS_VERSION VERSION_LESS ${SUNDIALS_MINIMUM_VERSION})
+                message(FATAL_ERROR "SUNDIALS_VERSION ${SUNDIALS_MINIMUM_VERSION} or newer is required. Found version ${SUNDIALS_VERSION}.")
+            endif()
+
+            message(STATUS "SUNDIALS: Found version '${SUNDIALS_VERSION}'")
         endif()
-
-        message(STATUS "SUNDIALS: Found version '${SUNDIALS_VERSION}'")
     endif()
 endmacro()
 

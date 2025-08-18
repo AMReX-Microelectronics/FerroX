@@ -435,6 +435,12 @@ foreach(D IN LISTS FerroX_DIMS)
     # SUNDIALS compilation support - matches Make.FerroX USE_SUNDIALS=TRUE
     if(FerroX_SUNDIALS)
         target_compile_definitions(lib_${SD} PUBLIC USE_SUNDIALS)
+        
+        # Link SUNDIALS 7+ core component if available (following AMReX pattern)
+        if(SUNDIALS_VERSION VERSION_GREATER_EQUAL 7)
+            target_link_libraries(lib_${SD} PUBLIC SUNDIALS::core)
+        endif()
+        
         target_link_libraries(lib_${SD} PUBLIC 
             SUNDIALS::cvode
             SUNDIALS::nvecserial
@@ -444,36 +450,29 @@ foreach(D IN LISTS FerroX_DIMS)
         
         # Add backend-specific libraries
         if(FerroX_COMPUTE STREQUAL OMP)
-            # Only link OpenMP vector library if OMP is the compute backend
             if(TARGET SUNDIALS::nvecopenmp)
-                target_link_libraries(lib_${SD} PUBLIC 
-                    SUNDIALS::nvecopenmp
-                )
+                target_link_libraries(lib_${SD} PUBLIC SUNDIALS::nvecopenmp)
             endif()
         elseif(FerroX_COMPUTE STREQUAL CUDA)
-            target_link_libraries(lib_${SD} PUBLIC 
-                SUNDIALS::nveccuda 
-            )
+            if(TARGET SUNDIALS::nveccuda)
+                target_link_libraries(lib_${SD} PUBLIC SUNDIALS::nveccuda)
+            endif()
             # Conditionally link fused CUDA libraries if available
             if(TARGET SUNDIALS::cvode_fused_cuda)
-                target_link_libraries(lib_${SD} PUBLIC 
-                    SUNDIALS::cvode_fused_cuda
-                )
+                target_link_libraries(lib_${SD} PUBLIC SUNDIALS::cvode_fused_cuda)
             endif()
         elseif(FerroX_COMPUTE STREQUAL HIP)
-            target_link_libraries(lib_${SD} PUBLIC 
-                SUNDIALS::nvechip 
-            )
+            if(TARGET SUNDIALS::nvechip)
+                target_link_libraries(lib_${SD} PUBLIC SUNDIALS::nvechip)
+            endif()
             # Conditionally link fused HIP libraries if available
             if(TARGET SUNDIALS::cvode_fused_hip)
-                target_link_libraries(lib_${SD} PUBLIC 
-                    SUNDIALS::cvode_fused_hip
-                )
+                target_link_libraries(lib_${SD} PUBLIC SUNDIALS::cvode_fused_hip)
             endif()
         elseif(FerroX_COMPUTE STREQUAL SYCL)
-            target_link_libraries(lib_${SD} PUBLIC 
-                SUNDIALS::nvecsycl
-            )
+            if(TARGET SUNDIALS::nvecsycl)
+                target_link_libraries(lib_${SD} PUBLIC SUNDIALS::nvecsycl)
+            endif()
         endif()
     endif()
 
