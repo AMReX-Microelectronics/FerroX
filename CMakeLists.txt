@@ -435,6 +435,46 @@ foreach(D IN LISTS FerroX_DIMS)
     # SUNDIALS compilation support - matches Make.FerroX USE_SUNDIALS=TRUE
     if(FerroX_SUNDIALS)
         target_compile_definitions(lib_${SD} PUBLIC USE_SUNDIALS)
+        target_link_libraries(lib_${SD} PUBLIC 
+            SUNDIALS::cvode
+            SUNDIALS::nvecserial
+            SUNDIALS::nvecmanyvector
+            SUNDIALS::nvecmpimanyvector
+        )
+        
+        # Add backend-specific libraries
+        if(FerroX_COMPUTE STREQUAL OMP)
+            # Only link OpenMP vector library if OMP is the compute backend
+            if(TARGET SUNDIALS::nvecopenmp)
+                target_link_libraries(lib_${SD} PUBLIC 
+                    SUNDIALS::nvecopenmp
+                )
+            endif()
+        elseif(FerroX_COMPUTE STREQUAL CUDA)
+            target_link_libraries(lib_${SD} PUBLIC 
+                SUNDIALS::nveccuda 
+            )
+            # Conditionally link fused CUDA libraries if available
+            if(TARGET SUNDIALS::cvode_fused_cuda)
+                target_link_libraries(lib_${SD} PUBLIC 
+                    SUNDIALS::cvode_fused_cuda
+                )
+            endif()
+        elseif(FerroX_COMPUTE STREQUAL HIP)
+            target_link_libraries(lib_${SD} PUBLIC 
+                SUNDIALS::nvechip 
+            )
+            # Conditionally link fused HIP libraries if available
+            if(TARGET SUNDIALS::cvode_fused_hip)
+                target_link_libraries(lib_${SD} PUBLIC 
+                    SUNDIALS::cvode_fused_hip
+                )
+            endif()
+        elseif(FerroX_COMPUTE STREQUAL SYCL)
+            target_link_libraries(lib_${SD} PUBLIC 
+                SUNDIALS::nvecsycl
+            )
+        endif()
     endif()
 
     # Print debug options - matches Make.FerroX PRINT_* options

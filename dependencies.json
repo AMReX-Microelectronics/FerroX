@@ -9,5 +9,5 @@
     "commit_amrex": "3b5f539e008b416c51187f13bfa83959b34a5504",
     "commit_pyamrex": "2a2587b9333d3beb6bf6d92c3470935d032f853d",
     "commit_picsar": "0c329e66010267662a82219f7de7abbd231463f4",
-    "commit_sundials": "v7.4.0"
+    "commit_sundials": "develop"
 }

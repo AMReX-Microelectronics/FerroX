@@ -130,7 +130,10 @@ mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MPI.OMP.ex Exec/Examples/inputs_mfim_No
 mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MPI.CUDA.ex Exec/Examples/inputs_mfim_Noeb
 
 # With embedded boundaries (if built with -DFerroX_EB=ON)
-mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MPI.OMP.EB.ex Exec/Examples/inputs_mfim_eb
+export OMP_NUM_THREADS=1; mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MTMPI.OMP.EB.ex Exec/Examples/inputs_mfim_eb
+
+# With time-dependent simulations (if built with -DFerroX_TIME_DEPENDENT=ON)
+export OMP_NUM_THREADS=1; mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MTMPI.OMP.TD.ex Exec/Examples/inputs_mfim_Noeb
 ```
 # Visualization and Data Analysis
 Refer to the following link for several visualization tools that can be used for AMReX plotfiles. 

@@ -40,14 +40,20 @@ macro(find_sundials)
             set(ENABLE_CUDA ON CACHE INTERNAL "")
             set(ENABLE_HIP OFF CACHE INTERNAL "")
             set(ENABLE_SYCL OFF CACHE INTERNAL "")
+            set(SUNDIALS_INDEX_SIZE 32 CACHE INTERNAL "")
+            set(SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS ON CACHE INTERNAL "")
+            # Add CUDA-specific SUNDIALS options
+            set(SUNDIALS_PRECISION "DOUBLE" CACHE INTERNAL "")
         elseif(FerroX_COMPUTE STREQUAL HIP)
             set(ENABLE_CUDA OFF CACHE INTERNAL "")
             set(ENABLE_HIP ON CACHE INTERNAL "")
             set(ENABLE_SYCL OFF CACHE INTERNAL "")
+            set(SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS ON CACHE INTERNAL "")
         elseif(FerroX_COMPUTE STREQUAL SYCL)
             set(ENABLE_CUDA OFF CACHE INTERNAL "")
             set(ENABLE_HIP OFF CACHE INTERNAL "")
             set(ENABLE_SYCL ON CACHE INTERNAL "")
+            set(CMAKE_CXX_STANDARD 17 CACHE INTERNAL "")
         else()
             set(ENABLE_CUDA OFF CACHE INTERNAL "")
             set(ENABLE_HIP OFF CACHE INTERNAL "")
@@ -122,19 +128,58 @@ macro(find_sundials)
         mark_as_advanced(BUILD_SHARED_LIBS)
         mark_as_advanced(SUNDIALS_BUILD_STATIC_LIBS)
         mark_as_advanced(ENABLE_INSTALL_DOCS)
+        mark_as_advanced(SUNDIALS_INDEX_SIZE)
+        mark_as_advanced(SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS)
 
         message(STATUS "SUNDIALS: Using internal build")
 
-        # Ensure SUNDIALS_FOUND is set for both internal build paths
-        # set(SUNDIALS_FOUND TRUE CACHE BOOL "SUNDIALS built internally" FORCE)
+        # Set up library aliases for different configurations
+        if(BUILD_SHARED_LIBS)
+            # Shared library aliases for different compute backends
+            if(FerroX_COMPUTE STREQUAL CUDA)
+                add_library(SUNDIALS::nveccuda ALIAS sundials_nveccuda_shared)
+                add_library(SUNDIALS::cvode_fused_cuda ALIAS sundials_cvode_fused_cuda_shared)
+            elseif(FerroX_COMPUTE STREQUAL HIP)
+                add_library(SUNDIALS::nvechip ALIAS sundials_nvechip_shared)
+                add_library(SUNDIALS::cvode_fused_hip ALIAS sundials_cvode_fused_hip_shared)
+            elseif(FerroX_COMPUTE STREQUAL OMP)
+                add_library(SUNDIALS::nvecopenmp ALIAS sundials_nvecopenmp_shared)
+            elseif(FerroX_COMPUTE STREQUAL SYCL)
+                add_library(SUNDIALS::nvecsycl ALIAS sundials_nvecsycl_shared)
+            endif()
+        else()
+            # Static library aliases for different compute backends
+            if(FerroX_COMPUTE STREQUAL CUDA)
+                add_library(SUNDIALS::nveccuda ALIAS sundials_nveccuda_static)
+                add_library(SUNDIALS::cvode_fused_cuda ALIAS sundials_cvode_fused_cuda_static)
+            elseif(FerroX_COMPUTE STREQUAL HIP)
+                add_library(SUNDIALS::nvechip ALIAS sundials_nvechip_static)
+                add_library(SUNDIALS::cvode_fused_hip ALIAS sundials_cvode_fused_hip_static)
+            elseif(FerroX_COMPUTE STREQUAL OMP)
+                add_library(SUNDIALS::nvecopenmp ALIAS sundials_nvecopenmp_static)
+            elseif(FerroX_COMPUTE STREQUAL SYCL)
+                add_library(SUNDIALS::nvecsycl ALIAS sundials_nvecsycl_static)
+            endif()
+        endif()
     else()
         message(STATUS "Searching for pre-installed SUNDIALS ...")
         
         # Use the minimum version required by AMReX (6.0.0+)
         set(SUNDIALS_MINIMUM_VERSION 6.0.0)
-        set(SUNDIALS_COMPONENTS arkode cvode sunlinsolspgmr sunlinsolspfgmr
-            sunlinsolsptfqmr sunnonlinsolnewton sunlinsolklu sunlinsollapackband
-            sunlinsollapackdense nvecserial sunmatrixband sunmatrixdense
+        set(SUNDIALS_COMPONENTS 
+            arkode 
+            cvode 
+            nvecserial 
+            nvecmanyvector 
+            nvecmpimanyvector
+            sunlinsolspgmr 
+            sunlinsolspfgmr
+            sunlinsolsptfqmr 
+            sunnonlinsolnewton 
+            sunlinsollapackband
+            sunlinsollapackdense 
+            sunmatrixband 
+            sunmatrixdense
             sunmatrixsparse)
 
         find_package(SUNDIALS CONFIG REQUIRED
