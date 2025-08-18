@@ -94,6 +94,7 @@ option(FerroX_EB            "Embedded boundary support"                  OFF)
 option(FerroX_LIB           "Build FerroX as a library"                   OFF)
 option(FerroX_MPI           "Multi-node support (message-passing)"       ON)
 option(FerroX_SIMD          "CPU SIMD Acceleration"                      OFF)
+option(FerroX_GPU_RDC       "Enable relocatable device code"             ON)
 
 # Print debug options - matches Make.FerroX PRINT_* options
 option(FerroX_PRINT_HIGH    "Enable high level debug printing"              OFF)

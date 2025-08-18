@@ -103,7 +103,7 @@ macro(find_amrex)
         set(AMReX_LINEAR_SOLVERS_EM ON CACHE INTERNAL "")
         set(AMReX_LINEAR_SOLVERS_INCFLO ON CACHE INTERNAL "")
 
-        if(FerroX_ASCENT OR FerroX_SENSEI)
+        if(FerroX_GPU_RDC)
             set(AMReX_GPU_RDC ON CACHE BOOL "")
         else()
             # we don't need RDC and disabling it simplifies the build
