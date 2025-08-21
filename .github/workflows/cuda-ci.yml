@@ -18,11 +18,11 @@ concurrency:
 jobs:
   cuda-build:
     runs-on: ubuntu-22.04
-    name: CUDA v${{matrix.cuda_ver}} - MPI ${{matrix.mpi}} - AMReX ${{matrix.amrex_mode}}
+    name: CUDA v${{matrix.cuda_ver}} - SUNDIALS ${{matrix.sundials}} - AMReX ${{matrix.amrex_mode}}
     strategy:
       matrix:
         cuda_pkg: [12-0]
-        mpi: [OFF, ON]
+        sundials: [OFF, ON]
         amrex_mode: [internal, external_src]
         include:
           - cuda_ver: "12.0"
@@ -44,6 +44,10 @@ jobs:
         run: |
           if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
             echo "AMREX_SRC_DIR=${{runner.workspace}}/amrex" >> $GITHUB_ENV
+            if [ "${{matrix.sundials}}" == "ON" ]; then
+              git clone https://github.com/LLNL/sundials.git ${{runner.workspace}}/sundials
+              echo "SUNDIALS_SRC_DIR=${{runner.workspace}}/sundials" >> $GITHUB_ENV
+            fi
           fi
       - name: Free up disk space
         uses: ./.github/actions/free-space-ubuntu
@@ -71,41 +75,59 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
           which nvcc || echo "nvcc not in PATH!"
           if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
-            cmake -Bbuild-${{matrix.cuda_pkg}}-${{matrix.mpi}}-${{matrix.amrex_mode}} \
-              -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
-              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-              -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache \
-              -DAMReX_CUDA_ERROR_CROSS_EXECUTION_SPACE_CALL=ON \
-              -DAMReX_CUDA_ERROR_CAPTURE_THIS=ON \
-              -DAMReX_CUDA_ARCH=${{matrix.cuda_arch}} \
-              -DFerroX_MPI:BOOL=${{matrix.mpi}} \
-              -DFerroX_COMPUTE:STRING=CUDA \
-              -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
-              -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} .
+            if [ "${{matrix.sundials}}" == "ON" ]; then
+              cmake -Bbuild-${{matrix.cuda_pkg}}-${{matrix.sundials}}-${{matrix.amrex_mode}} \
+                -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
+                -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+                -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache \
+                -DAMReX_CUDA_ERROR_CROSS_EXECUTION_SPACE_CALL=ON \
+                -DAMReX_CUDA_ERROR_CAPTURE_THIS=ON \
+                -DAMReX_CUDA_ARCH=${{matrix.cuda_arch}} \
+                -DFerroX_MPI:BOOL=ON \
+                -DFerroX_COMPUTE:STRING=CUDA \
+                -DFerroX_SUNDIALS:BOOL=ON \
+                -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+                -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} \
+                -DFerroX_sundials_src:PATH=${{env.SUNDIALS_SRC_DIR}} .
+            else
+              cmake -Bbuild-${{matrix.cuda_pkg}}-${{matrix.sundials}}-${{matrix.amrex_mode}} \
+                -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
+                -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+                -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache \
+                -DAMReX_CUDA_ERROR_CROSS_EXECUTION_SPACE_CALL=ON \
+                -DAMReX_CUDA_ERROR_CAPTURE_THIS=ON \
+                -DAMReX_CUDA_ARCH=${{matrix.cuda_arch}} \
+                -DFerroX_MPI:BOOL=ON \
+                -DFerroX_COMPUTE:STRING=CUDA \
+                -DFerroX_SUNDIALS:BOOL=OFF \
+                -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+                -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} .
+            fi
           else
-            cmake -Bbuild-${{matrix.cuda_pkg}}-${{matrix.mpi}}-${{matrix.amrex_mode}} \
+            cmake -Bbuild-${{matrix.cuda_pkg}}-${{matrix.sundials}}-${{matrix.amrex_mode}} \
               -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache \
               -DAMReX_CUDA_ERROR_CROSS_EXECUTION_SPACE_CALL=ON \
               -DAMReX_CUDA_ERROR_CAPTURE_THIS=ON \
               -DAMReX_CUDA_ARCH=${{matrix.cuda_arch}} \
-              -DFerroX_MPI:BOOL=${{matrix.mpi}} \
+              -DFerroX_MPI:BOOL=ON \
               -DFerroX_COMPUTE:STRING=CUDA \
+              -DFerroX_SUNDIALS:BOOL=${{matrix.sundials}} \
               -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON .
           fi
           echo "Building with $(nproc) processes"
-          cmake --build build-${{matrix.cuda_pkg}}-${{matrix.mpi}}-${{matrix.amrex_mode}} --parallel $(nproc) \
-          2>&1 | tee -a ${{runner.workspace}}/build-${{matrix.cuda_pkg}}-${{matrix.mpi}}-${{matrix.amrex_mode}}-output.txt;
+          cmake --build build-${{matrix.cuda_pkg}}-${{matrix.sundials}}-${{matrix.amrex_mode}} --parallel $(nproc) \
+          2>&1 | tee -a ${{runner.workspace}}/build-${{matrix.cuda_pkg}}-${{matrix.sundials}}-${{matrix.amrex_mode}}-output.txt;
 
           ccache -s
           du -hs ~/.cache/ccache
 
       - name: Report
         run: |
-          egrep "warning:|error:" ${{runner.workspace}}/build-${{matrix.cuda_pkg}}-${{matrix.mpi}}-${{matrix.amrex_mode}}-output.txt \
-            | egrep -v "_deps/amrex" | egrep -v "lto-wrapper: warning:" | sort | uniq \
-            | awk 'BEGIN{i=0}{print $0}{i++}END{print "Warnings: "i}' > ${{runner.workspace}}/build-${{matrix.cuda_pkg}}-${{matrix.mpi}}-${{matrix.amrex_mode}}-output-warnings.txt
-          cat ${{runner.workspace}}/build-${{matrix.cuda_pkg}}-${{matrix.mpi}}-${{matrix.amrex_mode}}-output-warnings.txt
-          export return=$(tail -n 1 ${{runner.workspace}}/build-${{matrix.cuda_pkg}}-${{matrix.mpi}}-${{matrix.amrex_mode}}-output-warnings.txt | awk '{print $2}')
+          egrep "warning:|error:" ${{runner.workspace}}/build-${{matrix.cuda_pkg}}-${{matrix.sundials}}-${{matrix.amrex_mode}}-output.txt \
+            | egrep -v "_deps/amrex" | egrep -v "_deps/sundials" | egrep -v "lto-wrapper: warning:" | sort | uniq \
+            | awk 'BEGIN{i=0}{print $0}{i++}END{print "Warnings: "i}' > ${{runner.workspace}}/build-${{matrix.cuda_pkg}}-${{matrix.sundials}}-${{matrix.amrex_mode}}-output-warnings.txt
+          cat ${{runner.workspace}}/build-${{matrix.cuda_pkg}}-${{matrix.sundials}}-${{matrix.amrex_mode}}-output-warnings.txt
+          export return=$(tail -n 1 ${{runner.workspace}}/build-${{matrix.cuda_pkg}}-${{matrix.sundials}}-${{matrix.amrex_mode}}-output-warnings.txt | awk '{print $2}')
           exit ${return}
