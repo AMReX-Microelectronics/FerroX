@@ -21,6 +21,14 @@ jobs:
       with:
         submodules: true
 
+    - name: Dependencies
+      run: |
+        # Install MS-MPI
+        Invoke-WebRequest -Uri "https://github.com/microsoft/Microsoft-MPI/releases/download/v10.1.1/msmpisetup.exe" -OutFile msmpisetup.exe
+        .\msmpisetup.exe -unattend
+        Invoke-WebRequest -Uri "https://github.com/microsoft/Microsoft-MPI/releases/download/v10.1.1/msmpisdk.msi" -OutFile msmpisdk.msi
+        Start-Process msiexec.exe -Wait -ArgumentList '/I msmpisdk.msi /quiet'
+
     - name: Clone AMReX for dependency scripts
       run: |
         git clone https://github.com/AMReX-Codes/amrex.git ${{runner.workspace}}/amrex
@@ -28,10 +36,10 @@ jobs:
     - name: Setup
       run: |
         if ("${{matrix.amrex_mode}}" -eq "external_src") {
-          echo "AMREX_SRC_DIR=${{runner.workspace}}/amrex" >> $env:GITHUB_ENV
+          "AMREX_SRC_DIR=${{runner.workspace}}/amrex" | Out-File -FilePath $env:GITHUB_ENV -Append
           if ("${{matrix.sundials}}" -eq "ON") {
             git clone https://github.com/LLNL/sundials.git ${{runner.workspace}}/sundials
-            echo "SUNDIALS_SRC_DIR=${{runner.workspace}}/sundials" >> $env:GITHUB_ENV
+            "SUNDIALS_SRC_DIR=${{runner.workspace}}/sundials" | Out-File -FilePath $env:GITHUB_ENV -Append
           }
         }
 
@@ -62,7 +70,7 @@ jobs:
           cmake -S . -B build-${{matrix.sundials}}-${{matrix.amrex_mode}} `
             -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install `
             -DCMAKE_BUILD_TYPE:STRING=Debug `
-            -DFerroX_MPI:BOOL=ON `
+            -DFerroX_MPI:BOOL=OFF `
             -DFerroX_SUNDIALS:BOOL=${{matrix.sundials}} `
             -DFerroX_ENABLE_ALL_WARNINGS:BOOL=OFF `
             ${{github.workspace}};

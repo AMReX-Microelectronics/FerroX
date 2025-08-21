@@ -37,7 +37,11 @@ jobs:
         fi
 
     - name: Install Dependencies
-      run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_mac.sh
+      run: |
+        # Install OpenMP support for macOS
+        brew install libomp
+        # Run AMReX dependency script
+        ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_mac.sh
 
     - name: Set Up Cache
       uses: actions/cache@v4
@@ -57,6 +61,9 @@ jobs:
               -DCMAKE_CXX_COMPILER_LAUNCHER=$(which ccache) \
               -DCMAKE_BUILD_TYPE:STRING=Debug \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I/opt/homebrew/include" \
+              -DOpenMP_CXX_LIB_NAMES=omp \
+              -DOpenMP_omp_LIBRARY=/opt/homebrew/lib/libomp.dylib \
               -DFerroX_MPI:BOOL=ON \
               -DFerroX_SUNDIALS:BOOL=ON \
               -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
@@ -70,6 +77,9 @@ jobs:
               -DCMAKE_CXX_COMPILER_LAUNCHER=$(which ccache) \
               -DCMAKE_BUILD_TYPE:STRING=Debug \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I/opt/homebrew/include" \
+              -DOpenMP_CXX_LIB_NAMES=omp \
+              -DOpenMP_omp_LIBRARY=/opt/homebrew/lib/libomp.dylib \
               -DFerroX_MPI:BOOL=ON \
               -DFerroX_SUNDIALS:BOOL=OFF \
               -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
@@ -83,6 +93,9 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=$(which ccache) \
             -DCMAKE_BUILD_TYPE:STRING=Debug \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp -I/opt/homebrew/include" \
+            -DOpenMP_CXX_LIB_NAMES=omp \
+            -DOpenMP_omp_LIBRARY=/opt/homebrew/lib/libomp.dylib \
             -DFerroX_MPI:BOOL=ON \
             -DFerroX_SUNDIALS:BOOL=${{matrix.sundials}} \
             -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
