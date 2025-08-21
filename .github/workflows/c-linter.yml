@@ -16,18 +16,19 @@ jobs:
 
       - name: Get cpp linter repo
         run: |
-          cd Submodules
+          mkdir -p external
+          cd external
           git clone https://github.com/dwillcox/cpp-linter-action.git
           cd ..
 
       - name: Check header includes
         run: |
-          echo 'HEADER_INCLUDES=$(grep -rIE --include="*.cpp" --include="*.H" --exclude-dir=Submodules "#\s?include\s+\"\w+\.\w+\"")' >> $GITHUB_ENV
+          echo 'HEADER_INCLUDES=$(grep -rIE --include="*.cpp" --include="*.H" --exclude-dir=external "#\s?include\s+\"\w+\.\w+\"")' >> $GITHUB_ENV
           echo $HEADER_INCLUDES
           if [[ -n "${HEADER_INCLUDES}" ]]; then exit 1; fi
 
       - name: Run cpp linter
-        run: python3 Submodules/cpp-linter-action/run_on_changed_files.py ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -header-filter=Source/ -ignore-files="AMReX|GoogleTest" -run-linter
+        run: python3 external/cpp-linter-action/run_on_changed_files.py ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -header-filter=Source/ -ignore-files="AMReX|GoogleTest|_deps" -run-linter
 
       - name: Archive clang tidy report
         uses: actions/upload-artifact@v4
