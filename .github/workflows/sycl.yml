@@ -48,7 +48,9 @@ jobs:
       uses: ./.github/actions/free-space-ubuntu
 
     - name: Dependencies
-      run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_dpcpp.sh
+      run: |
+        ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_dpcpp.sh
+        sudo apt-get install -y libfftw3-dev
 
     - name: Install CCache
       run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_ccache.sh

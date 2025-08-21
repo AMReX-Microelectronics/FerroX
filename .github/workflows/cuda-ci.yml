@@ -53,6 +53,10 @@ jobs:
         uses: ./.github/actions/free-space-ubuntu
       - name: Prepare CUDA environment
         run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_nvcc.sh ${{matrix.cuda_ver}}
+      - name: Install Additional Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfftw3-dev
       - name: Install CCache
         run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_ccache.sh
       - name: Set Up Cache

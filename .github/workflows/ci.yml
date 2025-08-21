@@ -27,7 +27,7 @@ jobs:
         amrex_mode: [internal, external_src]
         include:
         - os: ubuntu-22.04
-          install_deps: sudo apt-get install mpich libmpich-dev
+          install_deps: sudo apt-get install mpich libmpich-dev libfftw3-dev
           comp: gnu
           procs: $(nproc)
 

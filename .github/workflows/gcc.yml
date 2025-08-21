@@ -37,7 +37,9 @@ jobs:
         fi
 
     - name: Install Dependencies
-      run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies.sh
+      run: |
+        ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies.sh
+        sudo apt-get install -y libfftw3-dev
 
     - name: Install CCache
       run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_ccache.sh
