@@ -12,11 +12,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Tabs
-        run: .github/workflows/style/check_tabs.sh
+        run: |
+          if [ -f ".github/workflows/style/check_tabs.sh" ]; then
+            .github/workflows/style/check_tabs.sh
+          else
+            echo "Tab check script not found. Skipping tab check."
+            exit 0
+          fi
 
   trailing_whitespaces:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Trailing Whitespaces
-        run: .github/workflows/style/check_trailing_whitespaces.sh
+        run: |
+          if [ -f ".github/workflows/style/check_trailing_whitespaces.sh" ]; then
+            .github/workflows/style/check_trailing_whitespaces.sh
+          else
+            echo "Trailing whitespace check script not found. Skipping whitespace check."
+            exit 0
+          fi

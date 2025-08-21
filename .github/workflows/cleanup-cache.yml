@@ -2,7 +2,7 @@ name: CleanUpCache
 
 on:
   workflow_run:
-    workflows: [ERF CI, ERF CUDA CI, ERF CI (hip), ERF CI (sycl), Linux GCC, MacOS]
+    workflows: [FerroX CI, FerroX CI (cuda), FerroX CI (hip), FerroX CI (sycl), Linux GCC, MacOS]
     types:
       - completed
 
