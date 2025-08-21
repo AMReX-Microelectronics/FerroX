@@ -175,6 +175,35 @@ macro(set_default_build_type default_build_type)
     endif()
 endmacro()
 
+# Set CXX warning flags when FerroX_ENABLE_ALL_WARNINGS is enabled
+# Based on ERF SetERFCompileFlags.cmake pattern
+#
+macro(set_cxx_warning_flags)
+    if(FerroX_ENABLE_ALL_WARNINGS)
+        # GCC, Clang, and Intel seem to accept these
+        set(FerroX_CXX_FLAGS "-Wall" "-Wextra" "-pedantic")
+        
+        if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 7.0)
+            # Avoid notes about -faligned-new with GCC > 7
+            list(APPEND FerroX_CXX_FLAGS "-faligned-new")
+        endif()
+        
+        if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+            # Intel always reports some diagnostics we don't necessarily care about
+            list(APPEND FerroX_CXX_FLAGS "-diag-disable:11074,11076")
+        endif()
+        
+        # Apply warning flags to all targets
+        foreach(D IN LISTS FerroX_DIMS)
+            ferrox_set_suffix_dims(SD ${D})
+            if(FerroX_LIB)
+                separate_arguments(FerroX_CXX_FLAGS)
+                target_compile_options(lib_${SD} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${FerroX_CXX_FLAGS}>)
+            endif()
+        endforeach()
+    endif()
+endmacro()
+
 # Set CXX
 # Note: this is a bit legacy and one should use CMake TOOLCHAINS instead.
 #

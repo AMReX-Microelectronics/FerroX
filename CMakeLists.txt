@@ -102,6 +102,9 @@ option(FerroX_PRINT_MEDIUM  "Enable medium level debug printing"            OFF)
 option(FerroX_PRINT_LOW     "Enable low level debug printing"               OFF)
 option(FerroX_PRINT_NAME    "Enable function name debug printing"           OFF)
 
+# Warning options
+option(FerroX_ENABLE_ALL_WARNINGS "Enable all compiler warnings"            OFF)
+
 # Advanced option to run tests
 
 # Advanced option to compile with the -g1 option for minimal debug symbols
@@ -517,6 +520,7 @@ endforeach()
 # Warnings ####################################################################
 #
 set_cxx_warnings()
+set_cxx_warning_flags()
 
 
 # Generate Configuration and .pc Files ########################################
