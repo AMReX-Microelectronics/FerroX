@@ -1,0 +1,138 @@
+name: FerroX CI
+
+on:
+  push:
+    # branches: [development]
+    paths-ignore:
+      - Docs
+      - README.md
+      - license.txt
+
+  pull_request:
+    branches: [development]
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.head_ref }}-ci
+  cancel-in-progress: true
+
+jobs:
+
+  Build:
+    runs-on: ${{matrix.os}}
+    name: OS ${{matrix.os}} - MPI ${{matrix.mpi}} - AMReX ${{matrix.amrex_mode}}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        mpi: [OFF, ON]
+        amrex_mode: [internal, external_src]
+        include:
+        - os: ubuntu-22.04
+          install_deps: sudo apt-get install mpich libmpich-dev
+          comp: gnu
+          procs: $(nproc)
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Clone AMReX for dependency scripts
+      run: |
+        git clone https://github.com/AMReX-Codes/amrex.git ${{runner.workspace}}/amrex
+
+    - name: Setup
+      run: |
+        # echo "::add-matcher::.github/problem-matchers/gcc.json"
+        echo "NPROCS=${{matrix.procs}}" >> $GITHUB_ENV
+        if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
+          echo "AMREX_SRC_DIR=${{runner.workspace}}/amrex" >> $GITHUB_ENV
+        fi
+
+    - name: Handle Dependencies
+      run: |
+        # Install MPI
+        ${{matrix.install_deps}}
+
+    - name: Install CCache
+      run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_ccache.sh
+
+    - name: Set Up Cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ccache
+        key: ccache-${{ github.workflow }}-${{ github.job }}-git-${{ github.sha }}
+        restore-keys: |
+             ccache-${{ github.workflow }}-${{ github.job }}-git-
+
+    - name: Configure CMake
+      run: |
+        if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
+          cmake \
+            -B${{runner.workspace}}/FerroX/build-${{matrix.os}}-${{matrix.mpi}}-${{matrix.amrex_mode}} \
+            -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install \
+            -DCMAKE_BUILD_TYPE:STRING=Debug \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFerroX_MPI:BOOL=${{matrix.mpi}} \
+            -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+            -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} \
+            ${{github.workspace}};
+        else
+          cmake \
+            -B${{runner.workspace}}/FerroX/build-${{matrix.os}}-${{matrix.mpi}}-${{matrix.amrex_mode}} \
+            -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install \
+            -DCMAKE_BUILD_TYPE:STRING=Debug \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFerroX_MPI:BOOL=${{matrix.mpi}} \
+            -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+            ${{github.workspace}};
+        fi
+
+    - name: Build
+      run: |
+        export CCACHE_COMPRESS=1
+        export CCACHE_COMPRESSLEVEL=10
+        export CCACHE_MAXSIZE=600M
+        ccache -z
+
+        cmake \
+          --build ${{runner.workspace}}/FerroX/build-${{matrix.os}}-${{matrix.mpi}}-${{matrix.amrex_mode}} \
+          --parallel ${{env.NPROCS}} \
+          2>&1 | tee -a ${{runner.workspace}}/build-output-${{matrix.mpi}}-${{matrix.amrex_mode}}.txt;
+
+        ccache -s
+        du -hs ~/.cache/ccache
+
+    - name: Report
+      run: |
+        egrep "warning:|error:" ${{runner.workspace}}/build-output-${{matrix.mpi}}-${{matrix.amrex_mode}}.txt \
+          | egrep -v "_deps/amrex" | egrep -v "lto-wrapper: warning:" | sort | uniq \
+          | awk 'BEGIN{i=0}{print $0}{i++}END{print "Warnings: "i}' > ${{runner.workspace}}/build-output-warnings-${{matrix.mpi}}-${{matrix.amrex_mode}}.txt
+        cat ${{runner.workspace}}/build-output-warnings-${{matrix.mpi}}-${{matrix.amrex_mode}}.txt
+        export return=$(tail -n 1 ${{runner.workspace}}/build-output-warnings-${{matrix.mpi}}-${{matrix.amrex_mode}}.txt | awk '{print $2}')
+        exit ${return}
+
+    # Raf: disabled Codecov since the dashboard and GitHub comments were buggy,
+    # but it may be useful to post the gcov coverage reports to GitHub Actions
+    # artifacts.
+    # Note: if reenabling Codecov, the reports must be in xml format not html.
+    # - name: Generate coverage report
+    #   working-directory: ${{runner.workspace}}/ERF/build-${{matrix.os}}
+    #   run: |
+    #     find . -type f -name '*.gcno' -path "**Source**" -exec gcov -pb {} +
+    #     cd ..
+    #     gcovr -g -k -r . --xml regressioncov.html  # -v
+    # - name: Success artifacts
+    #   uses: actions/upload-artifact@v4
+    #   if: success()
+    #   with:
+    #     name: build-and-test
+    #     path: |
+    #       ${{runner.workspace}}/ERF/regressioncov.html
+    # - name: Failing test artifacts
+    #   uses: actions/upload-artifact@v4
+    #   if: failure()
+    #   with:
+    #     name: build-and-test
+    #     path: |
+    #       ${{runner.workspace}}/ERF/regressioncov.html

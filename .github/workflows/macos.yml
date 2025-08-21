@@ -1,0 +1,93 @@
+name: MacOS
+
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.head_ref }}-macos
+  cancel-in-progress: true
+
+jobs:
+  MacOS-Clang:
+    name: Apple Clang@11.0 - MPI ${{matrix.mpi}} - AMReX ${{matrix.amrex_mode}}
+    runs-on: macos-latest
+    # env: {CXXFLAGS: "-fno-operator-names -Werror -Wall -Wextra -Wpedantic -Wnull-dereference -Wfloat-conversion -Wshadow -Woverloaded-virtual"}
+    strategy:
+      matrix:
+        mpi: [OFF, ON]
+        amrex_mode: [internal, external_src]
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Clone AMReX for dependency scripts
+      run: |
+        git clone https://github.com/AMReX-Codes/amrex.git ${{runner.workspace}}/amrex
+
+    - name: Setup
+      run: |
+        if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
+          echo "AMREX_SRC_DIR=${{runner.workspace}}/amrex" >> $GITHUB_ENV
+        fi
+
+    - name: Install Dependencies
+      run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_mac.sh
+
+    - name: Set Up Cache
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/ccache
+        key: ccache-${{ github.workflow }}-${{ github.job }}-git-${{ github.sha }}
+        restore-keys: |
+             ccache-${{ github.workflow }}-${{ github.job }}-git-
+
+    - name: Configure Project and Generate Build System
+      run: |
+        if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
+          cmake \
+            -B${{runner.workspace}}/FerroX/build-${{matrix.mpi}}-${{matrix.amrex_mode}} \
+            -DBUILD_SHARED_LIBS:BOOL=FALSE \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=$(which ccache) \
+            -DCMAKE_BUILD_TYPE:STRING=Debug \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFerroX_MPI:BOOL=${{matrix.mpi}} \
+            -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+            -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} \
+            ${{github.workspace}};
+        else
+          cmake \
+            -B${{runner.workspace}}/FerroX/build-${{matrix.mpi}}-${{matrix.amrex_mode}} \
+            -DBUILD_SHARED_LIBS:BOOL=FALSE \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=$(which ccache) \
+            -DCMAKE_BUILD_TYPE:STRING=Debug \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFerroX_MPI:BOOL=${{matrix.mpi}} \
+            -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+            ${{github.workspace}};
+        fi
+
+    - name: Compile and Link
+      run: |
+        export CCACHE_COMPRESS=1
+        export CCACHE_COMPRESSLEVEL=10
+        export CCACHE_MAXSIZE=250M
+        export CCACHE_SLOPPINESS=time_macros
+        ccache -z
+
+        cmake --build ${{runner.workspace}}/FerroX/build-${{matrix.mpi}}-${{matrix.amrex_mode}} --parallel 2 --verbose \
+        2>&1 | tee -a ${{runner.workspace}}/build-output-${{matrix.mpi}}-${{matrix.amrex_mode}}.txt;
+
+        du -hs ~/Library/Caches/ccache
+        ccache -s
+
+    - name: Report
+      run: |
+        egrep "warning:|error:" ${{runner.workspace}}/build-output-${{matrix.mpi}}-${{matrix.amrex_mode}}.txt \
+          | egrep -v "_deps/amrex" | egrep -v "lto-wrapper: warning:" | sort | uniq \
+          | awk 'BEGIN{i=0}{print $0}{i++}END{print "Warnings: "i}' > ${{runner.workspace}}/build-output-warnings-${{matrix.mpi}}-${{matrix.amrex_mode}}.txt
+        cat ${{runner.workspace}}/build-output-warnings-${{matrix.mpi}}-${{matrix.amrex_mode}}.txt
+        export return=$(tail -n 1 ${{runner.workspace}}/build-output-warnings-${{matrix.mpi}}-${{matrix.amrex_mode}}.txt | awk '{print $2}')
+        exit ${return}
+
