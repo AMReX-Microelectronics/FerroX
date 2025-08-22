@@ -448,8 +448,13 @@ foreach(D IN LISTS FerroX_DIMS)
             SUNDIALS::cvode
             SUNDIALS::nvecserial
             SUNDIALS::nvecmanyvector
-            SUNDIALS::nvecmpimanyvector
         )
+
+        if(FerroX_MPI)
+            target_link_libraries(lib_${SD} PUBLIC
+                SUNDIALS::nvecmpimanyvector
+            )
+        endif()
 
         # Add backend-specific libraries
         if(FerroX_COMPUTE STREQUAL OMP)
