@@ -4,7 +4,7 @@ set -eu -o pipefail
 
 find . -type d \( -name .git \
                   -o -path ./paper \
-                  -o -name "build*" -o -name install -o -name "Legal.txt" \
+                  -o -name "build*" -o -name install \
                   -o -name tmp_build_dir -o -name tmp_install_dir \
                \) -prune -o \
        -type f \( \( -name "*.H" -o -name "*.h" -o -name "*.hh" -o -name "*.hpp" \
@@ -17,7 +17,8 @@ find . -type d \( -name .git \
                   -o -name "*.txt" \
                   -o -name "*.yml" \) \
                  -a \( ! -name "*.tab.h" -a ! -name "*.tab.nolint.H" \
-                    -a ! -name "*.lex.h" -a ! -name "*.lex.nolint.H" \) \
+                    -a ! -name "*.lex.h" -a ! -name "*.lex.nolint.H" \
+                    -a ! -name "Legal.txt" \) \
                \) \
     -exec grep -Iq . {} \; \
     -exec vim -E -s -c "set expandtab" -c "set tabstop=8" -c "retab" -c "wq" {} \;
