@@ -4,7 +4,7 @@ foreach(D IN LISTS FerroX_DIMS)
       PRIVATE
         GeometryProperties.cpp
     )
-    
+
     if(FerroX_EB)
         target_sources(lib_${SD}
           PRIVATE

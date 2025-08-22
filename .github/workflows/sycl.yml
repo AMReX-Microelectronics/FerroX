@@ -74,7 +74,7 @@ jobs:
         set +e
         source /opt/intel/oneapi/setvars.sh
         set -e
-        
+
         if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
           if [ "${{matrix.sundials}}" == "ON" ]; then
             cmake -S . -B build-${{matrix.sundials}}-${{matrix.amrex_mode}} \
@@ -120,7 +120,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=$(which icpx) \
             -DCMAKE_CXX_STANDARD=17
         fi
-        
+
         cd build-${{matrix.sundials}}-${{matrix.amrex_mode}}
         make -j 2 2>&1 | tee -a ${{runner.workspace}}/build-${{matrix.sundials}}-${{matrix.amrex_mode}}-output.txt;
 

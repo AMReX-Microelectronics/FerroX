@@ -74,12 +74,12 @@ option(FerroX_APP           "Build the FerroX executable application"     ON)
 # Default OFF matches GNU Make default behavior (only enabled when explicitly set)
 option(FerroX_TIME_DEPENDENT "Time-dependent support" OFF)
 
-# SUNDIALS integration support - matches Make.FerroX USE_SUNDIALS=TRUE conditional compilation  
+# SUNDIALS integration support - matches Make.FerroX USE_SUNDIALS=TRUE conditional compilation
 # Default OFF matches GNU Make default behavior (only enabled when explicitly set)
 option(FerroX_SUNDIALS "SUNDIALS support" OFF)
 
 # Conditional dependency logic matching Make.FerroX behavior
-# SUNDIALS 
+# SUNDIALS
 #   builds SUNDIALS from source (default) or finds an existing install
 #   only included when FerroX_SUNDIALS is enabled
 if(FerroX_SUNDIALS)
@@ -375,7 +375,7 @@ endif()
 # link dependencies
 foreach(D IN LISTS FerroX_DIMS)
     ferrox_set_suffix_dims(SD ${D})
-    
+
     # Link AMReX to lib target since we don't have ablastr targets
     if(FerroX_LIB)
         if(D STREQUAL "RZ")
@@ -438,19 +438,19 @@ foreach(D IN LISTS FerroX_DIMS)
     # SUNDIALS compilation support - matches Make.FerroX USE_SUNDIALS=TRUE
     if(FerroX_SUNDIALS)
         target_compile_definitions(lib_${SD} PUBLIC USE_SUNDIALS)
-        
+
         # Link SUNDIALS 7+ core component if available (following AMReX pattern)
         if(SUNDIALS_VERSION VERSION_GREATER_EQUAL 7)
             target_link_libraries(lib_${SD} PUBLIC SUNDIALS::core)
         endif()
-        
-        target_link_libraries(lib_${SD} PUBLIC 
+
+        target_link_libraries(lib_${SD} PUBLIC
             SUNDIALS::cvode
             SUNDIALS::nvecserial
             SUNDIALS::nvecmanyvector
             SUNDIALS::nvecmpimanyvector
         )
-        
+
         # Add backend-specific libraries
         if(FerroX_COMPUTE STREQUAL OMP)
             if(TARGET SUNDIALS::nvecopenmp)
