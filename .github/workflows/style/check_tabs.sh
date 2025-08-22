@@ -20,7 +20,7 @@ find . -type d \( -name .git \
                     -a ! -name "*.lex.h" -a ! -name "*.lex.nolint.H" \) \
                \) \
     -exec grep -Iq . {} \; \
-    -exec perl -i -pe's/\t/\ \ \ \ /g' {} +
+    -exec vim -E -s -c "set expandtab" -c "set tabstop=8" -c "retab" -c "wq" {} \;
 
 gitdiff=`git diff`
 
