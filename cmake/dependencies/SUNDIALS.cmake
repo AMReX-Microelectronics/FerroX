@@ -108,6 +108,11 @@ macro(find_sundials)
             set(SUNDIALS_BUILD_PACKAGE_FUSED_KERNELS ON CACHE INTERNAL "")
             # Add CUDA-specific SUNDIALS options
             set(SUNDIALS_PRECISION "DOUBLE" CACHE INTERNAL "")
+            # Disable problematic CUDA components that require cusolver/cusparse
+            set(SUNDIALS_BUILD_WITH_CUSOLVER OFF CACHE INTERNAL "")
+            set(SUNDIALS_BUILD_WITH_CUSPARSE OFF CACHE INTERNAL "")
+            set(SUNDIALS_ENABLE_CUSOLVER OFF CACHE INTERNAL "")
+            set(SUNDIALS_ENABLE_CUSPARSE OFF CACHE INTERNAL "")
         elseif(FerroX_COMPUTE STREQUAL HIP)
             set(ENABLE_CUDA OFF CACHE INTERNAL "")
             set(ENABLE_HIP ON CACHE INTERNAL "")
