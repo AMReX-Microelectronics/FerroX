@@ -219,6 +219,13 @@ list(REMOVE_DUPLICATES FerroX_amrex_dim)
 
 include(${FerroX_SOURCE_DIR}/cmake/dependencies/AMReX.cmake)
 
+foreach(D IN LISTS FerroX_amrex_dim)
+    #   suppress warnings in AMReX headers (use -isystem instead of -I)
+    ferrox_make_third_party_includes_system(AMReX::amrex_${D}d amrex_${D}d)
+endforeach()
+# For <AMReX_buildInfo.H>
+include(AMReXBuildInfo)
+
 # Add after finding AMReX and SUNDIALS packages
 if(FerroX_SUNDIALS AND AMReX_FOUND)
     message(STATUS "Checking AMReX/SUNDIALS type compatibility...")
@@ -236,18 +243,6 @@ if(FerroX_SUNDIALS AND AMReX_FOUND)
     )
 
 endif()
-
-foreach(D IN LISTS FerroX_amrex_dim)
-    #   suppress warnings in AMReX headers (use -isystem instead of -I)
-    ferrox_make_third_party_includes_system(AMReX::amrex_${D}d amrex_${D}d)
-endforeach()
-# For <AMReX_buildInfo.H>
-include(AMReXBuildInfo)
-
-
-
-
-
 
 # Targets #####################################################################
 #
