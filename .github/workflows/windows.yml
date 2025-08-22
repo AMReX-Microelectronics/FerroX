@@ -43,6 +43,7 @@ jobs:
               -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install `
               -DCMAKE_BUILD_TYPE:STRING=Debug `
               -DFerroX_MPI:BOOL=OFF `
+              -DFerroX_COMPUTE:STRING=NOACC `
               -DFerroX_SUNDIALS:BOOL=ON `
               -DFerroX_ENABLE_ALL_WARNINGS:BOOL=OFF `
               -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} `
@@ -53,6 +54,7 @@ jobs:
               -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install `
               -DCMAKE_BUILD_TYPE:STRING=Debug `
               -DFerroX_MPI:BOOL=OFF `
+              -DFerroX_COMPUTE:STRING=NOACC `
               -DFerroX_SUNDIALS:BOOL=OFF `
               -DFerroX_ENABLE_ALL_WARNINGS:BOOL=OFF `
               -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} `
