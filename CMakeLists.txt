@@ -218,6 +218,25 @@ list(TRANSFORM FerroX_amrex_dim REPLACE RSPHERE 1)
 list(REMOVE_DUPLICATES FerroX_amrex_dim)
 
 include(${FerroX_SOURCE_DIR}/cmake/dependencies/AMReX.cmake)
+
+# Add after finding AMReX and SUNDIALS packages
+if(FerroX_SUNDIALS AND AMReX_FOUND)
+    message(STATUS "Checking AMReX/SUNDIALS type compatibility...")
+    message(STATUS "DEBUG: FerroX_PRECISION=${FerroX_PRECISION}, SUNDIALS_PRECISION=${SUNDIALS_PRECISION}")
+
+    file(WRITE ${CMAKE_BINARY_DIR}/test_types.cpp "#include <AMReX_REAL.H>\n#include <sundials/sundials_types.h>\n#include <type_traits>\n#include <iostream>\nint main() {\n    static_assert(sizeof(amrex::Real) == sizeof(sunrealtype));\n    static_assert(std::is_same<amrex::Real, sunrealtype>::value);\n    static_assert(sizeof(int) == sizeof(sunindextype));\n    std::cout << sizeof(amrex::Real) << 32 << sizeof(sunrealtype) << 10;\n    std::cout << sizeof(int) << 32 << sizeof(sunindextype) << 10;\n    return 0;\n}")
+
+    try_compile(
+        TYPES_COMPATIBLE
+        ${CMAKE_BINARY_DIR}/test_build
+        ${CMAKE_BINARY_DIR}/test_types.cpp
+        CMAKE_FLAGS
+            "-DINCLUDE_DIRECTORIES=${AMReX_INCLUDE_DIRS};${SUNDIALS_INCLUDE_DIR}"
+        OUTPUT_VARIABLE COMPILE_OUTPUT
+    )
+
+endif()
+
 foreach(D IN LISTS FerroX_amrex_dim)
     #   suppress warnings in AMReX headers (use -isystem instead of -I)
     ferrox_make_third_party_includes_system(AMReX::amrex_${D}d amrex_${D}d)
@@ -446,6 +465,7 @@ foreach(D IN LISTS FerroX_DIMS)
 
         target_link_libraries(lib_${SD} PUBLIC
             SUNDIALS::cvode
+            SUNDIALS::arkode
             SUNDIALS::nvecserial
             SUNDIALS::nvecmanyvector
         )
@@ -469,6 +489,10 @@ foreach(D IN LISTS FerroX_DIMS)
             if(TARGET SUNDIALS::cvode_fused_cuda)
                 target_link_libraries(lib_${SD} PUBLIC SUNDIALS::cvode_fused_cuda)
             endif()
+            # Also add ARKODE fused kernels if using ARKODE with CUDA
+            if(TARGET SUNDIALS::arkode_fused_cuda)
+                target_link_libraries(lib_${SD} PUBLIC SUNDIALS::arkode_fused_cuda)
+            endif()
         elseif(FerroX_COMPUTE STREQUAL HIP)
             if(TARGET SUNDIALS::nvechip)
                 target_link_libraries(lib_${SD} PUBLIC SUNDIALS::nvechip)
@@ -476,6 +500,10 @@ foreach(D IN LISTS FerroX_DIMS)
             # Conditionally link fused HIP libraries if available
             if(TARGET SUNDIALS::cvode_fused_hip)
                 target_link_libraries(lib_${SD} PUBLIC SUNDIALS::cvode_fused_hip)
+            endif()
+            # Also add ARKODE fused kernels if using ARKODE with HIP
+            if(TARGET SUNDIALS::arkode_fused_hip)
+                target_link_libraries(lib_${SD} PUBLIC SUNDIALS::arkode_fused_hip)
             endif()
         elseif(FerroX_COMPUTE STREQUAL SYCL)
             if(TARGET SUNDIALS::nvecsycl)
