@@ -21,14 +21,6 @@ jobs:
       with:
         submodules: true
 
-    - name: Dependencies
-      run: |
-        # Install MS-MPI
-        Invoke-WebRequest -Uri "https://github.com/microsoft/Microsoft-MPI/releases/download/v10.1.1/msmpisetup.exe" -OutFile msmpisetup.exe
-        .\msmpisetup.exe -unattend
-        Invoke-WebRequest -Uri "https://github.com/microsoft/Microsoft-MPI/releases/download/v10.1.1/msmpisdk.msi" -OutFile msmpisdk.msi
-        Start-Process msiexec.exe -Wait -ArgumentList '/I msmpisdk.msi /quiet'
-
     - name: Clone AMReX for dependency scripts
       run: |
         git clone https://github.com/AMReX-Codes/amrex.git ${{runner.workspace}}/amrex
@@ -50,7 +42,7 @@ jobs:
             cmake -S . -B build-${{matrix.sundials}}-${{matrix.amrex_mode}} `
               -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install `
               -DCMAKE_BUILD_TYPE:STRING=Debug `
-              -DFerroX_MPI:BOOL=ON `
+              -DFerroX_MPI:BOOL=OFF `
               -DFerroX_SUNDIALS:BOOL=ON `
               -DFerroX_ENABLE_ALL_WARNINGS:BOOL=OFF `
               -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} `
@@ -60,7 +52,7 @@ jobs:
             cmake -S . -B build-${{matrix.sundials}}-${{matrix.amrex_mode}} `
               -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install `
               -DCMAKE_BUILD_TYPE:STRING=Debug `
-              -DFerroX_MPI:BOOL=ON `
+              -DFerroX_MPI:BOOL=OFF `
               -DFerroX_SUNDIALS:BOOL=OFF `
               -DFerroX_ENABLE_ALL_WARNINGS:BOOL=OFF `
               -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} `
