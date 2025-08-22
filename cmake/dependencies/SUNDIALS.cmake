@@ -139,6 +139,8 @@ macro(find_sundials)
         set(ENABLE_ARKODE ON CACHE INTERNAL "")
         set(ENABLE_CVODE ON CACHE INTERNAL "")
         set(ENABLE_EXAMPLES OFF CACHE INTERNAL "")
+        set(EXAMPLES_ENABLE_C OFF CACHE INTERNAL "")
+        set(EXAMPLES_ENABLE_CUDA OFF CACHE INTERNAL "")
         set(ENABLE_UNIT_TESTS OFF CACHE INTERNAL "")
 
         # Library build configuration
