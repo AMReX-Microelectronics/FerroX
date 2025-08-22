@@ -165,7 +165,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
  }
 
-// create a mask filled with integers to idetify different material types
+// create a mask filled with integers to identify different material types
 void InitializeMaterialMask(MultiFab& MaterialMask,
                             const Geometry& geom,
                             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,

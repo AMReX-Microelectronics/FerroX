@@ -330,7 +330,7 @@ namespace WarpXUtilStr
 
     /** \brief Splits a string using a string separator. This is somewhat similar to
      *  amrex::Tokenize. The main difference is that, if the separator ":" is used,
-     *  amrex::Tokenize will split ":3::2" into ["3","2"] while this functio will
+     *  amrex::Tokenize will split ":3::2" into ["3","2"] while this function will
      *  split ":3::2" into ["","3","","2"]. This function can also perform a trimming to
      *  remove whitespaces (or any other arbitrary string) from the split string.
      *

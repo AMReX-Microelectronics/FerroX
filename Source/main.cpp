@@ -622,7 +622,7 @@ void main_main (c_FerroX& rFerroX)
     ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
     ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
 
-    amrex::Print() << "Curent     FAB megabyte spread across MPI nodes: ["
+    amrex::Print() << "Current     FAB megabyte spread across MPI nodes: ["
                    << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
 
     Real total_step_stop_time = ParallelDescriptor::second() - total_step_strt_time;

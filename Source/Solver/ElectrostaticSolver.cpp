@@ -703,7 +703,7 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
 {
     BL_PROFILE("ComputePhi_Rho()");
 
-    //Obtain self consisten Phi and rho
+    //Obtain self consistent Phi and rho
     Real tol = 1.e-5;
     Real err = 1.0;
     int iter = 0;
@@ -777,7 +777,7 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
 {
     BL_PROFILE("ComputePhi_Rho_EB()");
 
-    //Obtain self consisten Phi and rho
+    //Obtain self consistent Phi and rho
     Real tol = 1.e-5;
     Real err = 1.0;
     int iter = 0;
