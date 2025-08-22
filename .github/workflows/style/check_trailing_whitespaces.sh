@@ -4,7 +4,7 @@ set -eu -o pipefail
 
 find . -type d \( -name .git \
                   -o -path ./paper \
-                  -o -name build -o -name install \
+                  -o -name "build*" -o -name install -o -name "Legal.txt" \
                   -o -name tmp_build_dir -o -name tmp_install_dir \
                \) -prune -o \
        -type f \( \( -name "*.H" -o -name "*.h" -o -name "*.hh" -o -name "*.hpp" \
