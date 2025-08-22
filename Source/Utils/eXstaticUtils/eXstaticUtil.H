@@ -42,10 +42,10 @@ void AverageCellCenteredMultiFabToCellFaces(const amrex::MultiFab& cc_arr,
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void ConvertParserIntoMultiFab_3vars(const int i, const int j, const int k,
             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx,
-	    const amrex::RealBox& real_box,
-	    const amrex::IntVect& iv,
-	    amrex::ParserExecutor<3> const& macro_parser,
-	    amrex::Array4<amrex::Real> const& mf_array)
+            const amrex::RealBox& real_box,
+            const amrex::IntVect& iv,
+            amrex::ParserExecutor<3> const& macro_parser,
+            amrex::Array4<amrex::Real> const& mf_array)
 {
 #ifdef PRINT_NAME
     amrex::Print() << "\n\n\t\t\t\t\t{************************eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars()************************\n";
@@ -72,10 +72,10 @@ void ConvertParserIntoMultiFab_3vars(const int i, const int j, const int k,
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void ConvertParserIntoMultiFab_4vars(const int i, const int j, const int k, const amrex::Real t,
             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx,
-	    const amrex::RealBox& real_box,
-	    const amrex::IntVect& iv,
-	    amrex::ParserExecutor<4> const& macro_parser,
-	    amrex::Array4<amrex::Real> const& mf_array)
+            const amrex::RealBox& real_box,
+            const amrex::IntVect& iv,
+            amrex::ParserExecutor<4> const& macro_parser,
+            amrex::Array4<amrex::Real> const& mf_array)
 {
 #ifdef PRINT_NAME
     amrex::Print() << "\n\n\t\t\t\t\t{************************eXstatic_MFab_Util::ConvertParserIntoMultiFab_4vars()************************\n";
@@ -99,9 +99,9 @@ void ConvertParserIntoMultiFab_4vars(const int i, const int j, const int k, cons
 }
 //void GetXYZ(const int i, const int j, const int k,
 //            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx,
-//	    const amrex::RealBox& real_box,
-//	    const amrex::IntVect& iv,
-//	    amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& coord_vec);
+//          const amrex::RealBox& real_box,
+//          const amrex::IntVect& iv,
+//          amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& coord_vec);
 
 #ifdef AMREX_USE_EB
 void SpecifyValueOnlyOnCutcells(amrex::MultiFab& mf, amrex::Real const value);

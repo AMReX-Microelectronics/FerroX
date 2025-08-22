@@ -16,7 +16,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 MultiFab&      rho,
                 MultiFab&      e_den,
                 MultiFab&      p_den,
-		const MultiFab& MaterialMask)
+                const MultiFab& MaterialMask)
 {
 
     //Define acceptor and donor multifabs for doping and fill them with zero.
@@ -36,7 +36,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
         const Array4<Real>& e_den_arr = e_den.array(mfi);
         const Array4<Real>& charge_den_arr = rho.array(mfi);
         const Array4<Real>& phi = PoissonPhi.array(mfi);
-	const Array4<Real>& acceptor_den_arr = acceptor_den.array(mfi);
+        const Array4<Real>& acceptor_den_arr = acceptor_den.array(mfi);
         const Array4<Real>& donor_den_arr = donor_den.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
 
@@ -90,7 +90,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
 
                 }
 
-		charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
+                charge_den_arr(i,j,k) = q*(hole_den_arr(i,j,k) - e_den_arr(i,j,k) - acceptor_den_arr(i,j,k) + donor_den_arr(i,j,k));
 
              } else {
 

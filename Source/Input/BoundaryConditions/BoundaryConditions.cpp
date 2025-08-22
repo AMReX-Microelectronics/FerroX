@@ -170,7 +170,7 @@ c_BoundaryConditions::ReadBoundaryConditionsType()
         if(is_periodic[idim] == 1 and  (map_bcAny_2d[0][idim] != "periodic" or  map_bcAny_2d[0][idim] != "periodic") )
         {
             std::stringstream warnMsg;
-	    amrex::Print() << "Note that domain.is_periodic is set to 1 (true) for direction "<< idim << " !\n"
+            amrex::Print() << "Note that domain.is_periodic is set to 1 (true) for direction "<< idim << " !\n"
                 << "Therefore, the value set by boundary.lo/hi is ignored and both sides are assumed to be periodic. \n";
 
             map_bcAny_2d[0][idim] = "periodic";    map_bcAny_2d[1][idim] = "periodic";

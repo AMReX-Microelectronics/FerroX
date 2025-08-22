@@ -459,8 +459,8 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
          DE_hi[i] = prob_hi[i] + 1.0;
          SC_hi[i] = prob_hi[i] + 1.0;
          Channel_hi[i] = prob_hi[i] + 1.0;
-	 t_phase_lo[i] = 1.0; //just a large number so that t_phase is NOT simulated by default
-	 t_phase_hi[i] = 1.0;
+         t_phase_lo[i] = 1.0; //just a large number so that t_phase is NOT simulated by default
+         t_phase_hi[i] = 1.0;
      }
 
      //Default values of Remnnant Polarization

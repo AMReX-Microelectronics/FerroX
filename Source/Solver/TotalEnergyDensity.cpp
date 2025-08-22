@@ -118,16 +118,16 @@ void Calculate_Landau(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_Landau,
                 GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) * dFdPr_Landau;
 
                 if (is_polarization_scalar == 1){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		}
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                }
 
-		//set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
+                //set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
                 //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
                 if (tphase(i,j,k) == 1.0){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		   GL_RHS_r(i,j,k) = 0.0;
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                   GL_RHS_r(i,j,k) = 0.0;
                 }
             });
         }
@@ -240,16 +240,16 @@ void Calculate_Grad(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_grad,
                 GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) * dFdPr_grad;
 
                 if (is_polarization_scalar == 1){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		}
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                }
 
-		//set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
+                //set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
                 //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
                 if (tphase(i,j,k) == 1.0){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		   GL_RHS_r(i,j,k) = 0.0;
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                   GL_RHS_r(i,j,k) = 0.0;
                 }
             });
         }
@@ -284,16 +284,16 @@ void Calculate_Elec(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_elec,
                 GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) * (-Er(i,j,k));
 
                 if (is_polarization_scalar == 1){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		}
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                }
 
-		//set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
+                //set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
                 //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
                 if (tphase(i,j,k) == 1.0){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		   GL_RHS_r(i,j,k) = 0.0;
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                   GL_RHS_r(i,j,k) = 0.0;
                 }
             });
         }

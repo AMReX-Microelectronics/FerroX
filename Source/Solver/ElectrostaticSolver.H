@@ -16,11 +16,11 @@ using namespace amrex;
 using namespace FerroX;
 
 void ComputePoissonRHS(MultiFab&               PoissonRHS,
-		Array<MultiFab, AMREX_SPACEDIM> &P_old,
-		MultiFab&                      rho,
-		MultiFab&                      MaterialMask,
+                Array<MultiFab, AMREX_SPACEDIM> &P_old,
+                MultiFab&                      rho,
+                MultiFab&                      MaterialMask,
                 MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
-		const Geometry&                 geom);
+                const Geometry&                 geom);
 
 //void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 //                MultiFab&                      Ex,
@@ -29,7 +29,7 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 //                const Geometry&                 geom);
 //
 void ComputeEfromPhi(MultiFab&                 PoissonPhi,
-		Array<MultiFab, AMREX_SPACEDIM> &E,
+                Array<MultiFab, AMREX_SPACEDIM> &E,
                 MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry&                 geom,
                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
@@ -48,14 +48,14 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
 void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS,
              MultiFab&            PoissonPhi,
-	     Array<MultiFab, AMREX_SPACEDIM>& P_old,
+             Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	     MultiFab&      MaterialMask,
+             MultiFab&      MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
@@ -94,14 +94,14 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
              MultiFab&            PoissonPhi,
              MultiFab&            PoissonPhi_Prev,
              MultiFab&            PhiErr,
-	         Array<MultiFab, AMREX_SPACEDIM>& P_old,
+                 Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	         MultiFab&            MaterialMask,
+                 MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	         const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 
 #ifdef AMREX_USE_EB
@@ -112,13 +112,13 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
              MultiFab&            PoissonPhi,
              MultiFab&            PoissonPhi_Prev,
              MultiFab&            PhiErr,
-	         Array<MultiFab, AMREX_SPACEDIM>& P_old,
+                 Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	         MultiFab&            MaterialMask,
+                 MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	         const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi);
 #endif

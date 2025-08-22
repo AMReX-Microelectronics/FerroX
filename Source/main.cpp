@@ -37,7 +37,7 @@ int main (int argc, char* argv[])
     amrex::Initialize(argc,argv);
 
     {
-	    c_FerroX pFerroX;
+            c_FerroX pFerroX;
             pFerroX.InitData();
             main_main(pFerroX);
     }
@@ -418,7 +418,7 @@ void main_main (c_FerroX& rFerroX)
     {
         Real step_strt_time = ParallelDescriptor::second();
 
-	if (!use_sundials) {
+        if (!use_sundials) {
 
 #ifdef AMREX_USE_EB
             ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
@@ -503,7 +503,7 @@ void main_main (c_FerroX& rFerroX)
                 }
             }
 
-	} else { //using sundials
+        } else { //using sundials
 
 #ifdef AMREX_USE_SUNDIALS
             // integrate forward one step from `time` by `dt` to fill S_new
@@ -514,19 +514,19 @@ void main_main (c_FerroX& rFerroX)
 //#ifdef AMREX_USE_EB
 //
 //            ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-//        	P_new, charge_den, e_den, hole_den, MaterialMask,
-//        	angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+//              P_new, charge_den, e_den, hole_den, MaterialMask,
+//              angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 //#else
 //             ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-//        	P_new, charge_den, e_den, hole_den, MaterialMask,
-//        	angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+//              P_new, charge_den, e_den, hole_den, MaterialMask,
+//              angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 //#endif
             // copy new solution into old solution
             for (int i = 0; i < 3; i++) {
-        	MultiFab::Copy(P_old[i], P_new[i], 0, 0, 1, 1);
-        	P_old[i].FillBoundary(geom.periodicity());
+                MultiFab::Copy(P_old[i], P_new[i], 0, 0, 1, 1);
+                P_old[i].FillBoundary(geom.periodicity());
             }
-	}
+        }
 
         // Check if steady state has reached
         CheckSteadyState(PoissonPhi, PoissonPhi_Old, Phidiff, phi_tolerance, step, steady_state_step, inc_step); // Calculate E from Phi

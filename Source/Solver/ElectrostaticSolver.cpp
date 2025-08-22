@@ -85,14 +85,14 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 void dF_dPhi(MultiFab&            alpha_cc,
              MultiFab&            PoissonRHS,
              MultiFab&            PoissonPhi,
-	     Array<MultiFab, AMREX_SPACEDIM>& P_old,
+             Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	     MultiFab&            MaterialMask,
+             MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	     [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+             [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 
 {
@@ -135,8 +135,8 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                 Array<MultiFab, AMREX_SPACEDIM>& E,
                 MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry&                 geom,
-		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
         BL_PROFILE("ComputeEfromPhi()");
 
@@ -204,13 +204,13 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 }
 
 void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d,
-		MultiFab& beta_cc,
-	       	const MultiFab& MaterialMask,
-	       	const MultiFab& tphaseMask,
-	       	const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
-	       	const Geometry& geom,
-		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-	       	[[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+                MultiFab& beta_cc,
+                const MultiFab& MaterialMask,
+                const MultiFab& tphaseMask,
+                const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
+                const Geometry& geom,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
 
     beta_cc.setVal(0.0);
@@ -226,21 +226,21 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
         const Array4<Real const>& mask = MaterialMask.array(mfi);
         const Array4<Real const>& tphase = tphaseMask.array(mfi);
 
-	// extract dx from the geometry object
+        // extract dx from the geometry object
         GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
 
-	  [[maybe_unused]] Real x = prob_lo[0] + (i+0.5) * dx[0];
-	  [[maybe_unused]] Real y = prob_lo[1] + (j+0.5) * dx[1];
-	  [[maybe_unused]] Real z = prob_lo[1] + (k+0.5) * dx[2];
+          [[maybe_unused]] Real x = prob_lo[0] + (i+0.5) * dx[0];
+          [[maybe_unused]] Real y = prob_lo[1] + (j+0.5) * dx[1];
+          [[maybe_unused]] Real z = prob_lo[1] + (k+0.5) * dx[2];
 
           if(mask(i,j,k) == 0.0) {
              beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
-	     //set t_phase beta to epsilonX_fe_tphase
-	     //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
-	     if(tphase(i,j,k) == 1.0){
+             //set t_phase beta to epsilonX_fe_tphase
+             //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+             if(tphase(i,j,k) == 1.0){
                beta(i,j,k) = epsilonX_fe_tphase * epsilon_0;
              }
           } else if(mask(i,j,k) == 1.0) {
@@ -249,7 +249,7 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
              beta(i,j,k) = epsilon_si * epsilon_0; //SC layer
           } else {
              beta(i,j,k) = epsilon_de * epsilon_0; //Spacer is same as DE
-	  }
+          }
 
         });
     }
@@ -264,37 +264,37 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-	        if (LinOpBCType_2d[0][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][0] == amrex::LinOpBCType::Neumann ){
-           	   if(i < 0) {
-		     beta(i,j,k) = beta(i+1,j,k);
-		   }
-		}
+                if (LinOpBCType_2d[0][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][0] == amrex::LinOpBCType::Neumann ){
+                   if(i < 0) {
+                     beta(i,j,k) = beta(i+1,j,k);
+                   }
+                }
 
-	        if (LinOpBCType_2d[1][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][0] == amrex::LinOpBCType::Neumann ){
-		   if(i > n_cell[0] - 1) {
-		     beta(i,j,k) = beta(i-1,j,k);
-		   }
-		}
-	        if (LinOpBCType_2d[0][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][1] == amrex::LinOpBCType::Neumann ){
-  		   if(j < 0) {
-		     beta(i,j,k) = beta(i,j+1,k);
-		   }
-		}
-	        if (LinOpBCType_2d[1][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][1] == amrex::LinOpBCType::Neumann ){
-		   if(j > n_cell[1] - 1) {
-		     beta(i,j,k) = beta(i,j-1,k);
-		   }
-		}
-	        if (LinOpBCType_2d[0][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][2] == amrex::LinOpBCType::Neumann ){
-  		   if(k < 0) {
-		     beta(i,j,k) = beta(i,j,k+1);
-		   }
-		}
-	        if (LinOpBCType_2d[1][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][2] == amrex::LinOpBCType::Neumann ){
-		   if(k > n_cell[2] - 1) {
-		     beta(i,j,k) = beta(i,j,k-1);
-		   }
-		}
+                if (LinOpBCType_2d[1][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][0] == amrex::LinOpBCType::Neumann ){
+                   if(i > n_cell[0] - 1) {
+                     beta(i,j,k) = beta(i-1,j,k);
+                   }
+                }
+                if (LinOpBCType_2d[0][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][1] == amrex::LinOpBCType::Neumann ){
+                   if(j < 0) {
+                     beta(i,j,k) = beta(i,j+1,k);
+                   }
+                }
+                if (LinOpBCType_2d[1][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][1] == amrex::LinOpBCType::Neumann ){
+                   if(j > n_cell[1] - 1) {
+                     beta(i,j,k) = beta(i,j-1,k);
+                   }
+                }
+                if (LinOpBCType_2d[0][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][2] == amrex::LinOpBCType::Neumann ){
+                   if(k < 0) {
+                     beta(i,j,k) = beta(i,j,k+1);
+                   }
+                }
+                if (LinOpBCType_2d[1][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][2] == amrex::LinOpBCType::Neumann ){
+                   if(k > n_cell[2] - 1) {
+                     beta(i,j,k) = beta(i,j,k-1);
+                   }
+                }
         });
     }
 }
@@ -391,10 +391,10 @@ void Fill_Constant_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Poisson
 
         if(found_lo) {
             for (auto dir : dir_inhomo_const_lo)
-	    {
+            {
                 if (bx.smallEnd(dir) == domain.smallEnd(dir))
-		{
-	            auto bc_value_lo = std::any_cast<amrex::Real>(bcAny_2d[0][dir]);
+                {
+                    auto bc_value_lo = std::any_cast<amrex::Real>(bcAny_2d[0][dir]);
                     Box const& bxlo = amrex::adjCellLo(bx, dir,len);
                     amrex::ParallelFor(bxlo,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
@@ -406,10 +406,10 @@ void Fill_Constant_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Poisson
         }
         if(found_hi) {
             for (auto dir : dir_inhomo_const_hi)
-	    {
+            {
                 if (bx.bigEnd(dir) == domain.bigEnd(dir))
-		{
-		    auto bc_value_hi = std::any_cast<amrex::Real>(bcAny_2d[1][dir]);
+                {
+                    auto bc_value_hi = std::any_cast<amrex::Real>(bcAny_2d[1][dir]);
                     Box const& bxhi = amrex::adjCellHi(bx, dir,len);
                     amrex::ParallelFor(bxhi,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
@@ -457,50 +457,50 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
                     std::string macro_str = std::any_cast<std::string>(bcAny_2d[0][dir]);
 
                     auto pParser = rBC.get_p_parser(macro_str);
-		    #ifdef TIME_DEPENDENT
-		        const auto& macro_parser = pParser->compile<4>();
-		    #else
-		        const auto& macro_parser = pParser->compile<3>();
-		    #endif
+                    #ifdef TIME_DEPENDENT
+                        const auto& macro_parser = pParser->compile<4>();
+                    #else
+                        const auto& macro_parser = pParser->compile<3>();
+                    #endif
 
                     amrex::ParallelFor(bxlo,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-		        #ifdef TIME_DEPENDENT
+                        #ifdef TIME_DEPENDENT
                             eXstatic_MFab_Util::ConvertParserIntoMultiFab_4vars(i,j,k,time,dx,real_box,iv,macro_parser,soln_arr);
-		        #else
+                        #else
                             eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,soln_arr);
                         #endif
                     });
                 }
             }
         }
-	if(found_hi)
+        if(found_hi)
         {
             for (auto dir : dir_inhomo_func_hi) //looping over boundaries of type inhomogeneous_function
             {
                 if (bx.bigEnd(dir) == domain.bigEnd(dir)) //work with a box that adjacent to the domain boundary
                 {
                     Box const& bxhi = amrex::adjCellHi(bx, dir);
-		    std::string macro_str = std::any_cast<std::string>(bcAny_2d[1][dir]);
+                    std::string macro_str = std::any_cast<std::string>(bcAny_2d[1][dir]);
 
                         auto pParser = rBC.get_p_parser(macro_str);
-			#ifdef TIME_DEPENDENT
-			    const auto& macro_parser = pParser->compile<4>();
-			#else
-			    const auto& macro_parser = pParser->compile<3>();
-			#endif
+                        #ifdef TIME_DEPENDENT
+                            const auto& macro_parser = pParser->compile<4>();
+                        #else
+                            const auto& macro_parser = pParser->compile<3>();
+                        #endif
 
                         amrex::ParallelFor(bxhi,
                         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                         {
-		            #ifdef TIME_DEPENDENT
+                            #ifdef TIME_DEPENDENT
                                 eXstatic_MFab_Util::ConvertParserIntoMultiFab_4vars(i,j,k,time,dx,real_box,iv,macro_parser,soln_arr);
-		            #else
+                            #else
                                 eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,soln_arr);
                             #endif
                         });
-	        }
+                }
             }
         }
 
@@ -690,14 +690,14 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
              MultiFab&            PoissonPhi,
              MultiFab&            PoissonPhi_Prev,
              MultiFab&            PhiErr,
-	         Array<MultiFab, AMREX_SPACEDIM>& P_old,
+                 Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	         MultiFab&            MaterialMask,
+                 MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	         const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 
 {
@@ -712,8 +712,8 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
 
     while(err > tol){
 
-	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+        //Compute RHS of Poisson equation
+        ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
         dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, rho, e_den, p_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
@@ -727,12 +727,12 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
 
         //Poisson Solve
         pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-	    PoissonPhi.FillBoundary(geom.periodicity());
+            PoissonPhi.FillBoundary(geom.periodicity());
 
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
 
-	if (contains_SC == 0) {
+        if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
         } else {
@@ -764,14 +764,14 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
              MultiFab&            PoissonPhi,
              MultiFab&            PoissonPhi_Prev,
              MultiFab&            PhiErr,
-	         Array<MultiFab, AMREX_SPACEDIM>& P_old,
+                 Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	         MultiFab&            MaterialMask,
+                 MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	         const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 
 {
@@ -786,8 +786,8 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
 
     while(err > tol){
 
-	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+        //Compute RHS of Poisson equation
+        ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
         dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, rho, e_den, p_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
@@ -801,12 +801,12 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
 
         //Poisson Solve
         pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-	    PoissonPhi.FillBoundary(geom.periodicity());
+            PoissonPhi.FillBoundary(geom.periodicity());
 
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
 
-	if (contains_SC == 0) {
+        if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
         } else {
