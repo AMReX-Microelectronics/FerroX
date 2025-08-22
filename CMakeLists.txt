@@ -226,24 +226,6 @@ endforeach()
 # For <AMReX_buildInfo.H>
 include(AMReXBuildInfo)
 
-# Add after finding AMReX and SUNDIALS packages
-if(FerroX_SUNDIALS AND AMReX_FOUND)
-    message(STATUS "Checking AMReX/SUNDIALS type compatibility...")
-    message(STATUS "DEBUG: FerroX_PRECISION=${FerroX_PRECISION}, SUNDIALS_PRECISION=${SUNDIALS_PRECISION}")
-
-    file(WRITE ${CMAKE_BINARY_DIR}/test_types.cpp "#include <AMReX_REAL.H>\n#include <sundials/sundials_types.h>\n#include <type_traits>\n#include <iostream>\nint main() {\n    static_assert(sizeof(amrex::Real) == sizeof(sunrealtype));\n    static_assert(std::is_same<amrex::Real, sunrealtype>::value);\n    static_assert(sizeof(int) == sizeof(sunindextype));\n    std::cout << sizeof(amrex::Real) << 32 << sizeof(sunrealtype) << 10;\n    std::cout << sizeof(int) << 32 << sizeof(sunindextype) << 10;\n    return 0;\n}")
-
-    try_compile(
-        TYPES_COMPATIBLE
-        ${CMAKE_BINARY_DIR}/test_build
-        ${CMAKE_BINARY_DIR}/test_types.cpp
-        CMAKE_FLAGS
-            "-DINCLUDE_DIRECTORIES=${AMReX_INCLUDE_DIRS};${SUNDIALS_INCLUDE_DIR}"
-        OUTPUT_VARIABLE COMPILE_OUTPUT
-    )
-
-endif()
-
 # Targets #####################################################################
 #
 include(GenerateExportHeader)
@@ -372,6 +354,24 @@ foreach(D IN LISTS FerroX_DIMS)
         endif()
     endif()
 endforeach()
+
+# Add after finding AMReX and SUNDIALS packages
+if(FerroX_SUNDIALS AND AMReX_FOUND)
+    message(STATUS "Checking AMReX/SUNDIALS type compatibility...")
+    message(STATUS "DEBUG: FerroX_PRECISION=${FerroX_PRECISION}, SUNDIALS_PRECISION=${SUNDIALS_PRECISION}")
+
+    file(WRITE ${CMAKE_BINARY_DIR}/test_types.cpp "#include <AMReX_REAL.H>\n#include <sundials/sundials_types.h>\n#include <type_traits>\n#include <iostream>\nint main() {\n    static_assert(sizeof(amrex::Real) == sizeof(sunrealtype));\n    static_assert(std::is_same<amrex::Real, sunrealtype>::value);\n    static_assert(sizeof(int) == sizeof(sunindextype));\n    std::cout << sizeof(amrex::Real) << 32 << sizeof(sunrealtype) << 10;\n    std::cout << sizeof(int) << 32 << sizeof(sunindextype) << 10;\n    return 0;\n}")
+
+    try_compile(
+        TYPES_COMPATIBLE
+        ${CMAKE_BINARY_DIR}/test_build
+        ${CMAKE_BINARY_DIR}/test_types.cpp
+        CMAKE_FLAGS
+            "-DINCLUDE_DIRECTORIES=${AMReX_INCLUDE_DIRS};${SUNDIALS_INCLUDE_DIR}"
+        OUTPUT_VARIABLE COMPILE_OUTPUT
+    )
+
+endif()
 
 
 if(FerroX_LIB)
