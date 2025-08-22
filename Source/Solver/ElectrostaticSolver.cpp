@@ -92,8 +92,8 @@ void dF_dPhi(MultiFab&            alpha_cc,
 	     MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+	     [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+             [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 
 {
    
@@ -210,7 +210,7 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
 	       	const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
 	       	const Geometry& geom, 
 		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-	       	const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+	       	[[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
 
     beta_cc.setVal(0.0);
@@ -232,9 +232,9 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
 
-	  Real x = prob_lo[0] + (i+0.5) * dx[0];
-	  Real y = prob_lo[1] + (j+0.5) * dx[1];
-	  Real z = prob_lo[1] + (k+0.5) * dx[2];
+	  [[maybe_unused]] Real x = prob_lo[0] + (i+0.5) * dx[0];
+	  [[maybe_unused]] Real y = prob_lo[1] + (j+0.5) * dx[1];
+	  [[maybe_unused]] Real z = prob_lo[1] + (k+0.5) * dx[2];
 	
           if(mask(i,j,k) == 0.0) {
              beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
@@ -354,6 +354,13 @@ void SetPoissonBC(c_FerroX& rFerroX, std::array<std::array<amrex::LinOpBCType,AM
                     LinOpBCType_2d[i][j] = LinOpBCType::Periodic;
                     break;
                 }
+                case s_BoundaryConditions::rob :
+                case s_BoundaryConditions::ref :
+                {
+                    // These boundary types are not currently implemented
+                    amrex::Abort("Boundary types 'rob' and 'ref' are not implemented");
+                    break;
+                }
             }
 
         }
@@ -387,12 +394,12 @@ void Fill_Constant_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Poisson
 	    {
                 if (bx.smallEnd(dir) == domain.smallEnd(dir)) 
 		{
-	            auto value = std::any_cast<amrex::Real>(bcAny_2d[0][dir]);		
+	            auto bc_value_lo = std::any_cast<amrex::Real>(bcAny_2d[0][dir]);		
                     Box const& bxlo = amrex::adjCellLo(bx, dir,len);
                     amrex::ParallelFor(bxlo,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        phi_arr(i,j,k) = value;
+                        phi_arr(i,j,k) = bc_value_lo;
                     });
                 }
             }
@@ -402,12 +409,12 @@ void Fill_Constant_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Poisson
 	    {
                 if (bx.bigEnd(dir) == domain.bigEnd(dir)) 
 		{
-		    auto value = std::any_cast<amrex::Real>(bcAny_2d[1][dir]);	
+		    auto bc_value_hi = std::any_cast<amrex::Real>(bcAny_2d[1][dir]);	
                     Box const& bxhi = amrex::adjCellHi(bx, dir,len);
                     amrex::ParallelFor(bxhi,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        phi_arr(i,j,k) = value;
+                        phi_arr(i,j,k) = bc_value_hi;
                     });
                 }
             }
@@ -415,7 +422,7 @@ void Fill_Constant_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Poisson
     } 
 
 }
-void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi, amrex::Real& time)
+void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi, [[maybe_unused]] amrex::Real& time)
 {
     auto& rGprop = rFerroX.get_GeometryProperties();
     Box const& domain = rGprop.geom.Domain();
@@ -572,7 +579,7 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
     auto& ba = rGprop.ba;
     auto& dm = rGprop.dm;
     int linop_maxorder = 2;
-    bool all_homogeneous_boundaries = true;
+    [[maybe_unused]] bool all_homogeneous_boundaries = true;
     bool some_functionbased_inhomogeneous_boundaries = false;
     bool some_constant_inhomogeneous_boundaries = false;
     int amrlev = 0; //refers to the setcoarsest level of the solve

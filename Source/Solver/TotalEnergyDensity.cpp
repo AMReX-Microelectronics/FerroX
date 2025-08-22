@@ -8,12 +8,12 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_grad,
                 Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_elec,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
-                Array<MultiFab, AMREX_SPACEDIM> &E,
-                MultiFab&                       Gamma,
-                MultiFab&                 MaterialMask,
-                MultiFab&                 tphaseMask,
-                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
-                const Geometry& geom)
+                [[maybe_unused]] Array<MultiFab, AMREX_SPACEDIM> &E,
+                [[maybe_unused]] MultiFab&                       Gamma,
+                [[maybe_unused]] MultiFab&                 MaterialMask,
+                [[maybe_unused]] MultiFab&                 tphaseMask,
+                [[maybe_unused]] MultiFab& angle_alpha, [[maybe_unused]] MultiFab& angle_beta, [[maybe_unused]] MultiFab& angle_theta,
+                [[maybe_unused]] const Geometry& geom)
 {
         BL_PROFILE("CalculateTDGL_RHS()");
 

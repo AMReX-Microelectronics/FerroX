@@ -13,7 +13,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                    const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
                    const       Geometry& geom,
 		   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-                   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+                   [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
 
     if (prob_type == 1) {  //2D : Initialize uniform P in y direction
@@ -169,7 +169,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 void InitializeMaterialMask(MultiFab& MaterialMask, 
 		            const Geometry& geom, 
 			    const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-                            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+                            [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
     // loop over boxes
     for (MFIter mfi(MaterialMask); mfi.isValid(); ++mfi)
@@ -209,7 +209,7 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
 void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& MaterialMask)
 { 
     auto& rGprop = rFerroX.get_GeometryProperties();
-    Box const& domain = rGprop.geom.Domain();
+    [[maybe_unused]] Box const& domain = rGprop.geom.Domain();
 
     const auto dx = rGprop.geom.CellSizeArray();
     const auto& real_box = rGprop.geom.ProbDomain();
@@ -253,7 +253,7 @@ void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& M
 void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& tphaseMask)
 { 
     auto& rGprop = rFerroX.get_GeometryProperties();
-    Box const& domain = rGprop.geom.Domain();
+    [[maybe_unused]] Box const& domain = rGprop.geom.Domain();
 
     const auto dx = rGprop.geom.CellSizeArray();
     const auto& real_box = rGprop.geom.ProbDomain();
@@ -298,7 +298,7 @@ void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& t
 void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta)
 { 
     auto& rGprop = rFerroX.get_GeometryProperties();
-    Box const& domain = rGprop.geom.Domain();
+    [[maybe_unused]] Box const& domain = rGprop.geom.Domain();
 
     const auto dx = rGprop.geom.CellSizeArray();
     const auto& real_box = rGprop.geom.ProbDomain();

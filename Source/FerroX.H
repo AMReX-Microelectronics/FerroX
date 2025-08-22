@@ -97,8 +97,8 @@ public:
 
     c_GeometryProperties& get_GeometryProperties () { return *m_pGeometryProperties;}
     c_BoundaryConditions& get_BoundaryConditions () { return *m_pBoundaryConditions;}
-    const amrex::Real get_time() { return m_time_instant;}
-    const amrex::Real set_time(int n) { m_time_instant = n*m_timestep; return m_time_instant;}
+    amrex::Real get_time() { return m_time_instant;}
+    amrex::Real set_time(int n) { m_time_instant = n*m_timestep; return m_time_instant;}
 
 
 private:

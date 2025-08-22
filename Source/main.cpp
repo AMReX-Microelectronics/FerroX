@@ -56,7 +56,7 @@ void main_main (c_FerroX& rFerroX)
     auto& geom = rGprop.geom;
     auto& ba = rGprop.ba;
     auto& dm = rGprop.dm;
-    auto& is_periodic = rGprop.is_periodic;
+    [[maybe_unused]] auto& is_periodic = rGprop.is_periodic;
     auto& prob_lo = rGprop.prob_lo;
     auto& prob_hi = rGprop.prob_hi;
     auto& n_cell = rGprop.n_cell;
@@ -210,7 +210,7 @@ void main_main (c_FerroX& rFerroX)
     amrex::LPInfo info;
     std::unique_ptr<amrex::MLMG> pMLMG;
     std::unique_ptr<amrex::MLABecLaplacian> p_mlabec;
-    int linop_maxorder = 2;
+    [[maybe_unused]] int linop_maxorder = 2;
     int amrlev = 0; //refers to the setcoarsest level of the solve
 
     SetupMLMG(pMLMG, p_mlabec, LinOpBCType_2d, n_cell, beta_face, rFerroX, PoissonPhi, time, info);
