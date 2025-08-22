@@ -3,4 +3,4 @@
 
 class c_GeometryProperties;
 
-#endif 
+#endif

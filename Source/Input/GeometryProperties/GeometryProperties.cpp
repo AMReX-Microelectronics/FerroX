@@ -32,7 +32,7 @@ c_GeometryProperties::c_GeometryProperties ()
 #ifdef PRINT_NAME
     amrex::Print() << "\t\t\t}************************c_GeometryProperties Constructor()************************\n";
 #endif
-} 
+}
 
 
 c_GeometryProperties::~c_GeometryProperties ()
@@ -45,11 +45,11 @@ c_GeometryProperties::~c_GeometryProperties ()
 #ifdef PRINT_NAME
     amrex::Print() << "\t\t\t}************************c_GeometryProperties Destructor()************************\n";
 #endif
-} 
+}
 
-void 
+void
 c_GeometryProperties::ReadData()
-{    
+{
 #ifdef PRINT_NAME
     amrex::Print() << "\n\n\t\t\t\t{************************c_GeometryProperties::ReadData()************************\n";
     amrex::Print() << "\t\t\t\tin file: " << __FILE__ << " at line: " << __LINE__ << "\n";
@@ -63,7 +63,7 @@ c_GeometryProperties::ReadData()
 }
 
 
-void 
+void
 c_GeometryProperties::InitData()
 {
 #ifdef PRINT_NAME
@@ -123,20 +123,20 @@ c_GeometryProperties::ParseBasicDomainInput()
 
     pp_domain.query("embedded_boundary", embedded_boundary_flag);
 
-    for (int i=0; i<AMREX_SPACEDIM; ++i) 
+    for (int i=0; i<AMREX_SPACEDIM; ++i)
     {
         n_cell[i] = num_cell[i];
         prob_lo[i] = prob_min[i];
-        prob_hi[i] = prob_max[i]; 
+        prob_hi[i] = prob_max[i];
         max_grid_size[i] = mg[i];
-        blocking_factor[i] = bf[i]; 
-        is_periodic[i] = periodicity[i]; 
+        blocking_factor[i] = bf[i];
+        is_periodic[i] = periodicity[i];
     }
-    if(coord_sys_str == "cartesian") 
+    if(coord_sys_str == "cartesian")
     {
         coord_sys =  amrex::CoordSys::cartesian;
     }
-    else if(coord_sys_str == "radial") 
+    else if(coord_sys_str == "radial")
     {
         coord_sys = amrex::CoordSys::RZ;
     }
@@ -173,7 +173,7 @@ c_GeometryProperties::ParseBasicDomainInput()
 }
 
 
-void 
+void
 c_GeometryProperties::InitializeBoxArrayAndDistributionMap()
 {
 #ifdef PRINT_NAME

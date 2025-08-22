@@ -49,7 +49,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
     if (prob_type == 1) {
        amrex::InitRandom(seed                             , nprocs, seed                             );  // give all MPI ranks the same seed
-    } else { 
+    } else {
       amrex::InitRandom(seed+ParallelDescriptor::MyProc(), nprocs, seed+ParallelDescriptor::MyProc());  // give all MPI ranks a different seed
     }
 
@@ -166,8 +166,8 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
  }
 
 // create a mask filled with integers to idetify different material types
-void InitializeMaterialMask(MultiFab& MaterialMask, 
-		            const Geometry& geom, 
+void InitializeMaterialMask(MultiFab& MaterialMask,
+		            const Geometry& geom,
 			    const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
                             [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
@@ -207,7 +207,7 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
 
 // initialization of mask (device geometry) with parser
 void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& MaterialMask)
-{ 
+{
     auto& rGprop = rFerroX.get_GeometryProperties();
     [[maybe_unused]] Box const& domain = rGprop.geom.Domain();
 
@@ -251,7 +251,7 @@ void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& M
 
 // initialization of t-phase mask with parser
 void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& tphaseMask)
-{ 
+{
     auto& rGprop = rFerroX.get_GeometryProperties();
     [[maybe_unused]] Box const& domain = rGprop.geom.Domain();
 
@@ -296,7 +296,7 @@ void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& t
 
 // initialization of Euler angles
 void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta)
-{ 
+{
     auto& rGprop = rFerroX.get_GeometryProperties();
     [[maybe_unused]] Box const& domain = rGprop.geom.Domain();
 

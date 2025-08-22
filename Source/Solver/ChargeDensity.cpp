@@ -44,7 +44,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
         {
 
              if (mask(i,j,k) >= 2.0) {
-      
+
                 //Following: http://dx.doi.org/10.1063/1.4825209
 
                 amrex::Real Ef = 0.0;
@@ -52,11 +52,11 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 amrex::Real Chi = affinity;
                 amrex::Real phi_ref = Chi + 0.5*Eg + 0.5*kb*T*log(Nc/Nv)/q;
                 amrex::Real Ec_corr = -q*(phi(i,j,k) - phi_ref) - Chi*q;
-                amrex::Real Ev_corr = Ec_corr - q*Eg; 
+                amrex::Real Ev_corr = Ec_corr - q*Eg;
 
-                //g_A is the acceptor ground state degeneracy factor and is equal to 4 
-                //because in most semiconductors each acceptor level can accept one hole of either spin 
-                //and the impurity level is doubly degenerate as a result of the two degenerate valence bands 
+                //g_A is the acceptor ground state degeneracy factor and is equal to 4
+                //because in most semiconductors each acceptor level can accept one hole of either spin
+                //and the impurity level is doubly degenerate as a result of the two degenerate valence bands
                 //(heavy hole and light hole bands) at the \Gamma point.
 
                 //g_D is the donor ground state degeneracy factor and is equal to 2
@@ -65,9 +65,9 @@ void ComputeRho(MultiFab&      PoissonPhi,
                 amrex::Real g_A = 4.0;
                 amrex::Real g_D = 2.0;
 
-                amrex::Real Ea = acceptor_ionization_energy;  
-                amrex::Real Ed = donor_ionization_energy; 
-                          
+                amrex::Real Ea = acceptor_ionization_energy;
+                amrex::Real Ed = donor_ionization_energy;
+
                 if(use_Fermi_Dirac == 1){
                   //Fermi-Dirac
 
@@ -75,7 +75,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
                   Real eta_p = -(q*Ef - Ev_corr)/(kb*T);
                   e_den_arr(i,j,k) = Nc*FD_half(eta_n);
                   hole_den_arr(i,j,k) = Nv*FD_half(eta_p);
-         
+
                   acceptor_den_arr(i,j,k) = acceptor_doping/(1.0 + g_A*exp((-q*Ef + q*Ea + q*phi_ref - q*Chi - q*Eg - q*phi(i,j,k))/(kb*T)));
                   donor_den_arr(i,j,k) = donor_doping/(1.0 + g_D*exp( (q*Ef + q*Ed - q*phi_ref + q*Chi + q*phi(i,j,k)) / (kb*T) ));
 
@@ -84,7 +84,7 @@ void ComputeRho(MultiFab&      PoissonPhi,
                   //Maxwell-Boltzmann
                   e_den_arr(i,j,k) =    Nc*exp( -(Ec_corr - q*Ef) / (kb*T) );
                   hole_den_arr(i,j,k) = Nv*exp( -(q*Ef - Ev_corr) / (kb*T) );
-               
+
                   acceptor_den_arr(i,j,k) = acceptor_doping/(1.0 + g_A*exp((-q*Ef + q*Ea + q*phi_ref - q*Chi - q*Eg - q*phi(i,j,k))/(kb*T)));
                   donor_den_arr(i,j,k) = donor_doping/(1.0 + g_D*exp( (q*Ef + q*Ed - q*phi_ref + q*Chi + q*phi(i,j,k)) / (kb*T) ));
 

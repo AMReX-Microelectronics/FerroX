@@ -10,7 +10,7 @@ using namespace amrex;
 
 #define VFRAC_THREASHOLD 1e-4
 
-void 
+void
 eXstatic_MFab_Util::InitializeMacroMultiFabUsingParser_3vars (amrex::MultiFab *macro_mf,
                                                                  amrex::ParserExecutor<3> const& macro_parser,
                                                                  amrex::Geometry& geom)
@@ -57,7 +57,7 @@ eXstatic_MFab_Util::InitializeMacroMultiFabUsingParser_3vars (amrex::MultiFab *m
 }
 
 
-void 
+void
 eXstatic_MFab_Util::InitializeMacroMultiFabUsingParser_4vars (amrex::MultiFab *macro_mf,
                                                                  amrex::ParserExecutor<4> const& macro_parser,
                                                                  amrex::Geometry& geom,
@@ -80,7 +80,7 @@ eXstatic_MFab_Util::InitializeMacroMultiFabUsingParser_4vars (amrex::MultiFab *m
                                                                        auto = amrex::Box
                                                                     */
         auto const& mf_array =  macro_mf->array(mfi); //auto = amrex::Array4<amrex::Real>
-        
+
         amrex::ParallelFor (tb,
             [=] AMREX_GPU_DEVICE (int i, int j, int k) {
 
@@ -145,7 +145,7 @@ eXstatic_MFab_Util::AverageCellCenteredMultiFabToCellFaces(const amrex::MultiFab
 
 #ifdef AMREX_USE_EB
 void
-eXstatic_MFab_Util::SpecifyValueOnlyOnCutcells(amrex::MultiFab& mf, amrex::Real const value) 
+eXstatic_MFab_Util::SpecifyValueOnlyOnCutcells(amrex::MultiFab& mf, amrex::Real const value)
 {
 #ifdef PRINT_NAME
     amrex::Print() << "\n\n\t\t\t\t\t{************************eXstatic_MFab_Util::SpecifyValueOnlyOnCutcells************************\n";
@@ -159,22 +159,22 @@ eXstatic_MFab_Util::SpecifyValueOnlyOnCutcells(amrex::MultiFab& mf, amrex::Real 
 
     auto iv = mf.ixType().toIntVect();
 
-    for ( amrex::MFIter mfi(flags, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi ) 
+    for ( amrex::MFIter mfi(flags, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi )
     {
-        const auto& box = mfi.tilebox( iv, mf.nGrowVect() ); 
+        const auto& box = mfi.tilebox( iv, mf.nGrowVect() );
 
-        auto const& mf_array =  mf.array(mfi); 
+        auto const& mf_array =  mf.array(mfi);
 
         amrex::FabType fab_type = flags[mfi].getType(box);
 
-        if(fab_type == amrex::FabType::regular) 
+        if(fab_type == amrex::FabType::regular)
         {
             amrex::ParallelFor(box, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
                mf_array(i, j, k) = amrex::Real(0.);
             });
         }
-        else if (fab_type == amrex::FabType::covered) 
+        else if (fab_type == amrex::FabType::covered)
         {
             amrex::ParallelFor(box, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
@@ -187,10 +187,10 @@ eXstatic_MFab_Util::SpecifyValueOnlyOnCutcells(amrex::MultiFab& mf, amrex::Real 
 
             amrex::ParallelFor(box, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-               if(vfrac_array(i,j,k) > 0 and vfrac_array(i,j,k) < 1) 
+               if(vfrac_array(i,j,k) > 0 and vfrac_array(i,j,k) < 1)
                {
                    mf_array(i, j, k) = value;
-               } 
+               }
             });
         }
     }
@@ -202,14 +202,14 @@ eXstatic_MFab_Util::SpecifyValueOnlyOnCutcells(amrex::MultiFab& mf, amrex::Real 
 
 
 void
-eXstatic_MFab_Util::CopyValuesIntoAMultiFabOnCutcells(amrex::MultiFab& target_mf, amrex::MultiFab& source_mf) 
+eXstatic_MFab_Util::CopyValuesIntoAMultiFabOnCutcells(amrex::MultiFab& target_mf, amrex::MultiFab& source_mf)
 {
 #ifdef PRINT_NAME
     amrex::Print() << "\n\n\t\t\t\t\t{************************eXstatic_MFab_Util::CopyValuesIntoAMultiFabOnCutcells************************\n";
     amrex::Print() << "\t\t\t\t\tin file: " << __FILE__ << " at line: " << __LINE__ << "\n";
 #endif
-    /*target_mf is initialized to 0 and contains cutcell information through its factory*/ 
-    /*source_mf is a regular mf with some field information that we would like to copy into target_mf*/ 
+    /*target_mf is initialized to 0 and contains cutcell information through its factory*/
+    /*source_mf is a regular mf with some field information that we would like to copy into target_mf*/
 
     auto factory  = dynamic_cast<amrex::EBFArrayBoxFactory const*>(&(target_mf.Factory()));
 
@@ -218,12 +218,12 @@ eXstatic_MFab_Util::CopyValuesIntoAMultiFabOnCutcells(amrex::MultiFab& target_mf
 
     auto iv = target_mf.ixType().toIntVect();
 
-    for ( amrex::MFIter mfi(flags, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi ) 
+    for ( amrex::MFIter mfi(flags, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi )
     {
-        const auto& box = mfi.tilebox( iv, target_mf.nGrowVect() ); 
+        const auto& box = mfi.tilebox( iv, target_mf.nGrowVect() );
 
-        auto const& target_mf_array =  target_mf.array(mfi); 
-        auto const& source_mf_array =  source_mf.array(mfi); 
+        auto const& target_mf_array =  target_mf.array(mfi);
+        auto const& source_mf_array =  source_mf.array(mfi);
 
         amrex::FabType fab_type = flags[mfi].getType(box);
         if((fab_type != amrex::FabType::regular) && (fab_type != amrex::FabType::covered))
@@ -233,10 +233,10 @@ eXstatic_MFab_Util::CopyValuesIntoAMultiFabOnCutcells(amrex::MultiFab& target_mf
 
             amrex::ParallelFor(box, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-               if(vfrac_array(i,j,k) > 0.+VFRAC_THREASHOLD and vfrac_array(i,j,k) < 1.-VFRAC_THREASHOLD) 
+               if(vfrac_array(i,j,k) > 0.+VFRAC_THREASHOLD and vfrac_array(i,j,k) < 1.-VFRAC_THREASHOLD)
                {
                    target_mf_array(i, j, k) = source_mf_array(i,j,k);
-               } 
+               }
             });
         }
     }
@@ -248,7 +248,7 @@ eXstatic_MFab_Util::CopyValuesIntoAMultiFabOnCutcells(amrex::MultiFab& target_mf
 
 
 amrex::Real
-eXstatic_MFab_Util::GetTotalNumberOfCutcells(amrex::MultiFab& mf) 
+eXstatic_MFab_Util::GetTotalNumberOfCutcells(amrex::MultiFab& mf)
 {
 #ifdef PRINT_NAME
     amrex::Print() << "\n\n\t\t\t\t\t{************************eXstatic_MFab_Util::GetTotalNumberOfCutcells************************\n";
@@ -265,11 +265,11 @@ eXstatic_MFab_Util::GetTotalNumberOfCutcells(amrex::MultiFab& mf)
     ReduceData<Real> reduce_data(reduce_op);
     using ReduceTuple = typename decltype(reduce_data)::Type;
 
-    for ( amrex::MFIter mfi(flags, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi ) 
+    for ( amrex::MFIter mfi(flags, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi )
     {
-        const auto& box = mfi.tilebox(); 
+        const auto& box = mfi.tilebox();
 
-        auto const& mf_array =  mf.array(mfi); 
+        auto const& mf_array =  mf.array(mfi);
 
         amrex::FabType fab_type = flags[mfi].getType(box);
         if((fab_type != amrex::FabType::regular) && (fab_type != amrex::FabType::covered))
@@ -281,7 +281,7 @@ eXstatic_MFab_Util::GetTotalNumberOfCutcells(amrex::MultiFab& mf)
             [=] AMREX_GPU_DEVICE (int i, int j, int k) -> ReduceTuple
             {
                amrex::Real weight = (vfrac_array(i,j,k) >= 0.+VFRAC_THREASHOLD and vfrac_array(i,j,k) <= 1.0-VFRAC_THREASHOLD) ? 1.0 : 0;
-               return weight;   
+               return weight;
             });
         }
     }

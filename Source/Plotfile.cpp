@@ -110,7 +110,7 @@ void WritePlotfile(c_FerroX& rFerroX,
     [[maybe_unused]] auto& rGprop = rFerroX.get_GeometryProperties();
 #ifdef AMREX_USE_EB
     MultiFab Plt(ba, dm, nvar, 0,  MFInfo(), *rGprop.pEB->p_factory_union);
-#else    
+#else
     MultiFab Plt(ba, dm, nvar, 0);
 #endif
 
@@ -118,7 +118,7 @@ void WritePlotfile(c_FerroX& rFerroX,
 
     MultiFab::Copy(Plt, P_old[0], 0, counter++, 1, 0);
     MultiFab::Copy(Plt, P_old[1], 0, counter++, 1, 0);
-    MultiFab::Copy(Plt, P_old[2], 0, counter++, 1, 0);  
+    MultiFab::Copy(Plt, P_old[2], 0, counter++, 1, 0);
 
     if (plot_Phi) {
         MultiFab::Copy(Plt, PoissonPhi, 0, counter++, 1, 0);
@@ -131,7 +131,7 @@ void WritePlotfile(c_FerroX& rFerroX,
     if (plot_E) {
         MultiFab::Copy(Plt, E[0], 0, counter++, 1, 0);
         MultiFab::Copy(Plt, E[1], 0, counter++, 1, 0);
-        MultiFab::Copy(Plt, E[2], 0, counter++, 1, 0);  
+        MultiFab::Copy(Plt, E[2], 0, counter++, 1, 0);
     }
 
     if (plot_holes) {

@@ -20,7 +20,7 @@ bool c_FerroX::do_device_synchronize = true;
 bool c_FerroX::do_device_synchronize = false;
 #endif
 
-c_FerroX& c_FerroX::GetInstance() 
+c_FerroX& c_FerroX::GetInstance()
 {
 
     if (!m_instance) {
@@ -119,7 +119,7 @@ c_FerroX::PrintGlobalWarnings(const std::string& when)
 }
 
 
-void 
+void
 c_FerroX::ReadData ()
 {
 #ifdef PRINT_NAME
@@ -139,21 +139,21 @@ c_FerroX::ReadData ()
     m_pGeometryProperties = std::make_unique<c_GeometryProperties>();
 
     m_pBoundaryConditions = std::make_unique<c_BoundaryConditions>();
-    
+
 #ifdef PRINT_NAME
     amrex::Print() << "\t\t}************************c_FerroX::ReadData()************************\n";
 #endif
 }
 
 
-void 
+void
 c_FerroX::InitData ()
 {
 #ifdef PRINT_NAME
     amrex::Print() << "\n\n\t{************************c_FerroX::InitData()************************\n";
     amrex::Print() << "\tin file: " << __FILE__ << " at line: " << __LINE__ << "\n";
 #endif
- 
+
     m_pGeometryProperties->InitData();
 
 #ifdef PRINT_NAME
@@ -298,33 +298,33 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      if(P_BC_flag_lo[2] == 3 || P_BC_flag_hi[2] == 3){
        amrex::Warning("This boundary condition does not represent the accurate physical picture!!");
      }
-     
+
      plot_Phi = 1;
      pp.query("plot_Phi",plot_Phi);
      plot_PoissonRHS = 1;
      pp.query("plot_PoissonRHS",plot_PoissonRHS);
-     plot_E = 1;    
-     pp.query("plot_E",plot_E);    
+     plot_E = 1;
+     pp.query("plot_E",plot_E);
      plot_holes = 1;
-     pp.query("plot_holes",plot_holes); 
+     pp.query("plot_holes",plot_holes);
      plot_electrons = 1;
-     pp.query("plot_electrons",plot_electrons); 
+     pp.query("plot_electrons",plot_electrons);
      plot_charge = 1;
-     pp.query("plot_charge",plot_charge); 
+     pp.query("plot_charge",plot_charge);
      plot_epsilon = 1;
-     pp.query("plot_epsilon",plot_epsilon); 
+     pp.query("plot_epsilon",plot_epsilon);
      plot_mask = 1;
-     pp.query("plot_mask",plot_mask); 
+     pp.query("plot_mask",plot_mask);
      plot_tphase = 1;
-     pp.query("plot_tphase",plot_tphase); 
+     pp.query("plot_tphase",plot_tphase);
      plot_alpha = 1 ;
-     pp.query("plot_alpha",plot_alpha); 
+     pp.query("plot_alpha",plot_alpha);
      plot_beta = 1;
-     pp.query("plot_beta",plot_beta); 
+     pp.query("plot_beta",plot_beta);
      plot_theta = 1;
-     pp.query("plot_theta",plot_theta); 
+     pp.query("plot_theta",plot_theta);
      plot_PhiDiff = 1;
-     pp.query("plot_PhiDiff",plot_PhiDiff); 
+     pp.query("plot_PhiDiff",plot_PhiDiff);
 
      TimeIntegratorOrder = 1;
      pp.query("TimeIntegratorOrder",TimeIntegratorOrder);
@@ -378,7 +378,7 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
 
      delta = 1.e-6;
      pp.query("delta",delta);
-     
+
      inc_step = 10000;
      pp.query("inc_step",inc_step);
 
@@ -449,7 +449,7 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      //A more general way of initializing device geometry is accomplished through masks which use function parsers
 
      //Require FE_lo/hi to be specified in the input file (simplest device possible : MFM).
-     //Make all other material hi/lo optional. By default they will be outside of the problem domain   
+     //Make all other material hi/lo optional. By default they will be outside of the problem domain
 
      for (int i=0; i<AMREX_SPACEDIM; ++i) {
          DE_lo[i] = prob_lo[i] - 1.0;
@@ -554,28 +554,28 @@ void InitializeFerroXNamespace(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM
      pp.query("donor_doping",donor_doping);
 
      //The most common acceptor dopant in bulk Si is boron (B), which has Ea = 44 meV
-     //The most common donors in bulk Si are phosphorus (P) and arsenic (As), 
+     //The most common donors in bulk Si are phosphorus (P) and arsenic (As),
      //which have ionization energies of Ed = 46 meV and 54 meV, respectively.
 
-     acceptor_ionization_energy = 44.0e-3; 
-     donor_ionization_energy = 46.0e-3; 
+     acceptor_ionization_energy = 44.0e-3;
+     donor_ionization_energy = 46.0e-3;
 
      intrinsic_carrier_concentration = std::sqrt(Nc*Nv)*exp(-0.5*q*bandgap/(kb*T));
 
      use_Fermi_Dirac = 1;
      pp.query("use_Fermi_Dirac",use_Fermi_Dirac);
-     
+
      use_work_function = 0;
      pp.query("use_work_function",use_work_function);
-    
+
      if (use_work_function == 1){
         metal_work_function = 4.85; //eV
         pp.query("metal_work_function", metal_work_function);
-     } 
+     }
 
      Coordinate_Transformation = 0;
      pp.query("Coordinate_Transformation",Coordinate_Transformation);
-     
+
      use_Euler_angles = 0;
      pp.query("use_Euler_angles",use_Euler_angles);
 }
