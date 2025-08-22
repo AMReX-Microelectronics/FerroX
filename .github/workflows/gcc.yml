@@ -107,7 +107,7 @@ jobs:
     - name: Report
       run: |
         egrep "warning:|error:" ${{runner.workspace}}/build-output-${{matrix.sundials}}-${{matrix.amrex_mode}}.txt \
-          | egrep -v "_deps/.*amrex" | egrep -v "_deps/.*sundials" | egrep -v "lto-wrapper: warning:" | sort | uniq \
+          | egrep -v "_deps/.*amrex" | egrep -v "_deps/.*sundials" | egrep -v "amrex/Src" | egrep -v "sundials/src" | egrep -v "lto-wrapper: warning:" | sort | uniq \
           | awk 'BEGIN{i=0}{print $0}{i++}END{print "Warnings: "i}' > ${{runner.workspace}}/build-output-warnings-${{matrix.sundials}}-${{matrix.amrex_mode}}.txt
         cat ${{runner.workspace}}/build-output-warnings-${{matrix.sundials}}-${{matrix.amrex_mode}}.txt
         export return=$(tail -n 1 ${{runner.workspace}}/build-output-warnings-${{matrix.sundials}}-${{matrix.amrex_mode}}.txt | awk '{print $2}')
