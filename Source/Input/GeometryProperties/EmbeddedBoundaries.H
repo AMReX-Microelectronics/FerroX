@@ -31,12 +31,12 @@ struct s_STL {
     amrex::Real scale;
     std::vector<amrex::Real> center;
     int reverse_normal;
-  
+
     s_STL() {
              using namespace amrex;
-             scale = 1._rt; 
-             center = {0.0_rt, 0.0_rt, 0.0_rt}; 
-             reverse_normal = 0; 
+             scale = 1._rt;
+             center = {0.0_rt, 0.0_rt, 0.0_rt};
+             reverse_normal = 0;
             };
 };
 
@@ -73,7 +73,7 @@ public:
 
     const amrex::Geometry* geom;
     const amrex::BoxArray* ba;
-    const amrex::DistributionMapping* dm; 
+    const amrex::DistributionMapping* dm;
 
     amrex::MultiFab& get_soln_mf  (int i) {return (*m_p_soln_mf[i]);}
     //amrex::MultiFab& get_beta_mf  (int i) {return (*m_p_beta_mf[i]);}
@@ -120,11 +120,11 @@ private:
     std::map<std::string,amrex::EBSupport>
     map_eb_support = {
                          {"full"  , amrex::EBSupport::full},
-             		     {"basic" , amrex::EBSupport::basic},
-        	        	 {"volume", amrex::EBSupport::volume},
+                             {"basic" , amrex::EBSupport::basic},
+                                 {"volume", amrex::EBSupport::volume},
                          {"Full"  , amrex::EBSupport::full},
                          {"Basic" , amrex::EBSupport::basic},
-                 	     {"Volume", amrex::EBSupport::volume},
+                             {"Volume", amrex::EBSupport::volume},
                      };
 
     void ReadGeometry();

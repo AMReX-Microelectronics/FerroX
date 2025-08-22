@@ -12,7 +12,7 @@ using namespace amrex;
 void FerroX_Util::Contains_sc(MultiFab& MaterialMask, bool& contains_SC)
 {
 
-	int has_SC = 0;
+        int has_SC = 0;
 
         for ( MFIter mfi(MaterialMask, TilingIfNotGPU()); mfi.isValid(); ++mfi ) {
 
@@ -36,6 +36,6 @@ void FerroX_Util::Contains_sc(MultiFab& MaterialMask, bool& contains_SC)
 
        // parallel reduce max has_SC
        ParallelDescriptor::ReduceIntMax(has_SC);
- 
+
        if(has_SC == 1) contains_SC = true;
 }

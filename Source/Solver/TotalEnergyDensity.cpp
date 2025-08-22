@@ -8,12 +8,12 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
                 Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_grad,
                 Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_elec,
                 Array<MultiFab, AMREX_SPACEDIM> &P_old,
-                Array<MultiFab, AMREX_SPACEDIM> &E,
-                MultiFab&                       Gamma,
-                MultiFab&                 MaterialMask,
-                MultiFab&                 tphaseMask,
-                MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
-                const Geometry& geom)
+                [[maybe_unused]] Array<MultiFab, AMREX_SPACEDIM> &E,
+                [[maybe_unused]] MultiFab&                       Gamma,
+                [[maybe_unused]] MultiFab&                 MaterialMask,
+                [[maybe_unused]] MultiFab&                 tphaseMask,
+                [[maybe_unused]] MultiFab& angle_alpha, [[maybe_unused]] MultiFab& angle_beta, [[maybe_unused]] MultiFab& angle_theta,
+                [[maybe_unused]] const Geometry& geom)
 {
         BL_PROFILE("CalculateTDGL_RHS()");
 
@@ -48,19 +48,19 @@ void CalculateTDGL_RHS(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs,
             {
 
                if (include_Landau == 1){
-                  GL_RHS_p(i,j,k) +=  GL_RHS_p_Landau(i,j,k); 
-                  GL_RHS_q(i,j,k) +=  GL_RHS_q_Landau(i,j,k); 
-                  GL_RHS_r(i,j,k) +=  GL_RHS_r_Landau(i,j,k); 
+                  GL_RHS_p(i,j,k) +=  GL_RHS_p_Landau(i,j,k);
+                  GL_RHS_q(i,j,k) +=  GL_RHS_q_Landau(i,j,k);
+                  GL_RHS_r(i,j,k) +=  GL_RHS_r_Landau(i,j,k);
                }
                if (include_Grad == 1){
-                  GL_RHS_p(i,j,k) +=  GL_RHS_p_grad(i,j,k); 
-                  GL_RHS_q(i,j,k) +=  GL_RHS_q_grad(i,j,k); 
-                  GL_RHS_r(i,j,k) +=  GL_RHS_r_grad(i,j,k); 
+                  GL_RHS_p(i,j,k) +=  GL_RHS_p_grad(i,j,k);
+                  GL_RHS_q(i,j,k) +=  GL_RHS_q_grad(i,j,k);
+                  GL_RHS_r(i,j,k) +=  GL_RHS_r_grad(i,j,k);
                }
                if (include_Elec == 1){
-                  GL_RHS_p(i,j,k) +=  GL_RHS_p_elec(i,j,k); 
-                  GL_RHS_q(i,j,k) +=  GL_RHS_q_elec(i,j,k); 
-                  GL_RHS_r(i,j,k) +=  GL_RHS_r_elec(i,j,k); 
+                  GL_RHS_p(i,j,k) +=  GL_RHS_p_elec(i,j,k);
+                  GL_RHS_q(i,j,k) +=  GL_RHS_q_elec(i,j,k);
+                  GL_RHS_r(i,j,k) +=  GL_RHS_r_elec(i,j,k);
                }
             });
         }
@@ -104,7 +104,7 @@ void Calculate_Landau(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_Landau,
                                     + 2. * alpha_112 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),4.)
                                     + 2. * alpha_112 * pOld_q(i,j,k) * std::pow(pOld_r(i,j,k),4.)
                                     + 2. * alpha_123 * pOld_q(i,j,k) * std::pow(pOld_p(i,j,k),2.) * std::pow(pOld_r(i,j,k),2.);
-                
+
                 Real dFdPr_Landau = alpha*pOld_r(i,j,k) + beta*std::pow(pOld_r(i,j,k),3.) + FerroX::gamma*std::pow(pOld_r(i,j,k),5.)
                                     + 2. * alpha_12 * pOld_r(i,j,k) * std::pow(pOld_p(i,j,k),2.)
                                     + 2. * alpha_12 * pOld_r(i,j,k) * std::pow(pOld_q(i,j,k),2.)
@@ -118,16 +118,16 @@ void Calculate_Landau(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_Landau,
                 GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) * dFdPr_Landau;
 
                 if (is_polarization_scalar == 1){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		}
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                }
 
-		//set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
+                //set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
                 //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
                 if (tphase(i,j,k) == 1.0){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		   GL_RHS_r(i,j,k) = 0.0;
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                   GL_RHS_r(i,j,k) = 0.0;
                 }
             });
         }
@@ -170,28 +170,28 @@ void Calculate_Grad(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_grad,
             {
 
                //Convert Euler angles from degrees to radians
-               amrex::Real Pi = 3.14159265358979323846; 
+               amrex::Real Pi = 3.14159265358979323846;
                amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
                amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
                amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
-  
+
                amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
-  
+
                if(use_Euler_angles){
-                  R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);  
-                  R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);  
-                  R_13 = sin(beta_rad)*sin(theta_rad);  
-                  R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);  
-                  R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);  
-                  R_23 = sin(beta_rad)*cos(theta_rad);  
-                  R_31 = sin(alpha_rad)*sin(beta_rad);  
-                  R_32 = -cos(alpha_rad)*sin(beta_rad);  
-                  R_33 = cos(beta_rad);  
+                  R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);
+                  R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);
+                  R_13 = sin(beta_rad)*sin(theta_rad);
+                  R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);
+                  R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);
+                  R_23 = sin(beta_rad)*cos(theta_rad);
+                  R_31 = sin(alpha_rad)*sin(beta_rad);
+                  R_32 = -cos(alpha_rad)*sin(beta_rad);
+                  R_33 = cos(beta_rad);
                } else {
-                  R_11 = cos(beta_rad)*cos(theta_rad);  
-                  R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
-                  R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);  
-                  R_21 = cos(beta_rad)*sin(theta_rad);  
+                  R_11 = cos(beta_rad)*cos(theta_rad);
+                  R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);
+                  R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);
+                  R_21 = cos(beta_rad)*sin(theta_rad);
                   R_22 = sin(beta_rad)*sin(alpha_rad)*sin(theta_rad) + cos(alpha_rad)*cos(theta_rad);
                   R_23 = cos(alpha_rad)*sin(beta_rad)*sin(theta_rad) - sin(alpha_rad)*cos(theta_rad);
                   R_31 = -sin(beta_rad);
@@ -204,7 +204,7 @@ void Calculate_Grad(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_grad,
                                   - (g44 + g44_p) * DoubleDPDz(pOld_p, mask, i, j, k, dx)
                                   - (g12 + g44 - g44_p) * DoubleDPDxDy(pOld_q, mask, i, j, k, dx)  // d2P/dxdy
                                   - (g12 + g44 - g44_p) * DoubleDPDxDz(pOld_r, mask, i, j, k, dx); // d2P/dxdz
-                
+
                 Real dFdPq_grad = - g11 * DoubleDPDy(pOld_q, mask, i, j, k, dx)
                                   - (g44 - g44_p) * DoubleDPDx(pOld_q, mask, i, j, k, dx)
                                   - (g44 - g44_p) * DoubleDPDz(pOld_q, mask, i, j, k, dx)
@@ -217,12 +217,12 @@ void Calculate_Grad(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_grad,
                                            +2.*R_31*R_32*DoubleDPDxDy(pOld_r, mask, i, j, k, dx)
                                            +2.*R_32*R_33*DoubleDPDyDz(pOld_r, mask, i, j, k, dx)
                                            +2.*R_33*R_31*DoubleDPDxDz(pOld_r, mask, i, j, k, dx))
-                                           
-                                  - (g44 - g44_p) * ( R_11*R_11*DoubleDPDx(pOld_r, mask, i, j, k, dx) 
-                                                     +R_12*R_12*DoubleDPDy(pOld_r, mask, i, j, k, dx) 
-                                                     +R_13*R_13*DoubleDPDz(pOld_r, mask, i, j, k, dx) 
-                                                     +2.*R_11*R_12*DoubleDPDxDy(pOld_r, mask, i, j, k, dx) 
-                                                     +2.*R_12*R_13*DoubleDPDyDz(pOld_r, mask, i, j, k, dx) 
+
+                                  - (g44 - g44_p) * ( R_11*R_11*DoubleDPDx(pOld_r, mask, i, j, k, dx)
+                                                     +R_12*R_12*DoubleDPDy(pOld_r, mask, i, j, k, dx)
+                                                     +R_13*R_13*DoubleDPDz(pOld_r, mask, i, j, k, dx)
+                                                     +2.*R_11*R_12*DoubleDPDxDy(pOld_r, mask, i, j, k, dx)
+                                                     +2.*R_12*R_13*DoubleDPDyDz(pOld_r, mask, i, j, k, dx)
                                                      +2.*R_13*R_11*DoubleDPDxDz(pOld_r, mask, i, j, k, dx))
 
                                   - (g44 - g44_p) * ( R_21*R_21*DoubleDPDx(pOld_r, mask, i, j, k, dx)
@@ -240,16 +240,16 @@ void Calculate_Grad(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_grad,
                 GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) * dFdPr_grad;
 
                 if (is_polarization_scalar == 1){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		}
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                }
 
-		//set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
+                //set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
                 //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
                 if (tphase(i,j,k) == 1.0){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		   GL_RHS_r(i,j,k) = 0.0;
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                   GL_RHS_r(i,j,k) = 0.0;
                 }
             });
         }
@@ -284,16 +284,16 @@ void Calculate_Elec(Array<MultiFab, AMREX_SPACEDIM> &GL_rhs_elec,
                 GL_RHS_r(i,j,k) = -1.0 * Gam(i,j,k) * (-Er(i,j,k));
 
                 if (is_polarization_scalar == 1){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		}
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                }
 
-		//set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
+                //set t_phase GL_RHS_r to zero so that it stays zero. It is initialized to zero in t-phase as well
                 //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
                 if (tphase(i,j,k) == 1.0){
-		   GL_RHS_p(i,j,k) = 0.0;
-		   GL_RHS_q(i,j,k) = 0.0;
-		   GL_RHS_r(i,j,k) = 0.0;
+                   GL_RHS_p(i,j,k) = 0.0;
+                   GL_RHS_q(i,j,k) = 0.0;
+                   GL_RHS_r(i,j,k) = 0.0;
                 }
             });
         }

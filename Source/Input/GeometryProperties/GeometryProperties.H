@@ -28,10 +28,10 @@
 
 #include <string>
 
-class 
+class
 c_GeometryProperties
 {
-public: 
+public:
     c_GeometryProperties();
     ~c_GeometryProperties();
 

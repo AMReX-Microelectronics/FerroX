@@ -1,5 +1,5 @@
 namespace FerroX {
-    
+
     extern AMREX_GPU_MANAGED int nsteps;
     extern AMREX_GPU_MANAGED int plot_int;
 
@@ -65,7 +65,7 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int use_Fermi_Dirac;
     extern AMREX_GPU_MANAGED int use_work_function;
     extern AMREX_GPU_MANAGED amrex::Real metal_work_function;
-    
+
 
     // P and Phi Bc
     extern AMREX_GPU_MANAGED amrex::Real lambda;
@@ -88,7 +88,7 @@ namespace FerroX {
 
     extern AMREX_GPU_MANAGED int Coordinate_Transformation;
     extern AMREX_GPU_MANAGED int use_Euler_angles;
-    
+
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> t_phase_lo;
     extern AMREX_GPU_MANAGED amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> t_phase_hi;
 
@@ -103,7 +103,7 @@ namespace FerroX {
     extern AMREX_GPU_MANAGED int num_Vapp_max;
 
     extern AMREX_GPU_MANAGED int random_seed;
-    
+
     extern AMREX_GPU_MANAGED int include_Landau;
     extern AMREX_GPU_MANAGED int include_Grad;
     extern AMREX_GPU_MANAGED int include_Elec;

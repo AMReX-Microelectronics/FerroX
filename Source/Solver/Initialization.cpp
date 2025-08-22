@@ -8,12 +8,12 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                    MultiFab&   rho,
                    MultiFab&   e_den,
                    MultiFab&   p_den,
-		   const MultiFab& MaterialMask,
-		   const MultiFab& tphaseMask,
+                   const MultiFab& MaterialMask,
+                   const MultiFab& tphaseMask,
                    const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
                    const       Geometry& geom,
-		   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-                   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+                   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                   [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
 
     if (prob_type == 1) {  //2D : Initialize uniform P in y direction
@@ -49,7 +49,7 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
     if (prob_type == 1) {
        amrex::InitRandom(seed                             , nprocs, seed                             );  // give all MPI ranks the same seed
-    } else { 
+    } else {
       amrex::InitRandom(seed+ParallelDescriptor::MyProc(), nprocs, seed+ParallelDescriptor::MyProc());  // give all MPI ranks a different seed
     }
 
@@ -112,11 +112,11 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
 
                Gam(i,j,k) = BigGamma;
 
-	       //set t_phase Pz to zero
-	       //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
-	       if(tphase(i,j,k) == 1.0){
+               //set t_phase Pz to zero
+               //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+               if(tphase(i,j,k) == 1.0){
                  pOld_r(i,j,k) = 0.0;
-	       }
+               }
 
             } else {
                pOld_p(i,j,k) = 0.0;
@@ -125,15 +125,15 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
                Gam(i,j,k) = 0.0;
             }
 
-	    if (is_polarization_scalar == 1){
+            if (is_polarization_scalar == 1){
                pOld_p(i,j,k) = 0.0;
                pOld_q(i,j,k) = 0.0;
-	    }
+            }
         });
         // Calculate charge density from Phi, Nc, Nv, Ec, and Ev
 
-	MultiFab acceptor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
-	MultiFab donor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
+        MultiFab acceptor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
+        MultiFab donor_den(rho.boxArray(), rho.DistributionMap(), 1, 0);
 
         const Array4<Real>& hole_den_arr = p_den.array(mfi);
         const Array4<Real>& e_den_arr = e_den.array(mfi);
@@ -166,10 +166,10 @@ void InitializePandRho(Array<MultiFab, AMREX_SPACEDIM> &P_old,
  }
 
 // create a mask filled with integers to idetify different material types
-void InitializeMaterialMask(MultiFab& MaterialMask, 
-		            const Geometry& geom, 
-			    const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-                            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+void InitializeMaterialMask(MultiFab& MaterialMask,
+                            const Geometry& geom,
+                            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                            [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
     // loop over boxes
     for (MFIter mfi(MaterialMask); mfi.isValid(); ++mfi)
@@ -198,8 +198,8 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
                     mask(i,j,k) = 3.;
                 }
              } else {
-	         mask(i,j,k) = 1.; //spacer is DE
-	     }
+                 mask(i,j,k) = 1.; //spacer is DE
+             }
         });
     }
     MaterialMask.FillBoundary(geom.periodicity());
@@ -207,9 +207,9 @@ void InitializeMaterialMask(MultiFab& MaterialMask,
 
 // initialization of mask (device geometry) with parser
 void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& MaterialMask)
-{ 
+{
     auto& rGprop = rFerroX.get_GeometryProperties();
-    Box const& domain = rGprop.geom.Domain();
+    [[maybe_unused]] Box const& domain = rGprop.geom.Domain();
 
     const auto dx = rGprop.geom.CellSizeArray();
     const auto& real_box = rGprop.geom.ProbDomain();
@@ -220,14 +220,14 @@ void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& M
         const auto& mask_arr = MaterialMask.array(mfi);
         const auto& bx = mfi.tilebox();
 
-	std::string m_mask_s;
-	std::unique_ptr<amrex::Parser> m_mask_parser;
+        std::string m_mask_s;
+        std::unique_ptr<amrex::Parser> m_mask_parser;
         std::string m_str_device_geom_function;
 
-	ParmParse pp_mask("device_geom");
+        ParmParse pp_mask("device_geom");
 
 
-	if (pp_mask.query("device_geom_function(x,y,z)", m_str_device_geom_function) ) {
+        if (pp_mask.query("device_geom_function(x,y,z)", m_str_device_geom_function) ) {
             m_mask_s = "parse_device_geom_function";
         }
 
@@ -246,14 +246,14 @@ void InitializeMaterialMask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& M
         });
 
     }
-	MaterialMask.FillBoundary(geom.periodicity());
+        MaterialMask.FillBoundary(geom.periodicity());
 }
 
 // initialization of t-phase mask with parser
 void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& tphaseMask)
-{ 
+{
     auto& rGprop = rFerroX.get_GeometryProperties();
-    Box const& domain = rGprop.geom.Domain();
+    [[maybe_unused]] Box const& domain = rGprop.geom.Domain();
 
     const auto dx = rGprop.geom.CellSizeArray();
     const auto& real_box = rGprop.geom.ProbDomain();
@@ -264,14 +264,14 @@ void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& t
         const auto& mask_arr = tphaseMask.array(mfi);
         const auto& bx = mfi.tilebox();
 
-	std::string tphase_mask_s;
-	std::unique_ptr<amrex::Parser> tphase_mask_parser;
+        std::string tphase_mask_s;
+        std::unique_ptr<amrex::Parser> tphase_mask_parser;
         std::string m_str_tphase_geom_function;
 
-	ParmParse pp_mask("tphase_geom");
+        ParmParse pp_mask("tphase_geom");
 
 
-	if (pp_mask.query("tphase_geom_function(x,y,z)", m_str_tphase_geom_function) ) {
+        if (pp_mask.query("tphase_geom_function(x,y,z)", m_str_tphase_geom_function) ) {
             tphase_mask_s = "parse_tphase_geom_function";
         }
 
@@ -290,15 +290,15 @@ void Initialize_tphase_Mask(c_FerroX& rFerroX, const Geometry& geom, MultiFab& t
         });
 
     }
-	tphaseMask.FillBoundary(geom.periodicity());
+        tphaseMask.FillBoundary(geom.periodicity());
 }
 
 
 // initialization of Euler angles
 void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta)
-{ 
+{
     auto& rGprop = rFerroX.get_GeometryProperties();
-    Box const& domain = rGprop.geom.Domain();
+    [[maybe_unused]] Box const& domain = rGprop.geom.Domain();
 
     const auto dx = rGprop.geom.CellSizeArray();
     const auto& real_box = rGprop.geom.ProbDomain();
@@ -313,22 +313,22 @@ void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& 
         const auto& theta_arr = angle_theta.array(mfi);
         const auto& bx = mfi.tilebox();
 
-	std::string alpha_s;
-	std::unique_ptr<amrex::Parser> alpha_parser;
+        std::string alpha_s;
+        std::unique_ptr<amrex::Parser> alpha_parser;
         std::string m_str_alpha_function;
 
-	std::string beta_s;
-	std::unique_ptr<amrex::Parser> beta_parser;
+        std::string beta_s;
+        std::unique_ptr<amrex::Parser> beta_parser;
         std::string m_str_beta_function;
 
-	std::string theta_s;
-	std::unique_ptr<amrex::Parser> theta_parser;
+        std::string theta_s;
+        std::unique_ptr<amrex::Parser> theta_parser;
         std::string m_str_theta_function;
 
-	ParmParse pp_alpha("angle_alpha");
+        ParmParse pp_alpha("angle_alpha");
 
 
-	if (pp_alpha.query("alpha_function(x,y,z)", m_str_alpha_function) ) {
+        if (pp_alpha.query("alpha_function(x,y,z)", m_str_alpha_function) ) {
             alpha_s = "parse_alpha_function";
         }
 
@@ -338,10 +338,10 @@ void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& 
                                      makeParser(m_str_alpha_function,{"x","y","z"}));
         }
 
-	ParmParse pp_beta("angle_beta");
+        ParmParse pp_beta("angle_beta");
 
 
-	if (pp_beta.query("beta_function(x,y,z)", m_str_beta_function) ) {
+        if (pp_beta.query("beta_function(x,y,z)", m_str_beta_function) ) {
             beta_s = "parse_beta_function";
         }
 
@@ -351,10 +351,10 @@ void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& 
                                      makeParser(m_str_beta_function,{"x","y","z"}));
         }
 
-	ParmParse pp_theta("angle_theta");
+        ParmParse pp_theta("angle_theta");
 
 
-	if (pp_theta.query("theta_function(x,y,z)", m_str_theta_function) ) {
+        if (pp_theta.query("theta_function(x,y,z)", m_str_theta_function) ) {
             theta_s = "parse_theta_function";
         }
 
@@ -377,8 +377,8 @@ void Initialize_Euler_angles(c_FerroX& rFerroX, const Geometry& geom, MultiFab& 
         });
 
     }
-	angle_alpha.FillBoundary(geom.periodicity());
-	angle_beta.FillBoundary(geom.periodicity());
-	angle_theta.FillBoundary(geom.periodicity());
+        angle_alpha.FillBoundary(geom.periodicity());
+        angle_beta.FillBoundary(geom.periodicity());
+        angle_theta.FillBoundary(geom.periodicity());
 }
 
