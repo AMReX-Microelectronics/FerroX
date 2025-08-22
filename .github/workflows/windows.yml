@@ -65,6 +65,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install `
             -DCMAKE_BUILD_TYPE:STRING=Debug `
             -DFerroX_MPI:BOOL=OFF `
+            -DFerroX_COMPUTE:STRING=NOACC `
             -DFerroX_SUNDIALS:BOOL=${{matrix.sundials}} `
             -DFerroX_ENABLE_ALL_WARNINGS:BOOL=OFF `
             ${{github.workspace}};
