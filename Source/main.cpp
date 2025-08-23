@@ -18,6 +18,7 @@
 #include "Solver/Initialization.H"
 #include "Solver/ChargeDensity.H"
 #include "Solver/TotalEnergyDensity.H"
+#include "Solver/Energy_Calculation.H"
 #include "Input/BoundaryConditions/BoundaryConditions.H"
 #include "Input/GeometryProperties/GeometryProperties.H"
 #include "Utils/SelectWarpXUtils/WarpXUtil.H"
@@ -432,7 +433,18 @@ void main_main (c_FerroX& rFerroX)
 
             // Calculate E from Phi
             ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+            Real Landau_Energy = ComputeLandauEnergy(P_old, MaterialMask, geom, alpha, beta, FerroX::gamma);
+            Real Gradient_Energy = ComputeGradientEnergy(P_old, MaterialMask, geom, g11, g44);
+            Real Electrostatic_Energy = ComputeElectrostaticEnergy(P_old, E, MaterialMask, geom);
+            Real Total_Energy = Landau_Energy + Gradient_Energy + Electrostatic_Energy;
 
+            amrex::Print() << "Landau_Energy value is: " << Landau_Energy << '\n';
+            amrex::Print() << "Gradient_Energy value is: " << Gradient_Energy << '\n';
+            amrex::Print() << "Electrostatic_Energy value is: " << Electrostatic_Energy << '\n';
+            amrex::Print() << "Total_Energy value is: " << Total_Energy << '\n';
+
+
+            
             // compute f^n = f(P^n,Phi^n)
             if (include_Landau == 1){
                Calculate_Landau(GL_rhs_Landau, P_old, Gamma, tphaseMask);
@@ -475,7 +487,6 @@ void main_main (c_FerroX& rFerroX)
 
                 //update E using PoissonPhi computed with P_new_pre
                 ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
-
                 // compute f^{n+1,*} = f(P^{n+1,*},Phi^{n+1,*})
                 if (include_Landau == 1){
                    Calculate_Landau(GL_rhs_Landau, P_new_pre, Gamma, tphaseMask);
