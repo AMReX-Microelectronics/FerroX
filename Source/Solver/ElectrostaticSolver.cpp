@@ -531,7 +531,7 @@ void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>
     PoissonPhi.FillBoundary(geom.periodicity());
 }
 
-void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& Phidiff, Real phi_tolerance, int step_local, int& steady_state_step, int& inc_step_local)
+void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& Phidiff, Real phi_tolerance_local, int step_local, int& steady_state_step, int& inc_step_local)
 {
 
         Real phi_max = PoissonPhi.norm0();
@@ -554,7 +554,7 @@ void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& 
         Real max_phi_err = Phidiff.norm0();
 
         if(step_local > 1){
-          if (max_phi_err < phi_tolerance) {
+          if (max_phi_err < phi_tolerance_local) {
                   steady_state_step = step_local;
                   inc_step_local = step_local;
           }
