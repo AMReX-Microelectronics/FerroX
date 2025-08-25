@@ -154,12 +154,32 @@ macro(find_amrex)
             if(FerroX_COMPUTE STREQUAL CUDA)
                 enable_language(CUDA)
                 # AMReX 21.06+ supports CUDA_ARCHITECTURES
+            elseif(FerroX_COMPUTE STREQUAL HIP)
+                # HIP uses C++ compiler with special flags
+                if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                    message(WARNING "HIP backend works best with Clang-based compilers (clang++, amdclang++, hipcc)")
+                endif()
+            elseif(FerroX_COMPUTE STREQUAL SYCL)
+                # SYCL requires Intel oneAPI compiler
+                if(NOT CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
+                    message(WARNING "SYCL backend requires Intel oneAPI compiler (icpx)")
+                endif()
             endif()
             add_subdirectory(${FerroX_amrex_src} _deps/localamrex-build/)
         else()
             if(FerroX_COMPUTE STREQUAL CUDA)
                 enable_language(CUDA)
                 # AMReX 21.06+ supports CUDA_ARCHITECTURES
+            elseif(FerroX_COMPUTE STREQUAL HIP)
+                # HIP uses C++ compiler with special flags
+                if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                    message(WARNING "HIP backend works best with Clang-based compilers (clang++, amdclang++, hipcc)")
+                endif()
+            elseif(FerroX_COMPUTE STREQUAL SYCL)
+                # SYCL requires Intel oneAPI compiler
+                if(NOT CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
+                    message(WARNING "SYCL backend requires Intel oneAPI compiler (icpx)")
+                endif()
             endif()
             FetchContent_Declare(fetchedamrex
                 GIT_REPOSITORY ${FerroX_amrex_repo}
@@ -292,6 +312,16 @@ macro(find_amrex)
 
         if(FerroX_COMPUTE STREQUAL CUDA)
             enable_language(CUDA)
+        elseif(FerroX_COMPUTE STREQUAL HIP)
+            # HIP uses C++ compiler with special flags
+            if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                message(WARNING "HIP backend works best with Clang-based compilers (clang++, amdclang++, hipcc)")
+            endif()
+        elseif(FerroX_COMPUTE STREQUAL SYCL)
+            # SYCL requires Intel oneAPI compiler
+            if(NOT CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
+                message(WARNING "SYCL backend requires Intel oneAPI compiler (icpx)")
+            endif()
         endif()
     endif()
 endmacro()
