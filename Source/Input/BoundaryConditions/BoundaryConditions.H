@@ -50,7 +50,7 @@ private:
         map_boundary_type["dir"] = s_BoundaryConditions::dir;
         map_boundary_type["neu"] = s_BoundaryConditions::neu;
         map_boundary_type["per"] = s_BoundaryConditions::per;
-    };
+    }
 
     void ReadBoundaryConditionsType();
 

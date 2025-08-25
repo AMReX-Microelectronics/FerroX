@@ -122,11 +122,11 @@ void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
 
             const Array4<Real>& phi = PoissonPhi.array(mfi);
             const Array4<Real>& poissonRHS = PoissonRHS.array(mfi);
-            const Array4<Real>& alpha = alpha_cc.array(mfi);
+            const Array4<Real>& alpha_local = alpha_cc.array(mfi);
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                   poissonRHS(i,j,k) = poissonRHS(i,j,k) - alpha(i,j,k)*phi(i,j,k) ;
+                   poissonRHS(i,j,k) = poissonRHS(i,j,k) - alpha_local(i,j,k)*phi(i,j,k) ;
             });
         }
 }
@@ -222,7 +222,7 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
     {
         const Box& bx = mfi.validbox();
 
-        const Array4<Real>& beta = beta_cc.array(mfi);
+        const Array4<Real>& beta_local = beta_cc.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
         const Array4<Real const>& tphase = tphaseMask.array(mfi);
 
@@ -237,18 +237,18 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
           [[maybe_unused]] Real z = prob_lo[1] + (k+0.5) * dx[2];
 
           if(mask(i,j,k) == 0.0) {
-             beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
+             beta_local(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
              //set t_phase beta to epsilonX_fe_tphase
              //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
              if(tphase(i,j,k) == 1.0){
-               beta(i,j,k) = epsilonX_fe_tphase * epsilon_0;
+               beta_local(i,j,k) = epsilonX_fe_tphase * epsilon_0;
              }
           } else if(mask(i,j,k) == 1.0) {
-             beta(i,j,k) = epsilon_de * epsilon_0; //DE layer
+             beta_local(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else if (mask(i,j,k) >= 2.0){
-             beta(i,j,k) = epsilon_si * epsilon_0; //SC layer
+             beta_local(i,j,k) = epsilon_si * epsilon_0; //SC layer
           } else {
-             beta(i,j,k) = epsilon_de * epsilon_0; //Spacer is same as DE
+             beta_local(i,j,k) = epsilon_de * epsilon_0; //Spacer is same as DE
           }
 
         });
@@ -260,39 +260,39 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
     {
         const Box& bx = mfi.growntilebox(1);
 
-        const Array4<Real>& beta = beta_cc.array(mfi);
+        const Array4<Real>& beta_local = beta_cc.array(mfi);
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
                 if (LinOpBCType_2d[0][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][0] == amrex::LinOpBCType::Neumann ){
                    if(i < 0) {
-                     beta(i,j,k) = beta(i+1,j,k);
+                     beta_local(i,j,k) = beta_local(i+1,j,k);
                    }
                 }
 
                 if (LinOpBCType_2d[1][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][0] == amrex::LinOpBCType::Neumann ){
                    if(i > n_cell[0] - 1) {
-                     beta(i,j,k) = beta(i-1,j,k);
+                     beta_local(i,j,k) = beta_local(i-1,j,k);
                    }
                 }
                 if (LinOpBCType_2d[0][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][1] == amrex::LinOpBCType::Neumann ){
                    if(j < 0) {
-                     beta(i,j,k) = beta(i,j+1,k);
+                     beta_local(i,j,k) = beta_local(i,j+1,k);
                    }
                 }
                 if (LinOpBCType_2d[1][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][1] == amrex::LinOpBCType::Neumann ){
                    if(j > n_cell[1] - 1) {
-                     beta(i,j,k) = beta(i,j-1,k);
+                     beta_local(i,j,k) = beta_local(i,j-1,k);
                    }
                 }
                 if (LinOpBCType_2d[0][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][2] == amrex::LinOpBCType::Neumann ){
                    if(k < 0) {
-                     beta(i,j,k) = beta(i,j,k+1);
+                     beta_local(i,j,k) = beta_local(i,j,k+1);
                    }
                 }
                 if (LinOpBCType_2d[1][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][2] == amrex::LinOpBCType::Neumann ){
                    if(k > n_cell[2] - 1) {
-                     beta(i,j,k) = beta(i,j,k-1);
+                     beta_local(i,j,k) = beta_local(i,j,k-1);
                    }
                 }
         });
@@ -531,7 +531,7 @@ void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>
     PoissonPhi.FillBoundary(geom.periodicity());
 }
 
-void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& Phidiff, Real phi_tolerance, int step, int& steady_state_step, int& inc_step)
+void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& Phidiff, Real phi_tolerance, int step_local, int& steady_state_step, int& inc_step_local)
 {
 
         Real phi_max = PoissonPhi.norm0();
@@ -553,10 +553,10 @@ void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& 
 
         Real max_phi_err = Phidiff.norm0();
 
-        if(step > 1){
+        if(step_local > 1){
           if (max_phi_err < phi_tolerance) {
-                  steady_state_step = step;
-                  inc_step = step;
+                  steady_state_step = step_local;
+                  inc_step_local = step_local;
           }
         }
 

@@ -128,9 +128,9 @@ c_GeometryProperties::ParseBasicDomainInput()
         n_cell[i] = num_cell[i];
         prob_lo[i] = prob_min[i];
         prob_hi[i] = prob_max[i];
-        max_grid_size[i] = mg[i];
-        blocking_factor[i] = bf[i];
-        is_periodic[i] = periodicity[i];
+        max_grid_size[i] = static_cast<int>(mg[i]);
+        blocking_factor[i] = static_cast<int>(bf[i]);
+        is_periodic[i] = static_cast<int>(periodicity[i]);
     }
     if(coord_sys_str == "cartesian")
     {
