@@ -103,22 +103,14 @@ macro(find_sundials)
             set(ENABLE_SYCL OFF CACHE INTERNAL "")
         endif()
 
-        # Precision settings to match AMReX
-        if(WIN32)
-            # Windows has compatibility issues with SINGLE precision SUNDIALS
-            # Force DOUBLE precision on Windows regardless of FerroX_PRECISION setting
-            set(SUNDIALS_PRECISION "DOUBLE" CACHE INTERNAL "")
-            if(FerroX_PRECISION STREQUAL "SINGLE")
-                message(WARNING "FerroX_PRECISION=SINGLE is not supported with SUNDIALS on Windows. "
-                               "Forcing SUNDIALS_PRECISION=DOUBLE for compatibility.")
-            endif()
-        else()
-            if(FerroX_PRECISION STREQUAL "DOUBLE")
-                set(SUNDIALS_PRECISION "DOUBLE" CACHE INTERNAL "")
-            else()
-                set(SUNDIALS_PRECISION "SINGLE" CACHE INTERNAL "")
-            endif()
-        endif()
+        # Precision settings for SUNDIALS (always use DOUBLE for compatibility)
+        # SUNDIALS SINGLE precision has compatibility issues on Windows and HIP
+        # Force DOUBLE precision for reliable cross-platform builds
+        set(SUNDIALS_PRECISION "DOUBLE" CACHE INTERNAL "")
+        
+        # Note: To override this behavior and use SINGLE precision SUNDIALS
+        # (not recommended), configure with:
+        # cmake -DSUNDIALS_PRECISION=SINGLE ...
 
         # Enable required SUNDIALS components for FerroX
         set(ENABLE_ARKODE ON CACHE INTERNAL "")
