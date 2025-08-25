@@ -104,10 +104,20 @@ macro(find_sundials)
         endif()
 
         # Precision settings to match AMReX
-        if(FerroX_PRECISION STREQUAL "DOUBLE")
+        if(WIN32)
+            # Windows has compatibility issues with SINGLE precision SUNDIALS
+            # Force DOUBLE precision on Windows regardless of FerroX_PRECISION setting
             set(SUNDIALS_PRECISION "DOUBLE" CACHE INTERNAL "")
+            if(FerroX_PRECISION STREQUAL "SINGLE")
+                message(WARNING "FerroX_PRECISION=SINGLE is not supported with SUNDIALS on Windows. "
+                               "Forcing SUNDIALS_PRECISION=DOUBLE for compatibility.")
+            endif()
         else()
-            set(SUNDIALS_PRECISION "SINGLE" CACHE INTERNAL "")
+            if(FerroX_PRECISION STREQUAL "DOUBLE")
+                set(SUNDIALS_PRECISION "DOUBLE" CACHE INTERNAL "")
+            else()
+                set(SUNDIALS_PRECISION "SINGLE" CACHE INTERNAL "")
+            endif()
         endif()
 
         # Enable required SUNDIALS components for FerroX
