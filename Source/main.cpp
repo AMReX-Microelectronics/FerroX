@@ -254,7 +254,7 @@ void main_main (c_FerroX& rFerroX)
 
     // Create a RHS source function we will integrate
     // for MRI this represents the slow processes
-    auto rhs_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real& time ) {
+    auto rhs_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real& /* time */ ) {
 
         BL_PROFILE_VAR("rhs_fun()",rhs_fast_fun);
 
@@ -325,7 +325,7 @@ void main_main (c_FerroX& rFerroX)
     };
 
     // Create a fast RHS source function we will integrate
-    auto rhs_fast_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real& time) {
+    auto rhs_fast_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real& /* time */) {
 
         BL_PROFILE_VAR("rhs_fast_fun()",rhs_fast_fun);
 
