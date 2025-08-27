@@ -41,6 +41,8 @@ macro(find_amrex)
         endif()
 
         if(FerroX_COMPUTE STREQUAL OMP)
+            # Find OpenMP before configuring AMReX
+            find_package(OpenMP REQUIRED)
             set(AMReX_GPU_BACKEND  "NONE" CACHE INTERNAL "")
             set(AMReX_OMP          ON     CACHE INTERNAL "")
         elseif(FerroX_COMPUTE STREQUAL NOACC)
