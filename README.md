@@ -11,17 +11,130 @@ Our community is here to help. Please report installation problems or general qu
 ## Download FerroX Repository
 ``` git clone git@github.com:AMReX-Microelectronics/FerroX.git ```
 ## Build
+
+### GNU Make (Primary)
 Make sure that the AMReX and FerroX are cloned in the same location in their filesystem. Navigate to the Exec folder of FerroX and execute
 ```make -j 4``` for a GPU build and ```make -j 4 USE_CUDA=FALSE``` for a CPU build.
 
+### CMake (Alternative)
+FerroX also supports building with CMake, which automatically downloads and builds dependencies.
+
+#### Basic CMake Build
+```bash
+# CPU build with default options (OpenMP)
+cmake -S . -B build
+cmake --build build -j 4
+
+# GPU build (CUDA)
+cmake -S . -B build -DFerroX_COMPUTE=CUDA
+cmake --build build -j 4
+```
+
+#### Core Configuration Options
+- **FerroX_COMPUTE**: `NOACC`, `OMP` (default), `CUDA`, `SYCL`, `HIP` - Computing backend
+- **FerroX_PRECISION**: `SINGLE`, `DOUBLE` (default) - Floating point precision
+- **FerroX_EB**: `OFF` (default), `ON` - Embedded boundary support
+- **FerroX_TIME_DEPENDENT**: `OFF` (default), `ON` - Time-dependent simulations
+- **FerroX_SUNDIALS**: `OFF` (default), `ON` - SUNDIALS ODE solver support
+- **FerroX_MPI**: `ON` (default), `OFF` - Multi-node support
+- **FerroX_SIMD**: `OFF` (default), `ON` - CPU SIMD acceleration
+
+#### Print Debug Options (matching GNU Make)
+- **FerroX_PRINT_HIGH**: `OFF` (default), `ON` - High level debug printing
+- **FerroX_PRINT_MEDIUM**: `OFF` (default), `ON` - Medium level debug printing
+- **FerroX_PRINT_LOW**: `OFF` (default), `ON` - Low level debug printing
+- **FerroX_PRINT_NAME**: `OFF` (default), `ON` - Function name debug printing
+
+#### External Dependencies
+
+**AMReX Configuration:**
+```bash
+# Use external AMReX installation
+cmake -S . -B build \
+  -DFerroX_amrex_internal=OFF \
+  -DAMReX_DIR=/path/to/amrex/lib/cmake/AMReX
+
+# Use local AMReX source directory
+cmake -S . -B build -DFerroX_amrex_src=/path/to/amrex/source
+
+# Use custom AMReX repository/branch
+cmake -S . -B build \
+  -DFerroX_amrex_repo=https://github.com/user/amrex.git \
+  -DFerroX_amrex_branch=my_branch
+
+# Test with specific AMReX pull request (CI/testing)
+cmake -S . -B build -DFerroX_amrex_pr=1234
+```
+
+**SUNDIALS Configuration (when FerroX_SUNDIALS=ON):**
+```bash
+# Use external SUNDIALS installation
+cmake -S . -B build \
+  -DFerroX_SUNDIALS=ON \
+  -DFerroX_sundials_internal=OFF \
+  -DSUNDIALS_DIR=/path/to/sundials/lib/cmake/sundials
+
+# Use local SUNDIALS source directory
+cmake -S . -B build \
+  -DFerroX_SUNDIALS=ON \
+  -DFerroX_sundials_src=/path/to/sundials/source
+```
+
+#### Advanced Build Examples
+```bash
+# CPU build with embedded boundaries and time-dependent support
+cmake -S . -B build \
+  -DFerroX_COMPUTE=OMP \
+  -DFerroX_EB=ON \
+  -DFerroX_TIME_DEPENDENT=ON
+
+# GPU build with SUNDIALS support
+cmake -S . -B build \
+  -DFerroX_COMPUTE=CUDA \
+  -DFerroX_SUNDIALS=ON
+
+# Debug build with all print options enabled
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DFerroX_PRINT_HIGH=ON
+
+# Build with external AMReX using CMAKE_PREFIX_PATH
+export CMAKE_PREFIX_PATH=/path/to/amrex/install:$CMAKE_PREFIX_PATH
+cmake -S . -B build -DFerroX_amrex_internal=OFF
+```
+
 # Running FerroX
 Example input scripts are located in `Examples` directory. 
+
 ## Simple Testcase
 You can run the following to simulate a MFIM heterostructure with a 5 nm HZO as the ferroelectric layer and 4 nm alumina as the dielectric layer under zero applied voltage:
-## For MPI+OMP build
-```mpirun -n 4 ./main3d.gnu.TPROF.MPI.OMP.ex Examples/inputs_mfim_Noeb```
-## For MPI+CUDA build
-```mpirun -n 4 ./main3d.gnu.TPROF.MPI.CUDA.ex Examples/inputs_mfim_Noeb```
+
+### GNU Make builds (from Exec directory)
+```bash
+# For MPI+OMP build
+mpirun -n 4 ./main3d.gnu.TPROF.MPI.OMP.ex Exec/Examples/inputs_mfim_Noeb
+
+# For MPI+CUDA build
+mpirun -n 4 ./main3d.gnu.TPROF.MPI.CUDA.ex Exec/Examples/inputs_mfim_Noeb
+
+# With embedded boundaries
+mpirun -n 4 ./main3d.gnu.TPROF.MPI.OMP.EB.ex Exec/Examples/inputs_mfim_eb
+```
+
+### CMake builds (from project root directory)
+```bash
+# For MPI+OMP build
+mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MPI.OMP.ex Exec/Examples/inputs_mfim_Noeb
+
+# For MPI+CUDA build  
+mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MPI.CUDA.ex Exec/Examples/inputs_mfim_Noeb
+
+# With embedded boundaries (if built with -DFerroX_EB=ON)
+export OMP_NUM_THREADS=1; mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MTMPI.OMP.EB.ex Exec/Examples/inputs_mfim_eb
+
+# With time-dependent simulations (if built with -DFerroX_TIME_DEPENDENT=ON)
+export OMP_NUM_THREADS=1; mpirun -n 4 ./build/bin/main3d.gnu.TPROF.MTMPI.OMP.TD.ex Exec/Examples/inputs_mfim_Noeb
+```
 # Visualization and Data Analysis
 Refer to the following link for several visualization tools that can be used for AMReX plotfiles. 
 

@@ -1,0 +1,209 @@
+name: FerroX CI (hip)
+
+on:
+  push:
+    # branches: [development]
+    paths-ignore:
+      - Docs
+      - README.md
+      - license.txt
+
+  pull_request:
+    branches: [development]
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.head_ref }}-hip
+  cancel-in-progress: true
+
+jobs:
+  # MPI_C is broken since HIP 4.1
+  # https://gitlab.kitware.com/cmake/cmake/-/issues/21968
+  # https://github.com/ROCm-Developer-Tools/HIP/issues/2246
+  Build-And-Test-HIP:
+    name: HIP ROCm GFortran@9.3 C++17 - SUNDIALS ${{matrix.sundials}} - AMReX ${{matrix.amrex_mode}}
+    runs-on: ubuntu-22.04
+    # Have to have -Wno-deprecated-declarations due to deprecated atomicAddNoRet
+    # Have to have -Wno-gnu-zero-variadic-macro-arguments to avoid
+    #    amrex/Src/Base/AMReX_GpuLaunchGlobal.H:15:5: error: must specify at least one argument for '...' parameter of variadic macro [-Werror,-Wgnu-zero-variadic-macro-arguments]
+    #        __launch_bounds__(amrex_launch_bounds_max_threads)
+    #        ^
+    #    /opt/rocm-4.1.1/hip/include/hip/hcc_detail/hip_runtime.h:178:71: note: expanded from macro '__launch_bounds__'
+    #        select_impl_(__VA_ARGS__, launch_bounds_impl1, launch_bounds_impl0)(__VA_ARGS__)
+    #                                                                          ^
+    #    /opt/rocm-4.1.1/hip/include/hip/hcc_detail/hip_runtime.h:176:9: note: macro 'select_impl_' defined here
+    #    #define select_impl_(_1, _2, impl_, ...) impl_
+    # NOTE: -Werror was removed because ERF specifically had a lot of warnings. It will be a separate task to go through and fix them all...
+    env: {CXXFLAGS: "-Wall -Wextra -Wpedantic -Wnull-dereference -Wfloat-conversion -Wshadow -Woverloaded-virtual -Wextra-semi -Wunreachable-code -Wno-deprecated-declarations -Wno-gnu-zero-variadic-macro-arguments -Wno-pass-failed"}
+    strategy:
+      matrix:
+        sundials: [OFF, ON]
+        amrex_mode: [internal, external_src]
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Clone AMReX for dependency scripts
+      run: |
+        git clone https://github.com/AMReX-Codes/amrex.git ${{runner.workspace}}/amrex
+
+    - name: Setup
+      run: |
+        if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
+          echo "AMREX_SRC_DIR=${{runner.workspace}}/amrex" >> $GITHUB_ENV
+          if [ "${{matrix.sundials}}" == "ON" ]; then
+            git clone https://github.com/LLNL/sundials.git ${{runner.workspace}}/sundials
+            echo "SUNDIALS_SRC_DIR=${{runner.workspace}}/sundials" >> $GITHUB_ENV
+          fi
+        fi
+
+    - name: Free up disk space
+      uses: ./.github/actions/free-space-ubuntu
+
+    - name: Dependencies
+      run: |
+        ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_hip.sh
+        sudo apt-get install -y libfftw3-dev
+
+    - name: Install CCache
+      run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_ccache.sh
+
+    - name: Set Up Cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ccache
+        key: ccache-${{ github.workflow }}-${{ github.job }}-git-${{ github.sha }}
+        restore-keys: |
+             ccache-${{ github.workflow }}-${{ github.job }}-git-
+
+    - name: Build & Install
+      run: |
+        export CCACHE_COMPRESS=1
+        export CCACHE_COMPRESSLEVEL=10
+        export CCACHE_MAXSIZE=300M
+        ccache -z
+
+        source /etc/profile.d/rocm.sh
+        hipcc --version
+        which clang
+        which clang++
+        which flang
+
+        if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
+          if [ "${{matrix.sundials}}" == "ON" ]; then
+            cmake \
+              -B${{runner.workspace}}/FerroX/build-${{matrix.sundials}}-${{matrix.amrex_mode}} \
+              -DCMAKE_VERBOSE_MAKEFILE=ON                   \
+              -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install \
+              -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DFerroX_MPI:BOOL=ON \
+              -DFerroX_COMPUTE:STRING=HIP \
+              -DFerroX_SUNDIALS:BOOL=ON \
+              -DAMReX_AMD_ARCH=gfx908 \
+              -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+              -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} \
+              -DFerroX_sundials_src:PATH=${{env.SUNDIALS_SRC_DIR}} \
+              -DCMAKE_C_COMPILER=$(which clang)             \
+              -DCMAKE_CXX_COMPILER=$(which clang++)         \
+              -DCMAKE_Fortran_COMPILER=$(which flang)       \
+              -DCMAKE_CXX_STANDARD=17 \
+              ${{github.workspace}};
+          else
+            cmake \
+              -B${{runner.workspace}}/FerroX/build-${{matrix.sundials}}-${{matrix.amrex_mode}} \
+              -DCMAKE_VERBOSE_MAKEFILE=ON                   \
+              -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install \
+              -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DFerroX_MPI:BOOL=ON \
+              -DFerroX_COMPUTE:STRING=HIP \
+              -DFerroX_SUNDIALS:BOOL=OFF \
+              -DAMReX_AMD_ARCH=gfx908 \
+              -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+              -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} \
+              -DCMAKE_C_COMPILER=$(which clang)             \
+              -DCMAKE_CXX_COMPILER=$(which clang++)         \
+              -DCMAKE_Fortran_COMPILER=$(which flang)       \
+              -DCMAKE_CXX_STANDARD=17 \
+              ${{github.workspace}};
+          fi
+        else
+          cmake \
+            -B${{runner.workspace}}/FerroX/build-${{matrix.sundials}}-${{matrix.amrex_mode}} \
+            -DCMAKE_VERBOSE_MAKEFILE=ON                   \
+            -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install \
+            -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFerroX_MPI:BOOL=ON \
+            -DFerroX_COMPUTE:STRING=HIP \
+            -DFerroX_SUNDIALS:BOOL=${{matrix.sundials}} \
+            -DAMReX_AMD_ARCH=gfx908 \
+            -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+            -DCMAKE_C_COMPILER=$(which clang)             \
+            -DCMAKE_CXX_COMPILER=$(which clang++)         \
+            -DCMAKE_Fortran_COMPILER=$(which flang)       \
+            -DCMAKE_CXX_STANDARD=17 \
+            ${{github.workspace}};
+        fi
+
+        # for some reason this cmake command fails to build the code,
+        # and we need to use the make command that follows instead ...
+        # cmake --build ${{runner.workspace}}/FerroX/build-${{matrix.sundials}}-${{matrix.amrex_mode}} --parallel 2;
+
+        pushd ${{runner.workspace}}/FerroX/build-${{matrix.sundials}}-${{matrix.amrex_mode}};
+        # make -j 2;
+        make -j 2 2>&1 | tee -a ${{runner.workspace}}/build-${{matrix.sundials}}-${{matrix.amrex_mode}}-output.txt;
+
+        ccache -s
+        du -hs ~/.cache/ccache
+
+    - name: Report
+      run: |
+        egrep "warning:|error:|deprecated:" ${{runner.workspace}}/build-${{matrix.sundials}}-${{matrix.amrex_mode}}-output.txt \
+          | egrep -v "_deps/.*amrex" | egrep -v "_deps/.*sundials" | egrep -v "${{runner.workspace}}/amrex" | egrep -v "${{runner.workspace}}/sundials" | egrep -v "lto-wrapper: warning:" | egrep "SUNMatrix.*deprecated|warning:|error:" | sort | uniq \
+          | awk 'BEGIN{i=0}{print $0}{i++}END{print "Warnings: "i}' > ${{runner.workspace}}/build-${{matrix.sundials}}-${{matrix.amrex_mode}}-output-warnings.txt
+        cat ${{runner.workspace}}/build-${{matrix.sundials}}-${{matrix.amrex_mode}}-output-warnings.txt
+        export return=$(tail -n 1 ${{runner.workspace}}/build-${{matrix.sundials}}-${{matrix.amrex_mode}}-output-warnings.txt | awk '{print $2}')
+        exit ${return}
+
+    # - name: Regression Tests
+    #   run: |
+    #     ctest -L regression -VV
+    #   working-directory: ${{runner.workspace}}/ERF/build-${{matrix.os}}
+
+    # - name: Generate coverage report
+    #   working-directory: ${{runner.workspace}}/ERF/build-${{matrix.os}}
+    #   run: |
+    #     find . -type f -name '*.gcno' -path "**Source**" -exec gcov -pb {} +
+    #     cd ..
+    #     gcovr -g -k -r . --xml regressioncov.xml  # -v
+
+    # - name: Upload coverage to Codecov
+    #   uses: codecov/codecov-action@v4
+    #   with:
+    #     dry_run: false
+    #     # token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+    #     files: ./regressioncov.xml # optional
+    #     flags: regtests # optional
+    #     # name: codecov-umbrella # optional
+    #     fail_ci_if_error: true # optional (default = false)
+    #     verbose: true # optional (default = false)
+    #     directory: ${{runner.workspace}}/ERF
+
+    - name: Success artifacts
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: build-and-test
+        path: |
+          ${{runner.workspace}}/FerroX/regressioncov.xml
+    - name: Failing test artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: build-and-test
+        path: |
+          ${{runner.workspace}}/FerroX/regressioncov.xml

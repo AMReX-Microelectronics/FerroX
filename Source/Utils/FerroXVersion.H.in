@@ -1,0 +1,14 @@
+/* 
+ *
+ * This file is based on WarpX
+ *
+ * License: BSD-3-Clause-LBNL
+ */
+#ifndef FERROX_VERSION_H_
+#define FERROX_VERSION_H_
+
+#ifndef FERROX_GIT_VERSION
+#   define FERROX_GIT_VERSION "@FerroX_GIT_VERSION@"
+#endif
+
+#endif // FERROX_VERSION_H_

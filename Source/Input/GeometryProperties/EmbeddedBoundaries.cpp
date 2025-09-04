@@ -10,6 +10,7 @@
 #include "../../Utils/eXstaticUtils/eXstaticUtil.H"
 
 #include <AMReX.H>
+#include <AMReX_Config_3D.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_Parser.H>
 #include <AMReX_RealBox.H>
@@ -53,7 +54,7 @@ c_EmbeddedBoundaries::~c_EmbeddedBoundaries()
     map_basic_objects_type.clear();
     map_basic_objects_info.clear();
     map_basic_objects_soln.clear();
-    map_basic_objects_beta.clear(); 
+    map_basic_objects_beta.clear();
 
     geom = nullptr;
     ba = nullptr;
@@ -92,7 +93,7 @@ c_EmbeddedBoundaries::ReadGeometry()
     pp_ebgeom.query("specify_inhomo_dir", specify_inhomogeneous_dirichlet);
 
     if(specify_input_using_eb2 == 1) {
-       specify_separate_surf_soln = 0; 
+       specify_separate_surf_soln = 0;
     }
 
     amrex::Print() << "\n##### EMBEDDED BOUNDARY PROPERTIES #####\n\n";
@@ -102,13 +103,13 @@ c_EmbeddedBoundaries::ReadGeometry()
     amrex::Print() << "##### ebgeom.specify_input_using_eb2: " << specify_input_using_eb2 << "\n";
     amrex::Print() << "##### ebgeom.specify_inhomo_dir: " << specify_inhomogeneous_dirichlet << "\n";
     amrex::Print() << "##### ebgeom.specify_separate_surf_soln: " << specify_separate_surf_soln << "\n";
-    if(specify_inhomogeneous_dirichlet == 1 && specify_separate_surf_soln == 0) 
+    if(specify_inhomogeneous_dirichlet == 1 && specify_separate_surf_soln == 0)
     {
        getWithParser(pp_ebgeom,"surf_soln", surf_soln);
        amrex::Print() << "##### ebgeom.surf_soln: " << surf_soln << "\n";
     }
 
-    if(!specify_input_using_eb2) 
+    if(!specify_input_using_eb2)
     {
         num_objects = 0;
         bool basic_objects_specified = pp_ebgeom.queryarr("objects", vec_object_names);
@@ -121,11 +122,11 @@ c_EmbeddedBoundaries::ReadGeometry()
                 pp_object.get("geom_type", map_basic_objects_type[it]);
                 ReadObjectInfo(it, map_basic_objects_type[it], pp_object);
 
-                if(specify_inhomogeneous_dirichlet == 1) 
+                if(specify_inhomogeneous_dirichlet == 1)
                 {
                     getWithParser(pp_object,"surf_soln", map_basic_objects_soln[it]);
                     amrex::Print()  << "##### surf_soln: " << map_basic_objects_soln[it] << "\n";
-                } 
+                }
 
                 ++c;
             }
@@ -151,13 +152,13 @@ c_EmbeddedBoundaries::ReadObjectInfo(std::string object_name, std::string object
     amrex::Print() << "\n##### Object name: " << object_name << "\n";
     amrex::Print() << "##### Object type: " << object_type << "\n";
 
-    switch (map_object_type_enum[object_type]) 
-    {  
+    switch (map_object_type_enum[object_type])
+    {
         case s_ObjectType::object::box:
         {
             amrex::Vector<amrex::Real> lo;
             getArrWithParser(pp_object,"box_lo", lo,0,AMREX_SPACEDIM);
-        
+
             amrex::Print() << "##### box_lo: ";
             for (int i=0; i<AMREX_SPACEDIM; ++i) amrex::Print() << lo[i] << "  ";
             amrex::Print() << "\n";
@@ -165,7 +166,7 @@ c_EmbeddedBoundaries::ReadObjectInfo(std::string object_name, std::string object
 
             amrex::Vector<amrex::Real> hi;
             getArrWithParser(pp_object,"box_hi", hi,0,AMREX_SPACEDIM);
-        
+
             amrex::Print() << "##### box_hi: ";
             for (int i=0; i<AMREX_SPACEDIM; ++i) amrex::Print() << hi[i] << "  ";
             amrex::Print() << "\n";
@@ -179,7 +180,7 @@ c_EmbeddedBoundaries::ReadObjectInfo(std::string object_name, std::string object
 
             amrex::EB2::BoxIF box(vecToArr(lo), vecToArr(hi), has_fluid_inside);
 
-            map_basic_objects_info[object_name] = box;  
+            map_basic_objects_info[object_name] = box;
             break;
         }
         case s_ObjectType::object::plane:
@@ -200,7 +201,7 @@ c_EmbeddedBoundaries::ReadObjectInfo(std::string object_name, std::string object
 
             amrex::EB2::PlaneIF plane(vecToArr(point), vecToArr(normal));
 
-            map_basic_objects_info[object_name] = plane;  
+            map_basic_objects_info[object_name] = plane;
             break;
         }
         case s_ObjectType::object::parser:
@@ -210,7 +211,7 @@ c_EmbeddedBoundaries::ReadObjectInfo(std::string object_name, std::string object
             pp_object.get("parser_function", object.parser_function_str);
             amrex::Print() << "##### parser_function: " << object.parser_function_str << "\n";
 
-            map_basic_objects_info[object_name] = object;  
+            map_basic_objects_info[object_name] = object;
             break;
         }
         case s_ObjectType::object::stl:
@@ -233,7 +234,7 @@ c_EmbeddedBoundaries::ReadObjectInfo(std::string object_name, std::string object
             pp_object.queryAdd("reverse_normal", stl.reverse_normal);
             amrex::Print() << "##### stl reverse_normal: " << stl.reverse_normal << "\n";
 
-            map_basic_objects_info[object_name] = stl;  
+            map_basic_objects_info[object_name] = stl;
             break;
         }
         default:
@@ -270,30 +271,30 @@ c_EmbeddedBoundaries::BuildGeometry(const amrex::Geometry* GEOM, const amrex::Bo
         Vector<int> ng_ebs = {2,2,2};
         p_factory_union = amrex::makeEBFabFactory(&eb_level, *ba, *dm, ng_ebs, support);
 
-        if(specify_inhomogeneous_dirichlet == 1) 
+        if(specify_inhomogeneous_dirichlet == 1)
         {
-            p_surf_soln_union = std::make_unique<amrex::MultiFab>(*ba, *dm, 1, 0, MFInfo(), *p_factory_union); 
+            p_surf_soln_union = std::make_unique<amrex::MultiFab>(*ba, *dm, 1, 0, MFInfo(), *p_factory_union);
             p_surf_soln_union->setVal(surf_soln);
         }
     }
-    else 
+    else
     {
         Vector<int> ng_ebs = {2,2,2};
-        
+
         if(specify_inhomogeneous_dirichlet == 1)  m_p_soln_mf.resize(num_objects);
 
         int c=0;
         for (auto it: map_basic_objects_type)
         {
-            std::string name = it.first; 
+            std::string name = it.first;
             std::string geom_type = it.second;
-              
+
             #ifdef PRINT_LOW
             amrex::Print() << prt << "\nname: " << name << ", geom_type: " << geom_type << "\n";
-            #endif 
+            #endif
 
-            switch (map_object_type_enum[geom_type]) 
-            {  
+            switch (map_object_type_enum[geom_type])
+            {
                 case s_ObjectType::object::box:
                 {
                     using ObjectType = amrex::EB2::BoxIF;
@@ -320,10 +321,10 @@ c_EmbeddedBoundaries::BuildGeometry(const amrex::Geometry* GEOM, const amrex::Bo
                 }
             }
 
-            if(specify_inhomogeneous_dirichlet == 1) 
+            if(specify_inhomogeneous_dirichlet == 1)
             {
-                m_p_soln_mf[c] = std::make_unique<amrex::MultiFab>(*ba, *dm, 1, 0, MFInfo(), *m_p_factory[c]); 
-                (*m_p_soln_mf[c]).setVal(0.); 
+                m_p_soln_mf[c] = std::make_unique<amrex::MultiFab>(*ba, *dm, 1, 0, MFInfo(), *m_p_factory[c]);
+                (*m_p_soln_mf[c]).setVal(0.);
                 eXstatic_MFab_Util::SpecifyValueOnlyOnCutcells(*m_p_soln_mf[c], map_basic_objects_soln[name]);
 
                 #ifdef PRINT_LOW
@@ -335,21 +336,21 @@ c_EmbeddedBoundaries::BuildGeometry(const amrex::Geometry* GEOM, const amrex::Bo
             ++c;
         }
 
-        if(num_objects == 1) 
+        if(num_objects == 1)
         {
             p_factory_union = std::move(m_p_factory[0]);
         }
-        else if(num_objects == 2 || num_objects == 3) 
-        {  
-            auto name1 = vec_object_names[0];  
-            auto geom_type1 = map_basic_objects_type[name1];  
+        else if(num_objects == 2 || num_objects == 3)
+        {
+            auto name1 = vec_object_names[0];
+            auto geom_type1 = map_basic_objects_type[name1];
             auto name2 = vec_object_names[1];
-            auto geom_type2 = map_basic_objects_type[name2];  
+            auto geom_type2 = map_basic_objects_type[name2];
             auto name3 = vec_object_names[2];
-            auto geom_type3 = map_basic_objects_type[name3];  
+            auto geom_type3 = map_basic_objects_type[name3];
 
-	    if(num_objects == 2)
-	    {
+            if(num_objects == 2)
+            {
                 if ( (map_object_type_enum[geom_type1] == s_ObjectType::object::box) &&
                      (map_object_type_enum[geom_type2] == s_ObjectType::object::box) )
                 {
@@ -366,9 +367,9 @@ c_EmbeddedBoundaries::BuildGeometry(const amrex::Geometry* GEOM, const amrex::Bo
 
                     BuildUnionParserObject<ObjectType1, ObjectType2>(name1, name2);
                 }
-	    } 
-	    if(num_objects == 3)
-	    {
+            }
+            if(num_objects == 3)
+            {
                 if ( (map_object_type_enum[geom_type1] == s_ObjectType::object::box) &&
                           (map_object_type_enum[geom_type2] == s_ObjectType::object::box) &&
                           (map_object_type_enum[geom_type3] == s_ObjectType::object::box) )
@@ -379,14 +380,14 @@ c_EmbeddedBoundaries::BuildGeometry(const amrex::Geometry* GEOM, const amrex::Bo
 
                      BuildUnionOfUnionObject<ObjectType1, ObjectType2, ObjectType3>(name1, name2, name3);
                 }
-	    }
-	}
+            }
+        }
 
         if(specify_inhomogeneous_dirichlet == 1)
         {
             p_surf_soln_union = std::make_unique<amrex::MultiFab>(*ba, *dm, 1, 0, MFInfo(), *p_factory_union);
 
-            p_surf_soln_union->setVal(0);    
+            p_surf_soln_union->setVal(0);
             for(int i=0; i < num_objects; ++i)
             {
                 p_surf_soln_union->plus(get_soln_mf(i), 0, 1, 0);
@@ -412,7 +413,7 @@ c_EmbeddedBoundaries::BuildSingleObject(std::string name)
     auto object = std::any_cast<ObjectType>(map_basic_objects_info[name]);
     auto gshop = amrex::EB2::makeShop(object);
     amrex::EB2::Build(gshop, *geom, required_coarsening_level, max_coarsening_level);
-    
+
     const auto& eb_is = EB2::IndexSpace::top();
     const auto& eb_level = eb_is.getLevel(*geom);
     Vector<int> ng_ebs = {2,2,2};
@@ -542,11 +543,11 @@ c_EmbeddedBoundaries::BuildUnionParserObject(std::string name1, std::string name
     auto object1 = std::any_cast<ObjectType1>(map_basic_objects_info[name1]);
     amrex::Parser parser1 = makeParser(object1.parser_function_str, {"x", "y", "z"});
     amrex::EB2::ParserIF pif1(parser1.compile<3>());
-    
+
     auto object2 = std::any_cast<ObjectType2>(map_basic_objects_info[name2]);
     amrex::Parser parser2 = makeParser(object2.parser_function_str, {"x", "y", "z"});
     amrex::EB2::ParserIF pif2(parser2.compile<3>());
- 
+
     //amrex::Parser union_parser = parser1 + parser2;
     auto union_object = amrex::EB2::makeUnion(pif1, pif2);
 

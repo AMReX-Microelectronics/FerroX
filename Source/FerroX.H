@@ -25,7 +25,7 @@ enum class WarnPriority
     /** Low priority warning:
      * essentially an informative message
      */
-    low, 
+    low,
     /** Medium priority warning:
      * a bug or a performance issue may affect the simulation
      */
@@ -42,7 +42,7 @@ class c_FerroX
 
 public:
 
-    
+
 
     c_FerroX (); //constructor
     ~c_FerroX (); //destructor
@@ -57,7 +57,7 @@ public:
      * \brief This function is borrowed from WarpX. It records a warning message.
      * RecordWarning is thread safe: it can be used within OpenMP parallel loops.
      *
-     * @param[in] topic a string to identify the topic of the warning 
+     * @param[in] topic a string to identify the topic of the warning
      * (e.g., "parallelization", "pbc", "particles"...)
      * @param[in] text the text of the warning message
      * @param[in] priority priority of the warning message ("medium" by default)
@@ -87,7 +87,7 @@ public:
     std::unique_ptr<Utils::WarnManager> m_p_warn_manager; //Warning manager: used to record and print error msgs.
     bool m_always_warn_immediately = false; //flag to emit control emitting warning as soon as it is recorded
 
-    /****************************************************************************************/ 
+    /****************************************************************************************/
 
 
     void ReadData ();
@@ -97,8 +97,8 @@ public:
 
     c_GeometryProperties& get_GeometryProperties () { return *m_pGeometryProperties;}
     c_BoundaryConditions& get_BoundaryConditions () { return *m_pBoundaryConditions;}
-    const amrex::Real get_time() { return m_time_instant;}
-    const amrex::Real set_time(int n) { m_time_instant = n*m_timestep; return m_time_instant;}
+    amrex::Real get_time() { return m_time_instant;}
+    amrex::Real set_time(int n) { m_time_instant = n*m_timestep; return m_time_instant;}
 
 
 private:

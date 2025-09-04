@@ -1,0 +1,115 @@
+name: Linux GCC
+
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.head_ref }}-linux-gcc
+  cancel-in-progress: true
+
+jobs:
+  library:
+    name: GNU@9.3 C++17 Release - SUNDIALS ${{matrix.sundials}} - AMReX ${{matrix.amrex_mode}}
+    runs-on: ubuntu-22.04
+    # env: {CXXFLAGS: "-fno-operator-names -Werror -Wall -Wextra -Wpedantic -Wnull-dereference -Wfloat-conversion -Wshadow -Woverloaded-virtual"}
+    strategy:
+      matrix:
+        sundials: [OFF, ON]
+        amrex_mode: [internal, external_src]
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Clone AMReX for dependency scripts
+      run: |
+        git clone https://github.com/AMReX-Codes/amrex.git ${{runner.workspace}}/amrex
+
+    - name: Setup
+      run: |
+        if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
+          echo "AMREX_SRC_DIR=${{runner.workspace}}/amrex" >> $GITHUB_ENV
+          if [ "${{matrix.sundials}}" == "ON" ]; then
+            git clone https://github.com/LLNL/sundials.git ${{runner.workspace}}/sundials
+            echo "SUNDIALS_SRC_DIR=${{runner.workspace}}/sundials" >> $GITHUB_ENV
+          fi
+        fi
+
+    - name: Install Dependencies
+      run: |
+        ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies.sh
+        sudo apt-get install -y libfftw3-dev
+
+    - name: Install CCache
+      run: ${{runner.workspace}}/amrex/.github/workflows/dependencies/dependencies_ccache.sh
+
+    - name: Set Up Cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ccache
+        key: ccache-${{ github.workflow }}-${{ github.job }}-git-${{ github.sha }}
+        restore-keys: |
+             ccache-${{ github.workflow }}-${{ github.job }}-git-
+
+    - name: Configure Project and Generate Build System
+      run: |
+        if [ "${{matrix.amrex_mode}}" == "external_src" ]; then
+          if [ "${{matrix.sundials}}" == "ON" ]; then
+            cmake \
+              -B${{runner.workspace}}/FerroX/build-${{matrix.sundials}}-${{matrix.amrex_mode}} \
+              -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install \
+              -DCMAKE_BUILD_TYPE:STRING=Debug \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DFerroX_MPI:BOOL=ON \
+              -DFerroX_SUNDIALS:BOOL=ON \
+              -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+              -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} \
+              -DFerroX_sundials_src:PATH=${{env.SUNDIALS_SRC_DIR}} \
+              ${{github.workspace}};
+          else
+            cmake \
+              -B${{runner.workspace}}/FerroX/build-${{matrix.sundials}}-${{matrix.amrex_mode}} \
+              -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install \
+              -DCMAKE_BUILD_TYPE:STRING=Debug \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DFerroX_MPI:BOOL=ON \
+              -DFerroX_SUNDIALS:BOOL=OFF \
+              -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+              -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} \
+              ${{github.workspace}};
+          fi
+        else
+          cmake \
+            -B${{runner.workspace}}/FerroX/build-${{matrix.sundials}}-${{matrix.amrex_mode}} \
+            -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install \
+            -DCMAKE_BUILD_TYPE:STRING=Debug \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFerroX_MPI:BOOL=ON \
+            -DFerroX_SUNDIALS:BOOL=${{matrix.sundials}} \
+            -DFerroX_ENABLE_ALL_WARNINGS:BOOL=ON \
+            ${{github.workspace}};
+        fi
+
+    - name: Compile and Link
+      run: |
+        export CCACHE_COMPRESS=1
+        export CCACHE_COMPRESSLEVEL=10
+        export CCACHE_MAXSIZE=300M
+        ccache -z
+
+        cmake --build ${{runner.workspace}}/FerroX/build-${{matrix.sundials}}-${{matrix.amrex_mode}} --parallel 2 --verbose \
+        2>&1 | tee -a ${{runner.workspace}}/build-output-${{matrix.sundials}}-${{matrix.amrex_mode}}.txt;
+
+        ccache -s
+        du -hs ~/.cache/ccache
+
+    - name: Report
+      run: |
+        egrep "warning:|error:" ${{runner.workspace}}/build-output-${{matrix.sundials}}-${{matrix.amrex_mode}}.txt \
+          | egrep -v "_deps/.*amrex" | egrep -v "_deps/.*sundials" | egrep -v "${{runner.workspace}}/amrex" | egrep -v "${{runner.workspace}}/sundials" | egrep -v "lto-wrapper: warning:" | sort | uniq \
+          | awk 'BEGIN{i=0}{print $0}{i++}END{print "Warnings: "i}' > ${{runner.workspace}}/build-output-warnings-${{matrix.sundials}}-${{matrix.amrex_mode}}.txt
+        cat ${{runner.workspace}}/build-output-warnings-${{matrix.sundials}}-${{matrix.amrex_mode}}.txt
+        export return=$(tail -n 1 ${{runner.workspace}}/build-output-warnings-${{matrix.sundials}}-${{matrix.amrex_mode}}.txt | awk '{print $2}')
+        exit ${return}
+

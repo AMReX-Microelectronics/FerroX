@@ -26,7 +26,7 @@ c_BoundaryConditions::c_BoundaryConditions ()
 {
     DefineBoundaryTypeMap();
     ReadData();
-} 
+}
 
 
 c_BoundaryConditions::~c_BoundaryConditions ()
@@ -34,9 +34,9 @@ c_BoundaryConditions::~c_BoundaryConditions ()
 }
 
 
-void 
+void
 c_BoundaryConditions::ReadData()
-{ 
+{
     ReadBoundaryConditionsType();
 
     DefineMacroVariableVectorSizes();
@@ -50,17 +50,17 @@ c_BoundaryConditions::ReadData()
 
 void
 c_BoundaryConditions::SortBoundaryTypeArrayString(const amrex::Vector<std::string>& bc_str, std::array< std::string, AMREX_SPACEDIM >& bcType, std::array< std::any, AMREX_SPACEDIM >& bcAny,  std::map<int,std::string>& map_bcAny)
-{ 
+{
 
     int c=0;
     for (auto str: bc_str)
-    { 
+    {
 
         std::string first_three_letters = str.substr(0,3);
         bcType[c] = first_three_letters;
 
         if(bcType[c] == "dir" or bcType[c] == "neu")
-        { 
+        {
             std::string fourth_char = str.substr(3,1);
             std::string last_char = str.substr(str.length()-1);
 
@@ -86,7 +86,7 @@ c_BoundaryConditions::SortBoundaryTypeArrayString(const amrex::Vector<std::strin
 
                 }
                 std::string bracketed_str = str.substr(4,str.length()-5);
-               
+
 #ifdef PRINT_HIGH
                 amrex::Print() << prt << "bracketed_str: " << bracketed_str << "\n";
 #endif
@@ -97,26 +97,26 @@ c_BoundaryConditions::SortBoundaryTypeArrayString(const amrex::Vector<std::strin
                 else {
                    stripped_bracketed_str = bracketed_str;
                 }
-                if(std::isdigit( *stripped_bracketed_str.c_str()) ) 
-                {   
-                    map_bcAny[c] = "inhomogeneous_constant"; 
+                if(std::isdigit( *stripped_bracketed_str.c_str()) )
+                {
+                    map_bcAny[c] = "inhomogeneous_constant";
                     bcAny[c] = std::stod(bracketed_str);
 #ifdef PRINT_HIGH
                     amrex::Print() << prt << "inhomo constant: " << bracketed_str << "\n";
 #endif
                 }
-                else 
+                else
                 {
-                    map_bcAny[c] = "inhomogeneous_function"; 
+                    map_bcAny[c] = "inhomogeneous_function";
                     bcAny[c] = bracketed_str;
 #ifdef PRINT_HIGH
                     amrex::Print() << prt << "inhomo function with parameter name: " << bracketed_str << "\n";
 #endif
                 }
             }
-            else if(fourth_char != "(" and last_char != ")") 
+            else if(fourth_char != "(" and last_char != ")")
             {
-                map_bcAny[c] = "homogeneous"; 
+                map_bcAny[c] = "homogeneous";
                 bcAny[c] = 0.0;
 #ifdef PRINT_HIGH
                 amrex::Print() << prt << "homo constant 0.0 " << "\n";
@@ -124,7 +124,7 @@ c_BoundaryConditions::SortBoundaryTypeArrayString(const amrex::Vector<std::strin
             }
         }
         else if(bcType[c] == "per") {
-            map_bcAny[c] = "periodic"; 
+            map_bcAny[c] = "periodic";
         }
         ++c;
     }
@@ -132,9 +132,9 @@ c_BoundaryConditions::SortBoundaryTypeArrayString(const amrex::Vector<std::strin
 }
 
 
-void 
+void
 c_BoundaryConditions::ReadBoundaryConditionsType()
-{ 
+{
 
     amrex::Vector<amrex::Vector<std::string>> bc_str_2d(2);
 
@@ -145,32 +145,32 @@ c_BoundaryConditions::ReadBoundaryConditionsType()
     for (auto& i: bc_str_2d)
     {
         amrex::Print()  << "##### ";
-        for (auto& j: i) 
+        for (auto& j: i)
         {
             amrex::Print()  << j << "  ";
         }
         amrex::Print() << "\n";
     }
-        
-    for (std::size_t i = 0; i < 2; ++i) 
+
+    for (std::size_t i = 0; i < 2; ++i)
     {
         SortBoundaryTypeArrayString(bc_str_2d[i], bcType_2d[i], bcAny_2d[i], map_bcAny_2d[i]);
     }
 
     bc_str_2d.clear();
 
-    
+
     /* Make both boundaries periodic based on is_periodic */
     auto& rFerroX = c_FerroX::GetInstance();
     auto& rGprop = rFerroX.get_GeometryProperties();
     auto& is_periodic = rGprop.is_periodic;
 
-    for (std::size_t idim = 0; idim < AMREX_SPACEDIM; ++idim) 
+    for (std::size_t idim = 0; idim < AMREX_SPACEDIM; ++idim)
     {
-        if(is_periodic[idim] == 1 and  (map_bcAny_2d[0][idim] != "periodic" or  map_bcAny_2d[0][idim] != "periodic") ) 
+        if(is_periodic[idim] == 1 and  (map_bcAny_2d[0][idim] != "periodic" or  map_bcAny_2d[0][idim] != "periodic") )
         {
             std::stringstream warnMsg;
-	    amrex::Print() << "Note that domain.is_periodic is set to 1 (true) for direction "<< idim << " !\n"
+            amrex::Print() << "Note that domain.is_periodic is set to 1 (true) for direction "<< idim << " !\n"
                 << "Therefore, the value set by boundary.lo/hi is ignored and both sides are assumed to be periodic. \n";
 
             map_bcAny_2d[0][idim] = "periodic";    map_bcAny_2d[1][idim] = "periodic";
@@ -181,12 +181,12 @@ c_BoundaryConditions::ReadBoundaryConditionsType()
     }
 
     /*Conversely, ensure a direction in is_periodic is set to be periodic if boundary.lo/hi are set to periodic.*/
-    for (std::size_t idim = 0; idim < AMREX_SPACEDIM; ++idim) 
+    for (std::size_t idim = 0; idim < AMREX_SPACEDIM; ++idim)
     {
         bool is_periodic_flag = true;
-        if ( ( bcType_2d[0][idim] == "per" and  bcType_2d[1][idim] != "per") or 
+        if ( ( bcType_2d[0][idim] == "per" and  bcType_2d[1][idim] != "per") or
              ( bcType_2d[0][idim] != "per" and  bcType_2d[1][idim] == "per") or
-             ( bcType_2d[0][idim] == "per" and  bcType_2d[1][idim] == "per" and is_periodic[idim] != 1) ) 
+             ( bcType_2d[0][idim] == "per" and  bcType_2d[1][idim] == "per" and is_periodic[idim] != 1) )
         {
              is_periodic_flag = false;
         }
@@ -198,13 +198,13 @@ c_BoundaryConditions::ReadBoundaryConditionsType()
 
     /* loop over map_bcAny_2d and fill in the map of function parser names and set number of function parser names. */
     int c=0;
-    for (std::size_t i = 0; i < 2; ++i) 
+    for (std::size_t i = 0; i < 2; ++i)
     {
-        for (std::size_t j = 0; j < AMREX_SPACEDIM; ++j) 
+        for (std::size_t j = 0; j < AMREX_SPACEDIM; ++j)
         {
-            if(map_bcAny_2d[i][j] == "inhomogeneous_function") 
+            if(map_bcAny_2d[i][j] == "inhomogeneous_function")
             {
-              map_function_parser_name[ std::any_cast<std::string>(bcAny_2d[i][j]) ] = c; 
+              map_function_parser_name[ std::any_cast<std::string>(bcAny_2d[i][j]) ] = c;
               ++c;
             }
         }
@@ -214,15 +214,15 @@ c_BoundaryConditions::ReadBoundaryConditionsType()
 }
 
 
-void 
+void
 c_BoundaryConditions::DefineMacroVariableVectorSizes()
-{ 
+{
     m_macro_str_function.resize(num_function_parsers);
     m_p_macro_parser.resize(num_function_parsers);
 }
 
 
-void 
+void
 c_BoundaryConditions::ReadBoundaryConditionsParser(std::string macro_str, int macro_num)
 {
 
@@ -237,8 +237,8 @@ c_BoundaryConditions::ReadBoundaryConditionsParser(std::string macro_str, int ma
     if(!specified) {
         std::string warnMsg = "Boundary Conditions: function parser '" + macro_functionXYZ + "' is not specified in the input file.\n";
         WARPX_ALWAYS_ASSERT_WITH_MESSAGE(specified==true, warnMsg);
-    } 
-    else 
+    }
+    else
     {
         Store_parserString(pp_boundary, macro_functionXYZ.c_str(),  m_macro_str_function[macro_num]);
 

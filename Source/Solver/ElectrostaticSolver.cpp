@@ -32,8 +32,8 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
 
-                 //Convert Euler angles from degrees to radians 
-                 amrex::Real Pi = 3.14159265358979323846; 
+                 //Convert Euler angles from degrees to radians
+                 amrex::Real Pi = 3.14159265358979323846;
                  amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
                  amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
                  amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
@@ -41,20 +41,20 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
                  amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
 
                  if(use_Euler_angles){
-                    R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);  
-                    R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);  
-                    R_13 = sin(beta_rad)*sin(theta_rad);  
-                    R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);  
-                    R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);  
-                    R_23 = sin(beta_rad)*cos(theta_rad);  
-                    R_31 = sin(alpha_rad)*sin(beta_rad);  
-                    R_32 = -cos(alpha_rad)*sin(beta_rad);  
-                    R_33 = cos(beta_rad);  
+                    R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);
+                    R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);
+                    R_13 = sin(beta_rad)*sin(theta_rad);
+                    R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);
+                    R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);
+                    R_23 = sin(beta_rad)*cos(theta_rad);
+                    R_31 = sin(alpha_rad)*sin(beta_rad);
+                    R_32 = -cos(alpha_rad)*sin(beta_rad);
+                    R_33 = cos(beta_rad);
                  } else {
-                    R_11 = cos(beta_rad)*cos(theta_rad);  
-                    R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
-                    R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);  
-                    R_21 = cos(beta_rad)*sin(theta_rad);  
+                    R_11 = cos(beta_rad)*cos(theta_rad);
+                    R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);
+                    R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);
+                    R_21 = cos(beta_rad)*sin(theta_rad);
                     R_22 = sin(beta_rad)*sin(alpha_rad)*sin(theta_rad) + cos(alpha_rad)*cos(theta_rad);
                     R_23 = cos(alpha_rad)*sin(beta_rad)*sin(theta_rad) - sin(alpha_rad)*cos(theta_rad);
                     R_31 = -sin(beta_rad);
@@ -79,29 +79,29 @@ void ComputePoissonRHS(MultiFab&               PoissonRHS,
 
             });
         }
-   
+
 }
 
 void dF_dPhi(MultiFab&            alpha_cc,
-             MultiFab&            PoissonRHS, 
-             MultiFab&            PoissonPhi, 
-	     Array<MultiFab, AMREX_SPACEDIM>& P_old,
+             MultiFab&            PoissonRHS,
+             MultiFab&            PoissonPhi,
+             Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	     MultiFab&            MaterialMask,
+             MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+             [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+             [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 
 {
-   
-        MultiFab PoissonPhi_plus_delta(PoissonPhi.boxArray(), PoissonPhi.DistributionMap(), 1, 0); 
-        MultiFab PoissonRHS_phi_plus_delta(PoissonRHS.boxArray(), PoissonRHS.DistributionMap(), 1, 0); 
- 
-        MultiFab::Copy(PoissonPhi_plus_delta, PoissonPhi, 0, 0, 1, 0); 
-        PoissonPhi_plus_delta.plus(delta, 0, 1, 0); 
+
+        MultiFab PoissonPhi_plus_delta(PoissonPhi.boxArray(), PoissonPhi.DistributionMap(), 1, 0);
+        MultiFab PoissonRHS_phi_plus_delta(PoissonRHS.boxArray(), PoissonRHS.DistributionMap(), 1, 0);
+
+        MultiFab::Copy(PoissonPhi_plus_delta, PoissonPhi, 0, 0, 1, 0);
+        PoissonPhi_plus_delta.plus(delta, 0, 1, 0);
 
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi_plus_delta, rho, e_den, p_den, MaterialMask);
@@ -111,22 +111,22 @@ void dF_dPhi(MultiFab&            alpha_cc,
 
         MultiFab::LinComb(alpha_cc, 1./delta, PoissonRHS_phi_plus_delta, 0, -1./delta, PoissonRHS, 0, 0, 1, 0);
 }
-void ComputePoissonRHS_Newton(MultiFab& PoissonRHS, 
-                              MultiFab& PoissonPhi, 
+void ComputePoissonRHS_Newton(MultiFab& PoissonRHS,
+                              MultiFab& PoissonPhi,
                               MultiFab& alpha_cc)
 {
-     
+
         for ( MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi )
         {
             const Box& bx = mfi.validbox();
 
             const Array4<Real>& phi = PoissonPhi.array(mfi);
             const Array4<Real>& poissonRHS = PoissonRHS.array(mfi);
-            const Array4<Real>& alpha = alpha_cc.array(mfi);
+            const Array4<Real>& alpha_local = alpha_cc.array(mfi);
 
             amrex::ParallelFor( bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                   poissonRHS(i,j,k) = poissonRHS(i,j,k) - alpha(i,j,k)*phi(i,j,k) ;
+                   poissonRHS(i,j,k) = poissonRHS(i,j,k) - alpha_local(i,j,k)*phi(i,j,k) ;
             });
         }
 }
@@ -135,8 +135,8 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                 Array<MultiFab, AMREX_SPACEDIM>& E,
                 MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
                 const Geometry&                 geom,
-		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo, 
-		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
         BL_PROFILE("ComputeEfromPhi()");
 
@@ -164,7 +164,7 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                      Real z_lo = prob_lo[2] + (k-0.5) * dx[2];
 
                      //Convert Euler angles from degrees to radians
-                     amrex::Real Pi = 3.14159265358979323846; 
+                     amrex::Real Pi = 3.14159265358979323846;
                      amrex::Real alpha_rad = Pi/180.*angle_alpha_arr(i,j,k);
                      amrex::Real beta_rad =  Pi/180.*angle_beta_arr(i,j,k);
                      amrex::Real theta_rad = Pi/180.*angle_theta_arr(i,j,k);
@@ -172,20 +172,20 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
                      amrex::Real R_11, R_12, R_13, R_21, R_22, R_23, R_31, R_32, R_33;
 
                      if(use_Euler_angles){
-                        R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);  
-                        R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);  
-                        R_13 = sin(beta_rad)*sin(theta_rad);  
-                        R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);  
-                        R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);  
-                        R_23 = sin(beta_rad)*cos(theta_rad);  
-                        R_31 = sin(alpha_rad)*sin(beta_rad);  
-                        R_32 = -cos(alpha_rad)*sin(beta_rad);  
-                        R_33 = cos(beta_rad);  
+                        R_11 = cos(alpha_rad)*cos(theta_rad) - cos(beta_rad)*sin(alpha_rad)*sin(theta_rad);
+                        R_12 = sin(alpha_rad)*cos(theta_rad) + cos(beta_rad)*cos(alpha_rad)*sin(theta_rad);
+                        R_13 = sin(beta_rad)*sin(theta_rad);
+                        R_21 = -cos(beta_rad)*cos(theta_rad)*sin(alpha_rad) - cos(alpha_rad)*sin(theta_rad);
+                        R_22 = cos(beta_rad)*cos(alpha_rad)*cos(theta_rad) - sin(alpha_rad)*sin(theta_rad);
+                        R_23 = sin(beta_rad)*cos(theta_rad);
+                        R_31 = sin(alpha_rad)*sin(beta_rad);
+                        R_32 = -cos(alpha_rad)*sin(beta_rad);
+                        R_33 = cos(beta_rad);
                      } else {
-                        R_11 = cos(beta_rad)*cos(theta_rad);  
-                        R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);  
-                        R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);  
-                        R_21 = cos(beta_rad)*sin(theta_rad);  
+                        R_11 = cos(beta_rad)*cos(theta_rad);
+                        R_12 = sin(alpha_rad)*sin(beta_rad)*cos(theta_rad) - cos(alpha_rad)*sin(theta_rad);
+                        R_13 = cos(alpha_rad)*sin(beta_rad)*cos(theta_rad) + sin(alpha_rad)*sin(theta_rad);
+                        R_21 = cos(beta_rad)*sin(theta_rad);
                         R_22 = sin(beta_rad)*sin(alpha_rad)*sin(theta_rad) + cos(alpha_rad)*cos(theta_rad);
                         R_23 = cos(alpha_rad)*sin(beta_rad)*sin(theta_rad) - sin(alpha_rad)*cos(theta_rad);
                         R_31 = -sin(beta_rad);
@@ -203,14 +203,14 @@ void ComputeEfromPhi(MultiFab&                 PoissonPhi,
 
 }
 
-void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d, 
-		MultiFab& beta_cc,
-	       	const MultiFab& MaterialMask,
-	       	const MultiFab& tphaseMask,
-	       	const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
-	       	const Geometry& geom, 
-		const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
-	       	const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
+void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d,
+                MultiFab& beta_cc,
+                const MultiFab& MaterialMask,
+                const MultiFab& tphaseMask,
+                const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
+                const Geometry& geom,
+                const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                [[maybe_unused]] const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 {
 
     beta_cc.setVal(0.0);
@@ -222,34 +222,34 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
     {
         const Box& bx = mfi.validbox();
 
-        const Array4<Real>& beta = beta_cc.array(mfi);
+        const Array4<Real>& beta_local = beta_cc.array(mfi);
         const Array4<Real const>& mask = MaterialMask.array(mfi);
         const Array4<Real const>& tphase = tphaseMask.array(mfi);
 
-	// extract dx from the geometry object
+        // extract dx from the geometry object
         GpuArray<Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
 
-	  Real x = prob_lo[0] + (i+0.5) * dx[0];
-	  Real y = prob_lo[1] + (j+0.5) * dx[1];
-	  Real z = prob_lo[1] + (k+0.5) * dx[2];
-	
+          [[maybe_unused]] Real x = prob_lo[0] + (i+0.5) * dx[0];
+          [[maybe_unused]] Real y = prob_lo[1] + (j+0.5) * dx[1];
+          [[maybe_unused]] Real z = prob_lo[1] + (k+0.5) * dx[2];
+
           if(mask(i,j,k) == 0.0) {
-             beta(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
-	     //set t_phase beta to epsilonX_fe_tphase
-	     //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
-	     if(tphase(i,j,k) == 1.0){
-               beta(i,j,k) = epsilonX_fe_tphase * epsilon_0;
+             beta_local(i,j,k) = epsilonX_fe * epsilon_0; //FE layer
+             //set t_phase beta to epsilonX_fe_tphase
+             //if(x <= t_phase_hi[0] && x >= t_phase_lo[0] && y <= t_phase_hi[1] && y >= t_phase_lo[1] && z <= t_phase_hi[2] && z >= t_phase_lo[2]){
+             if(tphase(i,j,k) == 1.0){
+               beta_local(i,j,k) = epsilonX_fe_tphase * epsilon_0;
              }
           } else if(mask(i,j,k) == 1.0) {
-             beta(i,j,k) = epsilon_de * epsilon_0; //DE layer
+             beta_local(i,j,k) = epsilon_de * epsilon_0; //DE layer
           } else if (mask(i,j,k) >= 2.0){
-             beta(i,j,k) = epsilon_si * epsilon_0; //SC layer
+             beta_local(i,j,k) = epsilon_si * epsilon_0; //SC layer
           } else {
-             beta(i,j,k) = epsilon_de * epsilon_0; //Spacer is same as DE
-	  }
+             beta_local(i,j,k) = epsilon_de * epsilon_0; //Spacer is same as DE
+          }
 
         });
     }
@@ -260,41 +260,41 @@ void InitializePermittivity(std::array<std::array<amrex::LinOpBCType,AMREX_SPACE
     {
         const Box& bx = mfi.growntilebox(1);
 
-        const Array4<Real>& beta = beta_cc.array(mfi);
+        const Array4<Real>& beta_local = beta_cc.array(mfi);
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
         {
-	        if (LinOpBCType_2d[0][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][0] == amrex::LinOpBCType::Neumann ){
-           	   if(i < 0) {
-		     beta(i,j,k) = beta(i+1,j,k);
-		   }
-		}
+                if (LinOpBCType_2d[0][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][0] == amrex::LinOpBCType::Neumann ){
+                   if(i < 0) {
+                     beta_local(i,j,k) = beta_local(i+1,j,k);
+                   }
+                }
 
-	        if (LinOpBCType_2d[1][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][0] == amrex::LinOpBCType::Neumann ){
-		   if(i > n_cell[0] - 1) {
-		     beta(i,j,k) = beta(i-1,j,k);
-		   }
-		}
-	        if (LinOpBCType_2d[0][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][1] == amrex::LinOpBCType::Neumann ){
-  		   if(j < 0) {
-		     beta(i,j,k) = beta(i,j+1,k);
-		   }
-		}
-	        if (LinOpBCType_2d[1][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][1] == amrex::LinOpBCType::Neumann ){
-		   if(j > n_cell[1] - 1) {
-		     beta(i,j,k) = beta(i,j-1,k);
-		   }
-		}
-	        if (LinOpBCType_2d[0][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][2] == amrex::LinOpBCType::Neumann ){
-  		   if(k < 0) {
-		     beta(i,j,k) = beta(i,j,k+1);
-		   }
-		}
-	        if (LinOpBCType_2d[1][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][2] == amrex::LinOpBCType::Neumann ){
-		   if(k > n_cell[2] - 1) {
-		     beta(i,j,k) = beta(i,j,k-1);
-		   }
-		}
+                if (LinOpBCType_2d[1][0] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][0] == amrex::LinOpBCType::Neumann ){
+                   if(i > n_cell[0] - 1) {
+                     beta_local(i,j,k) = beta_local(i-1,j,k);
+                   }
+                }
+                if (LinOpBCType_2d[0][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][1] == amrex::LinOpBCType::Neumann ){
+                   if(j < 0) {
+                     beta_local(i,j,k) = beta_local(i,j+1,k);
+                   }
+                }
+                if (LinOpBCType_2d[1][1] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][1] == amrex::LinOpBCType::Neumann ){
+                   if(j > n_cell[1] - 1) {
+                     beta_local(i,j,k) = beta_local(i,j-1,k);
+                   }
+                }
+                if (LinOpBCType_2d[0][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[0][2] == amrex::LinOpBCType::Neumann ){
+                   if(k < 0) {
+                     beta_local(i,j,k) = beta_local(i,j,k+1);
+                   }
+                }
+                if (LinOpBCType_2d[1][2] == amrex::LinOpBCType::Dirichlet || LinOpBCType_2d[1][2] == amrex::LinOpBCType::Neumann ){
+                   if(k > n_cell[2] - 1) {
+                     beta_local(i,j,k) = beta_local(i,j,k-1);
+                   }
+                }
         });
     }
 }
@@ -354,6 +354,13 @@ void SetPoissonBC(c_FerroX& rFerroX, std::array<std::array<amrex::LinOpBCType,AM
                     LinOpBCType_2d[i][j] = LinOpBCType::Periodic;
                     break;
                 }
+                case s_BoundaryConditions::rob :
+                case s_BoundaryConditions::ref :
+                {
+                    // These boundary types are not currently implemented
+                    amrex::Abort("Boundary types 'rob' and 'ref' are not implemented");
+                    break;
+                }
             }
 
         }
@@ -381,41 +388,41 @@ void Fill_Constant_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Poisson
         const auto& phi_arr = PoissonPhi.array(mfi);
 
         const auto& bx = mfi.tilebox();
-        
+
         if(found_lo) {
-            for (auto dir : dir_inhomo_const_lo) 
-	    {
-                if (bx.smallEnd(dir) == domain.smallEnd(dir)) 
-		{
-	            auto value = std::any_cast<amrex::Real>(bcAny_2d[0][dir]);		
+            for (auto dir : dir_inhomo_const_lo)
+            {
+                if (bx.smallEnd(dir) == domain.smallEnd(dir))
+                {
+                    auto bc_value_lo = std::any_cast<amrex::Real>(bcAny_2d[0][dir]);
                     Box const& bxlo = amrex::adjCellLo(bx, dir,len);
                     amrex::ParallelFor(bxlo,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        phi_arr(i,j,k) = value;
+                        phi_arr(i,j,k) = bc_value_lo;
                     });
                 }
             }
         }
         if(found_hi) {
-            for (auto dir : dir_inhomo_const_hi) 
-	    {
-                if (bx.bigEnd(dir) == domain.bigEnd(dir)) 
-		{
-		    auto value = std::any_cast<amrex::Real>(bcAny_2d[1][dir]);	
+            for (auto dir : dir_inhomo_const_hi)
+            {
+                if (bx.bigEnd(dir) == domain.bigEnd(dir))
+                {
+                    auto bc_value_hi = std::any_cast<amrex::Real>(bcAny_2d[1][dir]);
                     Box const& bxhi = amrex::adjCellHi(bx, dir,len);
                     amrex::ParallelFor(bxhi,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-                        phi_arr(i,j,k) = value;
+                        phi_arr(i,j,k) = bc_value_hi;
                     });
                 }
             }
         }
-    } 
+    }
 
 }
-void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi, amrex::Real& time)
+void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& PoissonPhi, [[maybe_unused]] amrex::Real& time)
 {
     auto& rGprop = rFerroX.get_GeometryProperties();
     Box const& domain = rGprop.geom.Domain();
@@ -438,62 +445,62 @@ void Fill_FunctionBased_Inhomogeneous_Boundaries(c_FerroX& rFerroX, MultiFab& Po
     {
         const auto& soln_arr = PoissonPhi.array(mfi);
         const auto& bx = mfi.tilebox();
-        
+
         /*for low sides*/
         if(found_lo)
         {
             for (auto dir : dir_inhomo_func_lo) //looping over boundaries of type inhomogeneous_function
             {
                 if (bx.smallEnd(dir) == domain.smallEnd(dir)) //work with a box that adjacent to the domain boundary
-                { 
+                {
                     Box const& bxlo = amrex::adjCellLo(bx, dir);
                     std::string macro_str = std::any_cast<std::string>(bcAny_2d[0][dir]);
 
                     auto pParser = rBC.get_p_parser(macro_str);
-		    #ifdef TIME_DEPENDENT
-		        const auto& macro_parser = pParser->compile<4>();
-		    #else
-		        const auto& macro_parser = pParser->compile<3>();
-		    #endif
+                    #ifdef TIME_DEPENDENT
+                        const auto& macro_parser = pParser->compile<4>();
+                    #else
+                        const auto& macro_parser = pParser->compile<3>();
+                    #endif
 
                     amrex::ParallelFor(bxlo,
                     [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                     {
-		        #ifdef TIME_DEPENDENT
-                            eXstatic_MFab_Util::ConvertParserIntoMultiFab_4vars(i,j,k,time,dx,real_box,iv,macro_parser,soln_arr);  
-		        #else
-                            eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,soln_arr);  
+                        #ifdef TIME_DEPENDENT
+                            eXstatic_MFab_Util::ConvertParserIntoMultiFab_4vars(i,j,k,time,dx,real_box,iv,macro_parser,soln_arr);
+                        #else
+                            eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,soln_arr);
                         #endif
                     });
                 }
             }
         }
-	if(found_hi)
+        if(found_hi)
         {
             for (auto dir : dir_inhomo_func_hi) //looping over boundaries of type inhomogeneous_function
             {
                 if (bx.bigEnd(dir) == domain.bigEnd(dir)) //work with a box that adjacent to the domain boundary
                 {
                     Box const& bxhi = amrex::adjCellHi(bx, dir);
-		    std::string macro_str = std::any_cast<std::string>(bcAny_2d[1][dir]);
+                    std::string macro_str = std::any_cast<std::string>(bcAny_2d[1][dir]);
 
                         auto pParser = rBC.get_p_parser(macro_str);
-			#ifdef TIME_DEPENDENT
-			    const auto& macro_parser = pParser->compile<4>();
-			#else
-			    const auto& macro_parser = pParser->compile<3>();
-			#endif
+                        #ifdef TIME_DEPENDENT
+                            const auto& macro_parser = pParser->compile<4>();
+                        #else
+                            const auto& macro_parser = pParser->compile<3>();
+                        #endif
 
                         amrex::ParallelFor(bxhi,
                         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
                         {
-		            #ifdef TIME_DEPENDENT
+                            #ifdef TIME_DEPENDENT
                                 eXstatic_MFab_Util::ConvertParserIntoMultiFab_4vars(i,j,k,time,dx,real_box,iv,macro_parser,soln_arr);
-		            #else
+                            #else
                                 eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars(i,j,k,dx,real_box,iv,macro_parser,soln_arr);
                             #endif
                         });
-	        }
+                }
             }
         }
 
@@ -515,8 +522,8 @@ void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>
           } else if(k >= n_cell[2]){
             amrex::Real Eg = bandgap;
             amrex::Real Chi = affinity;
-            amrex::Real phi_ref = Chi + 0.5*Eg + 0.5*kb*T*log(Nc/Nv)/q;  
-            amrex::Real phi_m = use_work_function ? metal_work_function : phi_ref; //in eV When not used, applied voltgae is set as the potential on the metal interface 
+            amrex::Real phi_ref = Chi + 0.5*Eg + 0.5*kb*T*log(Nc/Nv)/q;
+            amrex::Real phi_m = use_work_function ? metal_work_function : phi_ref; //in eV When not used, applied voltgae is set as the potential on the metal interface
             Phi(i,j,k) = Phi_Bc_hi - (phi_m - phi_ref);
           }
         });
@@ -524,13 +531,13 @@ void SetPhiBC_z(MultiFab& PoissonPhi, const amrex::GpuArray<int, AMREX_SPACEDIM>
     PoissonPhi.FillBoundary(geom.periodicity());
 }
 
-void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& Phidiff, Real phi_tolerance, int step, int& steady_state_step, int& inc_step)
+void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& Phidiff, Real phi_tolerance_local, int step_local, int& steady_state_step, int& inc_step_local)
 {
 
         Real phi_max = PoissonPhi.norm0();
 
         for (MFIter mfi(PoissonPhi); mfi.isValid(); ++mfi)
-        {   
+        {
             const Box& bx = mfi.growntilebox(1);
 
             const Array4<Real>& Phi = PoissonPhi.array(mfi);
@@ -539,17 +546,17 @@ void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& 
 
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k)
-            {   
+            {
                 Phi_err(i,j,k) = amrex::Math::abs(Phi(i,j,k) - PhiOld(i,j,k)) / phi_max;
-            }); 
-        }   
- 
+            });
+        }
+
         Real max_phi_err = Phidiff.norm0();
 
-        if(step > 1){
-          if (max_phi_err < phi_tolerance) {
-                  steady_state_step = step;
-                  inc_step = step;
+        if(step_local > 1){
+          if (max_phi_err < phi_tolerance_local) {
+                  steady_state_step = step_local;
+                  inc_step_local = step_local;
           }
         }
 
@@ -560,7 +567,7 @@ void CheckSteadyState(MultiFab& PoissonPhi, MultiFab& PoissonPhi_Old, MultiFab& 
 
 }
 
-void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG, 
+void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
         std::unique_ptr<amrex::MLABecLaplacian>& p_mlabec,
         std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d,
         const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
@@ -572,7 +579,7 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
     auto& ba = rGprop.ba;
     auto& dm = rGprop.dm;
     int linop_maxorder = 2;
-    bool all_homogeneous_boundaries = true;
+    [[maybe_unused]] bool all_homogeneous_boundaries = true;
     bool some_functionbased_inhomogeneous_boundaries = false;
     bool some_constant_inhomogeneous_boundaries = false;
     int amrlev = 0; //refers to the setcoarsest level of the solve
@@ -581,9 +588,9 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
     p_mlabec->define({geom}, {ba}, {dm}, info);
 
     //Force singular system to be solvable
-    p_mlabec->setEnforceSingularSolvable(false); 
+    p_mlabec->setEnforceSingularSolvable(false);
 
-    p_mlabec->setMaxOrder(linop_maxorder);  
+    p_mlabec->setMaxOrder(linop_maxorder);
 
     p_mlabec->setDomainBC(LinOpBCType_2d[0], LinOpBCType_2d[1]);
 
@@ -598,9 +605,9 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
     PoissonPhi.FillBoundary(geom.periodicity());
 
     // set Dirichlet BC by reading in the ghost cell values
-    SetPhiBC_z(PoissonPhi, n_cell, geom); 
+    SetPhiBC_z(PoissonPhi, n_cell, geom);
     p_mlabec->setLevelBC(amrlev, &PoissonPhi);
-    
+
     // (A*alpha_cc - B * div beta grad) phi = rhs
     p_mlabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
     p_mlabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
@@ -612,7 +619,7 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
  }
 
 #ifdef AMREX_USE_EB
- void SetupMLMG_EB(std::unique_ptr<amrex::MLMG>& pMLMG, 
+ void SetupMLMG_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
         std::unique_ptr<amrex::MLEBABecLap>& p_mlebabec,
         std::array<std::array<amrex::LinOpBCType,AMREX_SPACEDIM>,2>& LinOpBCType_2d,
         const amrex::GpuArray<int, AMREX_SPACEDIM>& n_cell,
@@ -653,9 +660,9 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
     PoissonPhi.FillBoundary(geom.periodicity());
 
     // Set Dirichlet BC for Phi in z
-    SetPhiBC_z(PoissonPhi, n_cell, geom); 
+    SetPhiBC_z(PoissonPhi, n_cell, geom);
     p_mlebabec->setLevelBC(amrlev, &PoissonPhi);
-    
+
     // (A*alpha_cc - B * div beta grad) phi = rhs
     p_mlebabec->setScalars(-1.0, 1.0); // A = -1.0, B = 1.0; solving (-alpha - div beta grad) phi = RHS
     p_mlebabec->setBCoeffs(amrlev, amrex::GetArrOfConstPtrs(beta_face));
@@ -676,41 +683,41 @@ void SetupMLMG(std::unique_ptr<amrex::MLMG>& pMLMG,
  }
 #endif
 
-void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG, 
+void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
              std::unique_ptr<amrex::MLABecLaplacian>& p_mlabec,
              MultiFab&            alpha_cc,
-             MultiFab&            PoissonRHS, 
-             MultiFab&            PoissonPhi, 
+             MultiFab&            PoissonRHS,
+             MultiFab&            PoissonPhi,
              MultiFab&            PoissonPhi_Prev,
-             MultiFab&            PhiErr,  
-	         Array<MultiFab, AMREX_SPACEDIM>& P_old,
+             MultiFab&            PhiErr,
+                 Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	         MultiFab&            MaterialMask,
+                 MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	         const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 
 {
     BL_PROFILE("ComputePhi_Rho()");
 
-    //Obtain self consisten Phi and rho
+    //Obtain self consistent Phi and rho
     Real tol = 1.e-5;
     Real err = 1.0;
     int iter = 0;
     bool contains_SC = false;
     FerroX_Util::Contains_sc(MaterialMask, contains_SC);
-    
+
     while(err > tol){
-   
-	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+        //Compute RHS of Poisson equation
+        ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
         dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, rho, e_den, p_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc);
 
 
         p_mlabec->setACoeffs(0, alpha_cc);
@@ -720,12 +727,12 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
 
         //Poisson Solve
         pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-	    PoissonPhi.FillBoundary(geom.periodicity());
-	
+            PoissonPhi.FillBoundary(geom.periodicity());
+
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
-        
-	if (contains_SC == 0) {
+
+        if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
         } else {
@@ -745,46 +752,46 @@ void ComputePhi_Rho(std::unique_ptr<amrex::MLMG>& pMLMG,
             if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
         }
     }
-    
+
     // amrex::Print() << "\n ========= Self-Consistent Initialization of Phi and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
 }
 
 #ifdef AMREX_USE_EB
-void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG, 
+void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
              std::unique_ptr<amrex::MLEBABecLap>& p_mlebabec,
              MultiFab&            alpha_cc,
-             MultiFab&            PoissonRHS, 
-             MultiFab&            PoissonPhi, 
+             MultiFab&            PoissonRHS,
+             MultiFab&            PoissonPhi,
              MultiFab&            PoissonPhi_Prev,
-             MultiFab&            PhiErr,  
-	         Array<MultiFab, AMREX_SPACEDIM>& P_old,
+             MultiFab&            PhiErr,
+                 Array<MultiFab, AMREX_SPACEDIM>& P_old,
              MultiFab&            rho,
              MultiFab&            e_den,
              MultiFab&            p_den,
-	         MultiFab&            MaterialMask,
+                 MultiFab&            MaterialMask,
              MultiFab& angle_alpha, MultiFab& angle_beta, MultiFab& angle_theta,
              const          Geometry& geom,
-	         const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
+                 const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_lo,
              const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& prob_hi)
 
 {
     BL_PROFILE("ComputePhi_Rho_EB()");
 
-    //Obtain self consisten Phi and rho
+    //Obtain self consistent Phi and rho
     Real tol = 1.e-5;
     Real err = 1.0;
     int iter = 0;
     bool contains_SC = false;
     FerroX_Util::Contains_sc(MaterialMask, contains_SC);
-    
+
     while(err > tol){
-   
-	//Compute RHS of Poisson equation
-	ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
+
+        //Compute RHS of Poisson equation
+        ComputePoissonRHS(PoissonRHS, P_old, rho, MaterialMask, angle_alpha, angle_beta, angle_theta, geom);
 
         dF_dPhi(alpha_cc, PoissonRHS, PoissonPhi, P_old, rho, e_den, p_den, MaterialMask, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
-        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc); 
+        ComputePoissonRHS_Newton(PoissonRHS, PoissonPhi, alpha_cc);
 
 
         p_mlebabec->setACoeffs(0, alpha_cc);
@@ -794,12 +801,12 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
 
         //Poisson Solve
         pMLMG->solve({&PoissonPhi}, {&PoissonRHS}, 1.e-10, -1);
-	    PoissonPhi.FillBoundary(geom.periodicity());
-	
+            PoissonPhi.FillBoundary(geom.periodicity());
+
         // Calculate rho from Phi in SC region
         ComputeRho(PoissonPhi, rho, e_den, p_den, MaterialMask);
-        
-	if (contains_SC == 0) {
+
+        if (contains_SC == 0) {
             // no semiconductor region; set error to zero so the while loop terminates
             err = 0.;
         } else {
@@ -819,7 +826,7 @@ void ComputePhi_Rho_EB(std::unique_ptr<amrex::MLMG>& pMLMG,
             if( iter > 20 ) amrex::Print() <<  "Failed to reach self consistency between Phi and Rho in 20 iterations!! " << std::endl;
         }
     }
-    
+
     // amrex::Print() << "\n ========= Self-Consistent Initialization of Phi and Rho Done! ========== \n"<< iter << " iterations to obtain self consistent Phi with err = " << err << std::endl;
 }
 #endif

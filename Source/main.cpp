@@ -10,8 +10,8 @@
 #include <AMReX_TimeIntegrator.H>
 #endif
 
-#include <AMReX_MLMG.H> 
-#include <AMReX_MultiFab.H> 
+#include <AMReX_MLMG.H>
+#include <AMReX_MultiFab.H>
 #include <AMReX_VisMF.H>
 #include "FerroX.H"
 #include "Solver/ElectrostaticSolver.H"
@@ -35,9 +35,9 @@ using namespace FerroX;
 int main (int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
-    
+
     {
-	    c_FerroX pFerroX;
+            c_FerroX pFerroX;
             pFerroX.InitData();
             main_main(pFerroX);
     }
@@ -56,7 +56,7 @@ void main_main (c_FerroX& rFerroX)
     auto& geom = rGprop.geom;
     auto& ba = rGprop.ba;
     auto& dm = rGprop.dm;
-    auto& is_periodic = rGprop.is_periodic;
+    [[maybe_unused]] auto& is_periodic = rGprop.is_periodic;
     auto& prob_lo = rGprop.prob_lo;
     auto& prob_hi = rGprop.prob_hi;
     auto& n_cell = rGprop.n_cell;
@@ -203,14 +203,14 @@ void main_main (c_FerroX& rFerroX)
     // set cell-centered beta coefficient to permittivity based on mask
     InitializePermittivity(LinOpBCType_2d, beta_cc, MaterialMask, tphaseMask, n_cell, geom, prob_lo, prob_hi);
     eXstatic_MFab_Util::AverageCellCenteredMultiFabToCellFaces(beta_cc, beta_face);
-    
+
     // time = starting time in the simulation
     Real time = 0.0;
 
     amrex::LPInfo info;
     std::unique_ptr<amrex::MLMG> pMLMG;
     std::unique_ptr<amrex::MLABecLaplacian> p_mlabec;
-    int linop_maxorder = 2;
+    [[maybe_unused]] int linop_maxorder = 2;
     int amrlev = 0; //refers to the setcoarsest level of the solve
 
     SetupMLMG(pMLMG, p_mlabec, LinOpBCType_2d, n_cell, beta_face, rFerroX, PoissonPhi, time, info);
@@ -219,7 +219,7 @@ void main_main (c_FerroX& rFerroX)
     std::unique_ptr<amrex::MLEBABecLap> p_mlebabec;
     SetupMLMG_EB(pMLMG, p_mlebabec, LinOpBCType_2d, n_cell, beta_face, beta_cc, rFerroX, PoissonPhi, time, info);
 #endif
-    
+
     // INITIALIZE P in FE and rho in SC regions
 
     //InitializePandRho(P_old, Gamma, charge_den, e_den, hole_den, geom, prob_lo, prob_hi);//old
@@ -229,7 +229,7 @@ void main_main (c_FerroX& rFerroX)
     if (plot_int > 0)
     {
         int plt_step = 0;
-        WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, hole_den, e_den, charge_den, beta_cc, 
+        WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, hole_den, e_den, charge_den, beta_cc,
                       MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, Phidiff, geom, time, plt_step);
     }
 
@@ -239,8 +239,8 @@ void main_main (c_FerroX& rFerroX)
 
     int sign = 1; //change sign to -1*sign whenever abs(Phi_Bc_hi) == Phi_Bc_hi_max to do triangular wave sweep
     int num_Vapp = 0;
-    Real tiny = 1.e-6;    
- 
+    Real tiny = 1.e-6;
+
 #ifdef AMREX_USE_SUNDIALS
 
     amrex::Vector<MultiFab> vP_old(AMREX_SPACEDIM);
@@ -254,7 +254,7 @@ void main_main (c_FerroX& rFerroX)
 
     // Create a RHS source function we will integrate
     // for MRI this represents the slow processes
-    auto rhs_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real& time ) {
+    auto rhs_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real& /* time */ ) {
 
         BL_PROFILE_VAR("rhs_fun()",rhs_fast_fun);
 
@@ -325,7 +325,7 @@ void main_main (c_FerroX& rFerroX)
     };
 
     // Create a fast RHS source function we will integrate
-    auto rhs_fast_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real& time) {
+    auto rhs_fast_fun = [&](Vector<MultiFab>& rhs, const Vector<MultiFab>& state, const Real& /* time */) {
 
         BL_PROFILE_VAR("rhs_fast_fun()",rhs_fast_fun);
 
@@ -418,7 +418,7 @@ void main_main (c_FerroX& rFerroX)
     {
         Real step_strt_time = ParallelDescriptor::second();
 
-	if (!use_sundials) {
+        if (!use_sundials) {
 
 #ifdef AMREX_USE_EB
             ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
@@ -449,9 +449,9 @@ void main_main (c_FerroX& rFerroX)
             // P^{n+1,*} = P^n + dt * f^n
             for (int i = 0; i < 3; i++){
                 MultiFab::LinComb(P_new_pre[i], 1.0, P_old[i], 0, dt, GL_rhs[i], 0, 0, 1, Nghost);
-                P_new_pre[i].FillBoundary(geom.periodicity()); 
+                P_new_pre[i].FillBoundary(geom.periodicity());
             }
-        	
+
             if (TimeIntegratorOrder == 1) {
 
                 // copy new solution into old solution
@@ -502,8 +502,8 @@ void main_main (c_FerroX& rFerroX)
                     P_old[i].FillBoundary(geom.periodicity());
                 }
             }
-		
-	} else { //using sundials
+
+        } else { //using sundials
 
 #ifdef AMREX_USE_SUNDIALS
             // integrate forward one step from `time` by `dt` to fill S_new
@@ -514,21 +514,21 @@ void main_main (c_FerroX& rFerroX)
 //#ifdef AMREX_USE_EB
 //
 //            ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-//        	P_new, charge_den, e_den, hole_den, MaterialMask, 
-//        	angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+//              P_new, charge_den, e_den, hole_den, MaterialMask,
+//              angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 //#else
 //             ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-//        	P_new, charge_den, e_den, hole_den, MaterialMask, 
-//        	angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
+//              P_new, charge_den, e_den, hole_den, MaterialMask,
+//              angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 //#endif
             // copy new solution into old solution
             for (int i = 0; i < 3; i++) {
-        	MultiFab::Copy(P_old[i], P_new[i], 0, 0, 1, 1);
-        	P_old[i].FillBoundary(geom.periodicity());
+                MultiFab::Copy(P_old[i], P_new[i], 0, 0, 1, 1);
+                P_old[i].FillBoundary(geom.periodicity());
             }
-	}
+        }
 
-        // Check if steady state has reached 
+        // Check if steady state has reached
         CheckSteadyState(PoissonPhi, PoissonPhi_Old, Phidiff, phi_tolerance, step, steady_state_step, inc_step); // Calculate E from Phi
         ComputeEfromPhi(PoissonPhi, E, angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 
@@ -546,9 +546,9 @@ void main_main (c_FerroX& rFerroX)
         if (plot_int > 0 && (step%plot_int == 0 || step == steady_state_step))
         {
             int plt_step = step;
-            WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, hole_den, e_den, charge_den, beta_cc, 
+            WritePlotfile(rFerroX, PoissonPhi, PoissonRHS, P_old, E, hole_den, e_den, charge_den, beta_cc,
                       MaterialMask, tphaseMask, angle_alpha, angle_beta, angle_theta, Phidiff, geom, time, plt_step);
-            
+
         }
 
         if(voltage_sweep == 1 && inc_step > 0 && step == inc_step)
@@ -569,34 +569,34 @@ void main_main (c_FerroX& rFerroX)
            // set Dirichlet BC by reading in the ghost cell values
 #ifdef AMREX_USE_EB
            p_mlebabec->setLevelBC(amrlev, &PoissonPhi);
-#else 
+#else
            p_mlabec->setLevelBC(amrlev, &PoissonPhi);
 #endif
 
 #ifdef AMREX_USE_EB
            ComputePhi_Rho_EB(pMLMG, p_mlebabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                   P_old, charge_den, e_den, hole_den, MaterialMask, 
+                   P_old, charge_den, e_den, hole_den, MaterialMask,
                    angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #else
            ComputePhi_Rho(pMLMG, p_mlabec, alpha_cc, PoissonRHS, PoissonPhi, PoissonPhi_Prev, PhiErr,
-                   P_old, charge_den, e_den, hole_den, MaterialMask, 
+                   P_old, charge_den, e_den, hole_den, MaterialMask,
                    angle_alpha, angle_beta, angle_theta, geom, prob_lo, prob_hi);
 #endif
-           
-        }//end inc_step	
-   
+
+        }//end inc_step
+
         if (voltage_sweep == 0 && step == steady_state_step) {
-           amrex::Print() << "voltage_sweep == 0 && step == steady_state_step!" << "\n";   
+           amrex::Print() << "voltage_sweep == 0 && step == steady_state_step!" << "\n";
            break;
         }
         if (voltage_sweep == 1 && Phi_Bc_hi > 0. && Phi_Bc_hi - Phi_Bc_hi_max > tiny) {
            amrex::Print() << "voltage_sweep == 1 && Phi_Bc_hi > 0. && Phi_Bc_hi - Phi_Bc_hi_max > tiny!" << "\n";
            break;
-        }        
+        }
         if (voltage_sweep == 1 && Phi_Bc_hi < 0. && -Phi_Bc_hi - Phi_Bc_hi_max > tiny) {
            amrex::Print() << "voltage_sweep == 1 && Phi_Bc_hi < 0. && -Phi_Bc_hi - Phi_Bc_hi_max > tiny!" << "\n";
            break;
-        }   
+        }
         if (voltage_sweep == 1 && num_Vapp == num_Vapp_max) {
            amrex::Print() << "voltage_sweep == 1 && num_Vapp == num_Vapp_max!"  << "\n";
            break;
@@ -622,9 +622,9 @@ void main_main (c_FerroX& rFerroX)
     ParallelDescriptor::ReduceLongMin(min_fab_megabytes, IOProc);
     ParallelDescriptor::ReduceLongMax(max_fab_megabytes, IOProc);
 
-    amrex::Print() << "Curent     FAB megabyte spread across MPI nodes: ["
+    amrex::Print() << "Current     FAB megabyte spread across MPI nodes: ["
                    << min_fab_megabytes << " ... " << max_fab_megabytes << "]\n";
-    
+
     Real total_step_stop_time = ParallelDescriptor::second() - total_step_strt_time;
     ParallelDescriptor::ReduceRealMax(total_step_stop_time);
 

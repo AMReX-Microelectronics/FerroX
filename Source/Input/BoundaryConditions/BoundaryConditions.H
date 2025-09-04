@@ -24,10 +24,10 @@ struct s_BoundaryConditions {
     enum boundary_type { dir, neu, per, rob, ref };
 };
 
-class 
+class
 c_BoundaryConditions
 {
-public: 
+public:
 
     c_BoundaryConditions();
     ~c_BoundaryConditions();
@@ -40,7 +40,7 @@ public:
     std::map<std::string, s_BoundaryConditions::boundary_type> map_boundary_type;
 
     /*The following 2d arrays are for lo and hi sides each with AMREX_SPACEDIM */
-    std::array<std::array<std::any,AMREX_SPACEDIM>,2> bcAny_2d; 
+    std::array<std::array<std::any,AMREX_SPACEDIM>,2> bcAny_2d;
     std::array<std::array<std::string,AMREX_SPACEDIM>,2> bcType_2d;
     std::map<int,std::string> map_bcAny_2d[2];
     std::map<std::string, int> map_function_parser_name;
@@ -50,13 +50,13 @@ private:
         map_boundary_type["dir"] = s_BoundaryConditions::dir;
         map_boundary_type["neu"] = s_BoundaryConditions::neu;
         map_boundary_type["per"] = s_BoundaryConditions::per;
-    };
+    }
 
     void ReadBoundaryConditionsType();
 
-    void SortBoundaryTypeArrayString(const amrex::Vector<std::string>& bc_str, 
-                                     std::array< std::string, AMREX_SPACEDIM >& bcType, 
-                                     std::array< std::any, AMREX_SPACEDIM >& bcAny, 
+    void SortBoundaryTypeArrayString(const amrex::Vector<std::string>& bc_str,
+                                     std::array< std::string, AMREX_SPACEDIM >& bcType,
+                                     std::array< std::any, AMREX_SPACEDIM >& bcAny,
                                      std::map<int,std::string>& map_bcAny);
 
     int num_function_parsers;

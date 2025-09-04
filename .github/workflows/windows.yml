@@ -1,0 +1,77 @@
+name: Windows
+
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.head_ref }}-windows
+  cancel-in-progress: true
+
+jobs:
+  WIN32-MSVC10:
+    name: WIN32 MSVC@19.29 - SUNDIALS ${{matrix.sundials}} - AMReX ${{matrix.amrex_mode}}
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        sundials: [OFF, ON]
+        amrex_mode: [internal, external_src]
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Clone AMReX for dependency scripts
+      run: |
+        git clone https://github.com/AMReX-Codes/amrex.git ${{runner.workspace}}/amrex
+
+    - name: Setup
+      run: |
+        if ("${{matrix.amrex_mode}}" -eq "external_src") {
+          "AMREX_SRC_DIR=${{runner.workspace}}/amrex" | Out-File -FilePath $env:GITHUB_ENV -Append
+          if ("${{matrix.sundials}}" -eq "ON") {
+            git clone https://github.com/LLNL/sundials.git ${{runner.workspace}}/sundials
+            "SUNDIALS_SRC_DIR=${{runner.workspace}}/sundials" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+        }
+
+    - name: Configure Project and Generate Build System
+      run: |
+        if ("${{matrix.amrex_mode}}" -eq "external_src") {
+          if ("${{matrix.sundials}}" -eq "ON") {
+            cmake -S . -B build-${{matrix.sundials}}-${{matrix.amrex_mode}} `
+              -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install `
+              -DCMAKE_BUILD_TYPE:STRING=Debug `
+              -DFerroX_MPI:BOOL=OFF `
+              -DFerroX_COMPUTE:STRING=NOACC `
+              -DFerroX_SUNDIALS:BOOL=ON `
+              -DFerroX_ENABLE_ALL_WARNINGS:BOOL=OFF `
+              -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} `
+              -DFerroX_sundials_src:PATH=${{env.SUNDIALS_SRC_DIR}} `
+              ${{github.workspace}};
+          } else {
+            cmake -S . -B build-${{matrix.sundials}}-${{matrix.amrex_mode}} `
+              -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install `
+              -DCMAKE_BUILD_TYPE:STRING=Debug `
+              -DFerroX_MPI:BOOL=OFF `
+              -DFerroX_COMPUTE:STRING=NOACC `
+              -DFerroX_SUNDIALS:BOOL=OFF `
+              -DFerroX_ENABLE_ALL_WARNINGS:BOOL=OFF `
+              -DFerroX_amrex_src:PATH=${{env.AMREX_SRC_DIR}} `
+              ${{github.workspace}};
+          }
+        } else {
+          cmake -S . -B build-${{matrix.sundials}}-${{matrix.amrex_mode}} `
+            -DCMAKE_INSTALL_PREFIX:PATH=${{runner.workspace}}/FerroX/install `
+            -DCMAKE_BUILD_TYPE:STRING=Debug `
+            -DFerroX_MPI:BOOL=OFF `
+            -DFerroX_COMPUTE:STRING=NOACC `
+            -DFerroX_SUNDIALS:BOOL=${{matrix.sundials}} `
+            -DFerroX_ENABLE_ALL_WARNINGS:BOOL=OFF `
+            ${{github.workspace}};
+        }
+
+    - name: Compile and Link
+      run: |
+        cmake --build build-${{matrix.sundials}}-${{matrix.amrex_mode}} --parallel 2 --verbose
+

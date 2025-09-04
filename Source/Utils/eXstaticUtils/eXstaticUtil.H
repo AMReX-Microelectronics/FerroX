@@ -36,22 +36,22 @@ void InitializeMacroMultiFabUsingParser_4vars (
                        const amrex::Real t);
 
 void AverageCellCenteredMultiFabToCellFaces(const amrex::MultiFab& cc_arr,
-                                            std::array< amrex::MultiFab, 
+                                            std::array< amrex::MultiFab,
                                             AMREX_SPACEDIM >& face_arr);
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-void ConvertParserIntoMultiFab_3vars(const int i, const int j, const int k, 
-            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx, 
-	    const amrex::RealBox& real_box, 
-	    const amrex::IntVect& iv, 
-	    amrex::ParserExecutor<3> const& macro_parser,
-	    amrex::Array4<amrex::Real> const& mf_array)
+void ConvertParserIntoMultiFab_3vars(const int i, const int j, const int k,
+            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx,
+            const amrex::RealBox& real_box,
+            const amrex::IntVect& iv,
+            amrex::ParserExecutor<3> const& macro_parser,
+            amrex::Array4<amrex::Real> const& mf_array)
 {
 #ifdef PRINT_NAME
     amrex::Print() << "\n\n\t\t\t\t\t{************************eXstatic_MFab_Util::ConvertParserIntoMultiFab_3vars()************************\n";
     amrex::Print() << "\t\t\t\t\tin file: " << __FILE__ << " at line: " << __LINE__ << "\n";
 #endif
-      
+
     amrex::Real fac_x = (1._rt - iv[0]) * dx[0] * 0.5_rt;
     amrex::Real x = i * dx[0] + real_box.lo(0) + fac_x;
 
@@ -71,17 +71,17 @@ void ConvertParserIntoMultiFab_3vars(const int i, const int j, const int k,
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void ConvertParserIntoMultiFab_4vars(const int i, const int j, const int k, const amrex::Real t,
-            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx, 
-	    const amrex::RealBox& real_box, 
-	    const amrex::IntVect& iv, 
-	    amrex::ParserExecutor<4> const& macro_parser,
-	    amrex::Array4<amrex::Real> const& mf_array)
+            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx,
+            const amrex::RealBox& real_box,
+            const amrex::IntVect& iv,
+            amrex::ParserExecutor<4> const& macro_parser,
+            amrex::Array4<amrex::Real> const& mf_array)
 {
 #ifdef PRINT_NAME
     amrex::Print() << "\n\n\t\t\t\t\t{************************eXstatic_MFab_Util::ConvertParserIntoMultiFab_4vars()************************\n";
     amrex::Print() << "\t\t\t\t\tin file: " << __FILE__ << " at line: " << __LINE__ << "\n";
 #endif
-      
+
     amrex::Real fac_x = (1._rt - iv[0]) * dx[0] * 0.5_rt;
     amrex::Real x = i * dx[0] + real_box.lo(0) + fac_x;
 
@@ -97,11 +97,11 @@ void ConvertParserIntoMultiFab_4vars(const int i, const int j, const int k, cons
     amrex::Print() << "\t\t\t\t\t}************************eXstatic_MFab_Util::ConvertParserIntoMultiFab_4vars()************************\n";
 #endif
 }
-//void GetXYZ(const int i, const int j, const int k, 
-//            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx, 
-//	    const amrex::RealBox& real_box, 
-//	    const amrex::IntVect& iv, 
-//	    amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& coord_vec);
+//void GetXYZ(const int i, const int j, const int k,
+//            const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx,
+//          const amrex::RealBox& real_box,
+//          const amrex::IntVect& iv,
+//          amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& coord_vec);
 
 #ifdef AMREX_USE_EB
 void SpecifyValueOnlyOnCutcells(amrex::MultiFab& mf, amrex::Real const value);
